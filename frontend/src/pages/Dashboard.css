@@ -1,0 +1,38 @@
+.dashboard {
+  animation: fadeIn 0.3s ease-in;
+}
+
+.dashboard h1 {
+  margin-bottom: 2rem;
+  color: #2c3e50;
+}
+
+.dashboard-section {
+  margin-top: 2rem;
+  background: white;
+  padding: 1.5rem;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.dashboard-section h2 {
+  margin-top: 0;
+  margin-bottom: 1rem;
+  color: #2c3e50;
+  font-size: 1.5rem;
+}
+
+.transactions-preview {
+  overflow-x: auto;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
