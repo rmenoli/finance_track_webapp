@@ -1,4 +1,5 @@
 """Tests for cost basis service."""
+
 from datetime import date, timedelta
 from decimal import Decimal
 
@@ -24,16 +25,17 @@ class TestCostBasisService:
                 fee=Decimal("1.50"),
                 price_per_unit=Decimal("100.00"),
                 units=Decimal("10.0"),
-                transaction_type=TransactionType.BUY
-            )
+                transaction_type=TransactionType.BUY,
+            ),
         )
 
         result = cost_basis_service.calculate_cost_basis(db_session, "IE00B4L5Y983")
 
         assert result is not None
         assert result.total_units == Decimal("10.0")
-        # Total cost = (100 * 10) + 1.50 = 1001.50
-        assert result.total_cost == Decimal("1001.50")
+        assert result.total_cost_without_fees == Decimal("1000.00")
+        assert result.total_gains_without_fees == Decimal("0")
+        assert result.total_fees == Decimal("1.50")
         assert result.transactions_count == 1
 
     def test_calculate_cost_basis_multiple_buys(self, db_session):
@@ -48,8 +50,8 @@ class TestCostBasisService:
                 fee=Decimal("1.50"),
                 price_per_unit=Decimal("100.00"),
                 units=Decimal("10.0"),
-                transaction_type=TransactionType.BUY
-            )
+                transaction_type=TransactionType.BUY,
+            ),
         )
 
         # Second buy: 5 units at $110
@@ -62,16 +64,17 @@ class TestCostBasisService:
                 fee=Decimal("1.50"),
                 price_per_unit=Decimal("110.00"),
                 units=Decimal("5.0"),
-                transaction_type=TransactionType.BUY
-            )
+                transaction_type=TransactionType.BUY,
+            ),
         )
 
         result = cost_basis_service.calculate_cost_basis(db_session, "IE00B4L5Y983")
 
         assert result is not None
         assert result.total_units == Decimal("15.0")
-        # Total cost = (100*10 + 1.50) + (110*5 + 1.50) = 1001.50 + 551.50 = 1553.00
-        assert result.total_cost == Decimal("1553.00")
+        assert result.total_cost_without_fees == Decimal("1550.00")
+        assert result.total_gains_without_fees == Decimal("0")
+        assert result.total_fees == Decimal("3.00")
         assert result.transactions_count == 2
 
     def test_calculate_cost_basis_with_sell(self, db_session):
@@ -86,8 +89,8 @@ class TestCostBasisService:
                 fee=Decimal("1.50"),
                 price_per_unit=Decimal("100.00"),
                 units=Decimal("10.0"),
-                transaction_type=TransactionType.BUY
-            )
+                transaction_type=TransactionType.BUY,
+            ),
         )
 
         # Sell 3 units at $110
@@ -100,20 +103,17 @@ class TestCostBasisService:
                 fee=Decimal("1.50"),
                 price_per_unit=Decimal("110.00"),
                 units=Decimal("3.0"),
-                transaction_type=TransactionType.SELL
-            )
+                transaction_type=TransactionType.SELL,
+            ),
         )
 
         result = cost_basis_service.calculate_cost_basis(db_session, "IE00B4L5Y983")
 
         assert result is not None
-        # Should have 7 units remaining (10 - 3)
         assert result.total_units == Decimal("7.0")
-        # Original cost: 1001.50
-        # Proportion sold: 3/10 = 0.3
-        # Cost removed: 1001.50 * 0.3 = 300.45
-        # Remaining cost: 1001.50 - 300.45 = 701.05
-        assert result.total_cost == Decimal("701.05")
+        assert result.total_cost_without_fees == Decimal("1000.00")
+        assert result.total_gains_without_fees == Decimal("330.00")
+        assert result.total_fees == Decimal("3.00")
         assert result.transactions_count == 2
 
     def test_calculate_cost_basis_sell_all(self, db_session):
@@ -128,8 +128,8 @@ class TestCostBasisService:
                 fee=Decimal("1.50"),
                 price_per_unit=Decimal("100.00"),
                 units=Decimal("10.0"),
-                transaction_type=TransactionType.BUY
-            )
+                transaction_type=TransactionType.BUY,
+            ),
         )
 
         # Sell all 10 units
@@ -142,15 +142,18 @@ class TestCostBasisService:
                 fee=Decimal("1.50"),
                 price_per_unit=Decimal("110.00"),
                 units=Decimal("10.0"),
-                transaction_type=TransactionType.SELL
-            )
+                transaction_type=TransactionType.SELL,
+            ),
         )
 
         result = cost_basis_service.calculate_cost_basis(db_session, "IE00B4L5Y983")
 
         assert result is not None
         assert result.total_units == Decimal("0")
-        assert result.total_cost == Decimal("0")
+        assert result.total_cost_without_fees == Decimal("1000.00")
+        assert result.total_gains_without_fees == Decimal("1100.00")
+        assert result.total_fees == Decimal("3.00")
+        assert result.transactions_count == 2
 
     def test_calculate_cost_basis_no_transactions(self, db_session):
         """Test cost basis for non-existent ISIN."""
@@ -168,8 +171,8 @@ class TestCostBasisService:
                 fee=Decimal("1.50"),
                 price_per_unit=Decimal("100.00"),
                 units=Decimal("10.0"),
-                transaction_type=TransactionType.BUY
-            )
+                transaction_type=TransactionType.BUY,
+            ),
         )
 
         # Query with lowercase
@@ -191,8 +194,8 @@ class TestCostBasisService:
                 fee=Decimal("1.00"),
                 price_per_unit=Decimal("100.00"),
                 units=Decimal("10.0"),
-                transaction_type=TransactionType.BUY
-            )
+                transaction_type=TransactionType.BUY,
+            ),
         )
 
         # Buy on day 3
@@ -205,8 +208,8 @@ class TestCostBasisService:
                 fee=Decimal("1.00"),
                 price_per_unit=Decimal("110.00"),
                 units=Decimal("5.0"),
-                transaction_type=TransactionType.BUY
-            )
+                transaction_type=TransactionType.BUY,
+            ),
         )
 
         # Calculate as of day 2 (should only include first transaction)
@@ -230,8 +233,8 @@ class TestCostBasisService:
                 fee=Decimal("1.00"),
                 price_per_unit=Decimal("100.00"),
                 units=Decimal("10.0"),
-                transaction_type=TransactionType.BUY
-            )
+                transaction_type=TransactionType.BUY,
+            ),
         )
         transaction_service.create_transaction(
             db_session,
@@ -242,8 +245,8 @@ class TestCostBasisService:
                 fee=Decimal("2.00"),
                 price_per_unit=Decimal("200.00"),
                 units=Decimal("5.0"),
-                transaction_type=TransactionType.BUY
-            )
+                transaction_type=TransactionType.BUY,
+            ),
         )
 
         holdings = cost_basis_service.calculate_current_holdings(db_session)
@@ -265,8 +268,8 @@ class TestCostBasisService:
                 fee=Decimal("1.00"),
                 price_per_unit=Decimal("100.00"),
                 units=Decimal("10.0"),
-                transaction_type=TransactionType.BUY
-            )
+                transaction_type=TransactionType.BUY,
+            ),
         )
         transaction_service.create_transaction(
             db_session,
@@ -277,8 +280,8 @@ class TestCostBasisService:
                 fee=Decimal("1.00"),
                 price_per_unit=Decimal("110.00"),
                 units=Decimal("10.0"),
-                transaction_type=TransactionType.SELL
-            )
+                transaction_type=TransactionType.SELL,
+            ),
         )
 
         holdings = cost_basis_service.calculate_current_holdings(db_session)
@@ -296,8 +299,8 @@ class TestCostBasisService:
                 fee=Decimal("1.50"),
                 price_per_unit=Decimal("100.00"),
                 units=Decimal("10.0"),
-                transaction_type=TransactionType.BUY
-            )
+                transaction_type=TransactionType.BUY,
+            ),
         )
         transaction_service.create_transaction(
             db_session,
@@ -308,8 +311,8 @@ class TestCostBasisService:
                 fee=Decimal("2.00"),
                 price_per_unit=Decimal("200.00"),
                 units=Decimal("5.0"),
-                transaction_type=TransactionType.BUY
-            )
+                transaction_type=TransactionType.BUY,
+            ),
         )
 
         # Create sell transaction
@@ -322,8 +325,8 @@ class TestCostBasisService:
                 fee=Decimal("1.50"),
                 price_per_unit=Decimal("120.00"),
                 units=Decimal("3.0"),
-                transaction_type=TransactionType.SELL
-            )
+                transaction_type=TransactionType.SELL,
+            ),
         )
 
         summary = cost_basis_service.get_portfolio_summary(db_session)

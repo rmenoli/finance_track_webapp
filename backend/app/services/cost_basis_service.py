@@ -8,7 +8,6 @@ from app.constants import TransactionType
 from app.models.transaction import Transaction
 from app.schemas.analytics import (
     CostBasisResponse,
-    HoldingResponse,
     PortfolioSummaryResponse,
 )
 
@@ -38,43 +37,44 @@ def calculate_cost_basis(
         return None
 
     total_units = Decimal("0")
-    total_cost = Decimal("0")
+
+    sum_costs_without_fees = Decimal("0")
+    sum_gains_without_fees = Decimal("0")
+
+    total_fees = Decimal("0")
     transaction_count = 0
 
     for txn in transactions:
         if txn.transaction_type == TransactionType.BUY:
             # Add cost including fee
-            cost = (txn.price_per_unit * txn.units) + txn.fee
-            total_cost += cost
+            without_fee_cost = txn.price_per_unit * txn.units
+            sum_costs_without_fees += without_fee_cost
+
+            total_fees += txn.fee
             total_units += txn.units
+
             transaction_count += 1
         elif txn.transaction_type == TransactionType.SELL:
-            if total_units > 0:
-                # Calculate proportion of cost basis to remove
-                proportion = txn.units / total_units
-                cost_removed = total_cost * proportion
-                total_cost -= cost_removed
-                total_units -= txn.units
-            transaction_count += 1
+            # Calculate proportion of cost basis to remove
+            gaining_wihtout_fees = txn.price_per_unit * txn.units
+            sum_gains_without_fees = sum_gains_without_fees + gaining_wihtout_fees
 
-    if total_units <= 0:
-        # All positions sold
-        return CostBasisResponse(
-            isin=isin.upper(),
-            total_units=Decimal("0"),
-            total_cost=Decimal("0"),
-            transactions_count=transaction_count,
-        )
+            total_fees += txn.fee
+            total_units -= txn.units
+
+            transaction_count += 1
 
     return CostBasisResponse(
         isin=isin.upper(),
         total_units=total_units,
-        total_cost=total_cost,
+        total_cost_without_fees=sum_costs_without_fees,
+        total_gains_without_fees=sum_gains_without_fees,
+        total_fees=total_fees,
         transactions_count=transaction_count,
     )
 
 
-def calculate_current_holdings(db: Session) -> list[HoldingResponse]:
+def calculate_current_holdings(db: Session) -> list[CostBasisResponse]:
     """
     Calculate current holdings for all ISINs.
 
@@ -91,13 +91,7 @@ def calculate_current_holdings(db: Session) -> list[HoldingResponse]:
     for (isin,) in isins:
         cost_basis = calculate_cost_basis(db, isin)
         if cost_basis and cost_basis.total_units > 0:
-            holdings.append(
-                HoldingResponse(
-                    isin=cost_basis.isin,
-                    units=cost_basis.total_units,
-                    total_cost=cost_basis.total_cost,
-                )
-            )
+            holdings.append(cost_basis)
 
     return holdings
 

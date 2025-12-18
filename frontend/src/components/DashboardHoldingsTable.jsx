@@ -81,14 +81,24 @@ function DashboardHoldingsTable({ holdings }) {
 
   const getCurrentPricePerUnit = (holding, currentValue) => {
     if (!currentValue || currentValue === 0) return 0;
-    return currentValue / parseFloat(holding.units);
+    return currentValue / parseFloat(holding.total_units);
   };
 
   const calculatePL = (holding, currentValue) => {
-    const totalCost = parseFloat(holding.total_cost);
-    const absolutePL = currentValue - totalCost;
-    const percentagePL = totalCost > 0 ? (absolutePL / totalCost) * 100 : 0;
-    return { absolutePL, percentagePL };
+    // P/L without fees
+    const totalCostWithoutFees = parseFloat(holding.total_cost_without_fees) - parseFloat(holding.total_gains_without_fees);
+    const absolutePLWithoutFees = currentValue - totalCostWithoutFees;
+    const percentagePLWithoutFees = totalCostWithoutFees > 0 ? (absolutePLWithoutFees / totalCostWithoutFees) * 100 : 0;
+
+    // P/L including fees
+    const totalCostWithFees = totalCostWithoutFees + parseFloat(holding.total_fees);
+    const absolutePLWithFees = currentValue - totalCostWithFees;
+    const percentagePLWithFees = totalCostWithFees > 0 ? (absolutePLWithFees / totalCostWithFees) * 100 : 0;
+
+    return {
+      withoutFees: { absolutePL: absolutePLWithoutFees, percentagePL: percentagePLWithoutFees },
+      withFees: { absolutePL: absolutePLWithFees, percentagePL: percentagePLWithFees }
+    };
   };
 
   if (!holdings || holdings.length === 0) {
@@ -114,13 +124,15 @@ function DashboardHoldingsTable({ holdings }) {
             <th>Buy In</th>
             <th>Current Position</th>
             <th>P/L</th>
+            <th>Total Fees</th>
+            <th>P/L (incl. fees)</th>
           </tr>
         </thead>
         <tbody>
           {holdings.map(holding => {
             const currentValue = currentValues[holding.isin] || 0;
             const currentPricePerUnit = getCurrentPricePerUnit(holding, currentValue);
-            const { absolutePL, percentagePL } = calculatePL(holding, currentValue);
+            const plData = calculatePL(holding, currentValue);
             const isSaving = savingIsin === holding.isin;
 
             return (
@@ -132,7 +144,12 @@ function DashboardHoldingsTable({ holdings }) {
 
                 {/* Buy In */}
                 <td>
-                  <div>€{parseFloat(holding.total_cost).toFixed(2)}</div>
+                  <div>€{(parseFloat(holding.total_cost_without_fees) - parseFloat(holding.total_gains_without_fees)).toFixed(2)}</div>
+                  {holding.total_units > 0 && (
+                    <div className="sub-value">
+                      €{((parseFloat(holding.total_cost_without_fees) - parseFloat(holding.total_gains_without_fees)) / parseFloat(holding.total_units)).toFixed(2)}/unit
+                    </div>
+                  )}
                 </td>
 
                 {/* Current Position - Editable */}
@@ -167,15 +184,36 @@ function DashboardHoldingsTable({ holdings }) {
                   )}
                 </td>
 
-                {/* P/L */}
+                {/* P/L (without fees) */}
                 <td>
                   {currentValue > 0 ? (
                     <>
-                      <div className={absolutePL >= 0 ? 'positive' : 'negative'}>
-                        {absolutePL >= 0 ? '+' : ''}€{absolutePL.toFixed(2)}
+                      <div className={plData.withoutFees.absolutePL >= 0 ? 'positive' : 'negative'}>
+                        {plData.withoutFees.absolutePL >= 0 ? '+' : ''}€{plData.withoutFees.absolutePL.toFixed(2)}
                       </div>
-                      <div className={`sub-value ${percentagePL >= 0 ? 'positive' : 'negative'}`}>
-                        {percentagePL >= 0 ? '↑' : '↓'}{Math.abs(percentagePL).toFixed(2)}%
+                      <div className={`sub-value ${plData.withoutFees.percentagePL >= 0 ? 'positive' : 'negative'}`}>
+                        {plData.withoutFees.percentagePL >= 0 ? '↑' : '↓'}{Math.abs(plData.withoutFees.percentagePL).toFixed(2)}%
+                      </div>
+                    </>
+                  ) : (
+                    <div className="sub-value">-</div>
+                  )}
+                </td>
+
+                {/* Total Fees */}
+                <td>
+                  <div>€{parseFloat(holding.total_fees).toFixed(2)}</div>
+                </td>
+
+                {/* P/L (including fees) */}
+                <td>
+                  {currentValue > 0 ? (
+                    <>
+                      <div className={plData.withFees.absolutePL >= 0 ? 'positive' : 'negative'}>
+                        {plData.withFees.absolutePL >= 0 ? '+' : ''}€{plData.withFees.absolutePL.toFixed(2)}
+                      </div>
+                      <div className={`sub-value ${plData.withFees.percentagePL >= 0 ? 'positive' : 'negative'}`}>
+                        {plData.withFees.percentagePL >= 0 ? '↑' : '↓'}{Math.abs(plData.withFees.percentagePL).toFixed(2)}%
                       </div>
                     </>
                   ) : (
