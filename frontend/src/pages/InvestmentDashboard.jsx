@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { analyticsAPI, transactionsAPI } from '../services/api';
 import PortfolioSummary from '../components/PortfolioSummary';
 import './InvestmentDashboard.css';
@@ -9,11 +9,7 @@ function InvestmentDashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  useEffect(() => {
-    loadDashboardData();
-  }, []);
-
-  const loadDashboardData = async () => {
+  const loadDashboardData = useCallback(async () => {
     try {
       setLoading(true);
       const [summaryData, transactionsData] = await Promise.all([
@@ -29,7 +25,11 @@ function InvestmentDashboard() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    loadDashboardData();
+  }, [loadDashboardData]);
 
   if (loading) {
     return <div className="loading">Loading dashboard...</div>;
@@ -43,7 +43,7 @@ function InvestmentDashboard() {
     <div className="dashboard">
       <h1>Investment Dashboard</h1>
 
-      {summary && <PortfolioSummary data={summary} />}
+      {summary && <PortfolioSummary data={summary} onDataChange={loadDashboardData} />}
 
       <div className="dashboard-section">
         <h2>Recent Transactions</h2>

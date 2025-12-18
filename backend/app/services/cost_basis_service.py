@@ -10,6 +10,7 @@ from app.schemas.analytics import (
     CostBasisResponse,
     PortfolioSummaryResponse,
 )
+from app.services import position_value_service
 
 
 def calculate_cost_basis(
@@ -115,12 +116,32 @@ def get_portfolio_summary(db: Session) -> PortfolioSummaryResponse:
     )
     total_invested = sum((txn.price_per_unit * txn.units) for txn in buy_transactions)
 
+    # Calculate total amount withdrawn (all SELL transactions)
+    sell_transactions = (
+        db.query(Transaction).filter(Transaction.transaction_type == TransactionType.SELL).all()
+    )
+    total_withdrawn = sum((txn.price_per_unit * txn.units) for txn in sell_transactions)
+
     # Calculate total fees
     all_transactions = db.query(Transaction).all()
     total_fees = sum(txn.fee for txn in all_transactions)
 
+    # Calculate sum of all position values
+    position_values = position_value_service.get_all_position_values(db)
+    total_current_portfolio_invested_value = (
+        sum(pv.current_value for pv in position_values) if position_values else Decimal("0")
+    )
+
+    # Calculate total profit/loss
+    total_profit_loss = (
+        total_current_portfolio_invested_value + total_withdrawn - total_fees - total_invested
+    )
+
     return PortfolioSummaryResponse(
         total_invested=total_invested,
+        total_withdrawn=total_withdrawn,
         total_fees=total_fees,
+        total_current_portfolio_invested_value=total_current_portfolio_invested_value,
+        total_profit_loss=total_profit_loss,
         holdings=holdings,
     )

@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { positionValuesAPI } from '../services/api';
 import './DashboardHoldingsTable.css';
 
-function DashboardHoldingsTable({ holdings }) {
+function DashboardHoldingsTable({ holdings, onPositionValueChange }) {
   const [currentValues, setCurrentValues] = useState({});
   const [editingIsin, setEditingIsin] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -50,6 +50,11 @@ function DashboardHoldingsTable({ holdings }) {
       setSavingIsin(isin);
       await positionValuesAPI.upsert(isin, value);
       // Value already updated in local state, no need to reload
+
+      // Notify parent to refresh summary data
+      if (onPositionValueChange) {
+        onPositionValueChange();
+      }
     } catch (err) {
       console.error(`Failed to save position value for ${isin}:`, err);
       // Show error to user but keep local value

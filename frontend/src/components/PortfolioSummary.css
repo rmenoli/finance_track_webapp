@@ -1,10 +1,82 @@
+/* Main container - flexbox layout for sections */
 .portfolio-summary {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
   margin-bottom: 2rem;
 }
 
+/* Hero Section - Large Prominent Cards */
+.hero-metrics {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1.5rem;
+}
+
+.hero-card {
+  background: white;
+  padding: 2.5rem;
+  border-radius: 12px;
+  box-shadow: 0 4px 8px rgba(0,0,0,0.12);
+  text-align: center;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.hero-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 12px rgba(0,0,0,0.15);
+}
+
+.hero-card h3 {
+  margin: 0 0 1rem 0;
+  font-size: 1rem;
+  color: #7f8c8d;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.hero-value {
+  font-size: 3rem !important;
+  font-weight: 800 !important;
+  margin: 0;
+}
+
+/* Details Section - Compact Summary Card */
+.details-card {
+  background: white;
+  padding: 1.5rem 2rem;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.08);
+}
+
+.details-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 2rem;
+}
+
+.detail-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.detail-label {
+  font-size: 0.8rem;
+  color: #95a5a6;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  font-weight: 600;
+}
+
+.detail-value {
+  font-size: 1.25rem;
+  color: #2c3e50;
+  font-weight: 700;
+}
+
+/* Keep existing styles for summary-card, summary-section, etc. */
 .summary-card {
   background: white;
   padding: 1.5rem;
@@ -17,7 +89,6 @@
 }
 
 .summary-section {
-  grid-column: 1 / -1;
   background: white;
   padding: 2rem;
   border-radius: 8px;
@@ -61,12 +132,36 @@
   color: #7f8c8d;
 }
 
+/* Responsive Design */
 @media (max-width: 768px) {
-  .portfolio-summary {
+  .hero-metrics {
     grid-template-columns: 1fr;
+  }
+
+  .hero-value {
+    font-size: 2.5rem !important;
+  }
+
+  .details-grid {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+
+  .hero-card {
+    padding: 2rem;
   }
 
   .summary-value {
     font-size: 1.5rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .hero-value {
+    font-size: 2rem !important;
+  }
+
+  .detail-value {
+    font-size: 1.1rem;
   }
 }

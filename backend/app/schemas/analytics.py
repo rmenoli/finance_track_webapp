@@ -24,7 +24,14 @@ class PortfolioSummaryResponse(BaseModel):
     """Schema for overall portfolio summary."""
 
     total_invested: Decimal = Field(..., description="Total amount invested (buys)")
+    total_withdrawn: Decimal = Field(..., description="Total amount withdrawn (sells)")
     total_fees: Decimal = Field(..., description="Total fees paid")
+    total_current_portfolio_invested_value: Decimal = Field(
+        ..., description="Sum of all current position values"
+    )
+    total_profit_loss: Decimal = Field(
+        ..., description="Total profit/loss (current value + withdrawn - fees - invested)"
+    )
     holdings: list[CostBasisResponse] = Field(..., description="Current holdings")
 
     model_config = ConfigDict(from_attributes=True)
