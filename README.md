@@ -28,6 +28,7 @@ A full-stack web application for tracking ETF portfolio transactions with automa
 - ✅ Real-time portfolio analytics and holdings
 - ✅ Realized gains/losses tracking
 - ✅ ISIN validation and date range filtering
+- ✅ Persistent position value tracking with manual entry
 
 **User Experience**
 - ✅ Clean, responsive React UI
@@ -41,7 +42,7 @@ A full-stack web application for tracking ETF portfolio transactions with automa
 |-------|-----------|
 | **Backend** | FastAPI, SQLAlchemy 2.0, SQLite, Alembic, Pydantic |
 | **Frontend** | React 18, Vite, React Router v6, CSS |
-| **Testing** | Pytest (86 tests, 96% coverage) |
+| **Testing** | Pytest (108 tests, 96% coverage) |
 | **Tools** | UV (Python), npm (Node.js), Ruff (linting) |
 
 ---
@@ -104,7 +105,7 @@ finance_track_webapp/
 │   │   └── schemas/                  # Pydantic schemas
 │   ├── alembic/                      # Database migrations
 │   │   └── versions/                 # Migration files
-│   ├── tests/                        # Backend tests (86 tests, 96% coverage)
+│   ├── tests/                        # Backend tests (108 tests, 96% coverage)
 │   ├── pyproject.toml                # Python dependencies
 │   ├── uv.lock                       # Dependency lock file
 │   ├── alembic.ini                   # Alembic configuration
@@ -196,7 +197,7 @@ npm run build              # Verify build works
 
 ### Backend Tests
 
-96% coverage across 86 tests:
+96% coverage across 108 tests:
 
 ```bash
 cd backend
@@ -283,6 +284,14 @@ All endpoints are prefixed with `/api/v1`
 | GET | `/analytics/cost-basis` | Cost basis for all ISINs |
 | GET | `/analytics/cost-basis/{isin}` | Cost basis for specific ISIN |
 | GET | `/analytics/realized-gains` | Realized P&L from sells |
+
+#### Position Value Endpoints
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/position-values` | Create or update position value (UPSERT) |
+| GET | `/position-values` | List all position values |
+| GET | `/position-values/{isin}` | Get position value by ISIN |
+| DELETE | `/position-values/{isin}` | Delete position value |
 
 **Full interactive API documentation:** http://localhost:8000/docs (Swagger UI)
 
@@ -378,9 +387,9 @@ realized_gain = (sell_price × units - fee) - cost_removed
 ## Project Status
 
 **Current Version**: Development
-**Test Coverage**: 96% (86 tests)
+**Test Coverage**: 96% (108 tests)
 **Frontend Pages**: Investment Dashboard, Transactions, Add/Edit Transaction
-**Backend Endpoints**: 10 endpoints (5 transaction, 5 analytics)
+**Backend Endpoints**: 14 endpoints (5 transaction, 5 analytics, 4 position values)
 
 ---
 

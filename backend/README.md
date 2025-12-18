@@ -25,7 +25,7 @@ FastAPI backend service for tracking ETF transactions with automatic cost basis 
 - **Validation**: Pydantic 2.12.5 (data validation and settings)
 - **Package Manager**: UV (fast Python package manager)
 - **Server**: Uvicorn 0.38.0 (ASGI server)
-- **Testing**: Pytest 9.0.2 with 96% coverage (86 tests)
+- **Testing**: Pytest 9.0.2 with 96% coverage (108 tests)
 - **Code Quality**: Ruff 0.14.9 (linting and formatting)
 
 ## Prerequisites
@@ -224,6 +224,17 @@ All endpoints are prefixed with `/api/v1`
 | GET | `/analytics/cost-basis/{isin}` | Cost basis for specific ISIN |
 | GET | `/analytics/realized-gains` | Realized gains/losses from sells (optional ISIN filter) |
 
+#### Position Value Endpoints
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/position-values` | Create or update position value (UPSERT by ISIN) |
+| GET | `/position-values` | List all position values |
+| GET | `/position-values/{isin}` | Get position value for specific ISIN |
+| DELETE | `/position-values/{isin}` | Delete position value by ISIN |
+
+**Position Values** allow users to manually track the current market value of their positions. Values are stored per ISIN with automatic timestamp tracking. When creating/updating, the system uses UPSERT logic - one row per ISIN that updates if it exists or creates if new.
+
 ### Example Requests
 
 #### Create a Transaction
@@ -248,14 +259,36 @@ curl -X POST http://localhost:8000/api/v1/transactions \
 curl http://localhost:8000/api/v1/analytics/portfolio-summary
 ```
 
+#### Create/Update Position Value
+
+```bash
+curl -X POST http://localhost:8000/api/v1/position-values \
+  -H "Content-Type: application/json" \
+  -d '{
+    "isin": "IE00B4L5Y983",
+    "current_value": 5000.50
+  }'
+```
+
+#### Get All Position Values
+
+```bash
+curl http://localhost:8000/api/v1/position-values
+```
+
 ### Validation Rules
 
+**Transaction Validation:**
 - **ISIN**: Exactly 12 characters (2 letters + 9 alphanumeric + 1 digit)
 - **Date**: Cannot be in the future
 - **Units**: Must be > 0
 - **Price per unit**: Must be > 0
 - **Fee**: Must be >= 0
 - **Transaction type**: Either "BUY" or "SELL"
+
+**Position Value Validation:**
+- **ISIN**: 1-12 characters (no format validation - allows any string)
+- **Current value**: Must be > 0
 
 ## Database Management
 

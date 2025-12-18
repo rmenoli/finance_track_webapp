@@ -21,14 +21,16 @@ function TransactionList({ transactions, onEdit, onDelete }) {
               <th>Type</th>
               <th>Units</th>
               <th>Price/Unit</th>
+              <th>Total - (no fees)</th>
               <th>Fee</th>
-              <th>Total</th>
+              <th>Total - With fees</th>
               <th>Actions</th>
             </tr>
           </thead>
           <tbody>
             {transactions.map((txn) => {
               const total = parseFloat(txn.units) * parseFloat(txn.price_per_unit);
+              const totalWithFees = total + parseFloat(txn.fee);
               return (
                 <tr key={txn.id}>
                   <td>{new Date(txn.date).toLocaleDateString()}</td>
@@ -39,10 +41,11 @@ function TransactionList({ transactions, onEdit, onDelete }) {
                       {txn.transaction_type}
                     </span>
                   </td>
-                  <td>{parseFloat(txn.units).toFixed(4)}</td>
+                  <td>{parseFloat(txn.units).toFixed(0)}</td>
                   <td>€{parseFloat(txn.price_per_unit).toFixed(2)}</td>
-                  <td>€{parseFloat(txn.fee).toFixed(2)}</td>
                   <td>€{total.toFixed(2)}</td>
+                  <td>€{parseFloat(txn.fee).toFixed(2)}</td>
+                  <td>€{totalWithFees.toFixed(2)}</td>
                   <td>
                     <div className="action-buttons">
                       <button

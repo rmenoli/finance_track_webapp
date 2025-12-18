@@ -128,7 +128,7 @@ uv run ruff format .
 ```bash
 cd backend
 
-# Run all tests (86 tests, 96% coverage)
+# Run all tests (108 tests, 96% coverage)
 uv run pytest
 
 # Run with verbose output
@@ -185,7 +185,7 @@ finance_track_webapp/
 │   │   ├── versions/          # Migration files
 │   │   ├── env.py             # Alembic environment
 │   │   └── script.py.mako     # Migration template
-│   ├── tests/                 # Test suite (96% coverage, 86 tests)
+│   ├── tests/                 # Test suite (96% coverage, 108 tests)
 │   │   ├── conftest.py       # Test fixtures
 │   │   ├── test_transaction_service.py
 │   │   ├── test_cost_basis_service.py
@@ -323,6 +323,12 @@ All routes prefixed with `/api/v1`:
 - `GET /analytics/realized-gains` - P&L from sells
 - `GET /analytics/portfolio-summary` - Complete overview
 
+**Position Values**:
+- `POST /position-values` - Create or update (UPSERT by ISIN)
+- `GET /position-values` - List all position values
+- `GET /position-values/{isin}` - Get by ISIN
+- `DELETE /position-values/{isin}` - Delete by ISIN
+
 Interactive docs: http://localhost:8000/docs (Swagger UI)
 
 ## Common Development Scenarios
@@ -354,6 +360,21 @@ All cost basis calculations are in `backend/app/services/cost_basis_service.py`:
 
 When modifying, maintain chronological transaction processing (ORDER BY date).
 
+### Position Value Tracking
+
+**Purpose**: Store manually entered current market values for positions that persist across page refreshes.
+
+**Key Files**:
+- Model: `backend/app/models/position_value.py` - One row per ISIN with UNIQUE constraint
+- Schemas: `backend/app/schemas/position_value.py` - Create, Response, ListResponse
+- Service: `backend/app/services/position_value_service.py` - UPSERT logic, CRUD operations
+- Router: `backend/app/routers/position_values.py` - API endpoints
+- Frontend: `frontend/src/components/DashboardHoldingsTable.jsx` - Load/save on mount/blur
+
+**UPSERT Pattern**: POST to `/position-values` creates new row if ISIN doesn't exist, updates if it does. Only one current value per ISIN stored. `updated_at` timestamp auto-updates on modification.
+
+**Frontend Behavior**: Component loads all position values on mount, converts to map `{ISIN: value}`, saves to backend on blur/Enter with validation (must be > 0).
+
 ## Frontend Architecture
 
 **Pattern**: Functional components with hooks (useState, useEffect)
@@ -380,6 +401,7 @@ When modifying, maintain chronological transaction processing (ORDER BY date).
 **API Client** (`frontend/src/services/api.js`):
 - `transactionsAPI`: CRUD operations for transactions
 - `analyticsAPI`: Portfolio analytics (holdings, cost basis, realized gains, summary)
+- `positionValuesAPI`: Manual position value tracking (UPSERT, list, get, delete)
 
 **Styling**: Component-scoped CSS files with global utility classes in `index.css`
 
@@ -404,6 +426,10 @@ When modifying, maintain chronological transaction processing (ORDER BY date).
 - **Fee**: Must be >= 0
 - **Transaction type**: "BUY" or "SELL"
 
+**Position Value Schema**:
+- **ISIN**: 1-12 characters (no format validation - allows any string)
+- **Current value**: Must be > 0
+
 ISIN format validation in `backend/app/constants.py`: `ISIN_PATTERN`
 
 ## Configuration
@@ -423,15 +449,17 @@ CORS_ORIGINS=["http://localhost:3000", "http://localhost:8000"]
 
 ## Testing
 
-**Test Suite**: 86 tests, 96% coverage
+**Test Suite**: 108 tests, 96% coverage
 
 **Test Structure**:
 - `tests/conftest.py`: Fixtures for database and test client
 - `tests/test_transaction_service.py`: Service layer (14 tests)
 - `tests/test_cost_basis_service.py`: Cost basis calculations (15 tests)
+- `tests/test_position_value_service.py`: Position value service (9 tests)
 - `tests/test_api_transactions.py`: Transaction API (20 tests)
 - `tests/test_api_analytics.py`: Analytics API (14 tests)
-- `tests/test_schemas.py`: Pydantic validation (23 tests)
+- `tests/test_api_position_values.py`: Position values API (9 tests)
+- `tests/test_schemas.py`: Pydantic validation (27 tests)
 
 **Key Test Patterns**:
 - Database isolation via fixtures
@@ -525,8 +553,8 @@ For detailed information, see:
 ## Project Status Summary
 
 **Current Version**: Development
-**Test Coverage**: 96% (86 backend tests)
-**Backend Endpoints**: 10 total (5 transaction, 5 analytics)
+**Test Coverage**: 96% (108 backend tests)
+**Backend Endpoints**: 14 total (5 transaction, 5 analytics, 4 position values)
 **Frontend Pages**: 3 (Investment Dashboard, Transactions, Add/Edit Transaction)
 **Frontend Components**: 6 main components (Layout, Navigation, TransactionForm, TransactionList, DashboardHoldingsTable, PortfolioSummary)
 

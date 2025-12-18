@@ -108,9 +108,7 @@ def calculate_current_holdings(db: Session) -> list[HoldingResponse]:
     return holdings
 
 
-def calculate_realized_gains(
-    db: Session, isin: Optional[str] = None
-) -> list[RealizedGainResponse]:
+def calculate_realized_gains(db: Session, isin: Optional[str] = None) -> list[RealizedGainResponse]:
     """
     Calculate realized gains from SELL transactions.
 
@@ -197,13 +195,9 @@ def get_portfolio_summary(db: Session) -> PortfolioSummaryResponse:
 
     # Calculate total invested (all BUY transactions)
     buy_transactions = (
-        db.query(Transaction)
-        .filter(Transaction.transaction_type == TransactionType.BUY)
-        .all()
+        db.query(Transaction).filter(Transaction.transaction_type == TransactionType.BUY).all()
     )
-    total_invested = sum(
-        (txn.price_per_unit * txn.units) for txn in buy_transactions
-    )
+    total_invested = sum((txn.price_per_unit * txn.units) for txn in buy_transactions)
 
     # Calculate total fees
     all_transactions = db.query(Transaction).all()
