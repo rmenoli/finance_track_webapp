@@ -32,3 +32,13 @@ class InvalidISINError(HTTPException):
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Invalid ISIN format: {isin}",
         )
+
+
+class PositionValueNotFoundError(HTTPException):
+    """Exception raised when a position value is not found."""
+
+    def __init__(self, isin: str):
+        super().__init__(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Position value for ISIN {isin} not found",
+        )

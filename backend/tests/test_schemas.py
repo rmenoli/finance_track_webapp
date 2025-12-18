@@ -7,6 +7,7 @@ from pydantic import ValidationError
 
 from app.constants import TransactionType
 from app.schemas.transaction import TransactionCreate, TransactionUpdate
+from app.schemas.position_value import PositionValueCreate
 
 
 class TestTransactionSchemas:
@@ -332,3 +333,43 @@ class TestTransactionSchemas:
                 transaction_type=TransactionType.BUY
             )
             assert transaction.isin == isin
+
+
+class TestPositionValueSchemas:
+    """Test position value schema validation."""
+
+    def test_position_value_create_valid(self):
+        """Test creating valid position value schema."""
+        pv = PositionValueCreate(
+            isin="IE00B4L5Y983",
+            current_value=Decimal("5000.50")
+        )
+
+        assert pv.isin == "IE00B4L5Y983"
+        assert pv.current_value == Decimal("5000.50")
+
+    def test_position_value_create_negative_value(self):
+        """Test that negative current_value is rejected."""
+        with pytest.raises(ValidationError):
+            PositionValueCreate(
+                isin="IE00B4L5Y983",
+                current_value=Decimal("-100.00")
+            )
+
+    def test_position_value_create_zero_value(self):
+        """Test that zero current_value is rejected."""
+        with pytest.raises(ValidationError):
+            PositionValueCreate(
+                isin="IE00B4L5Y983",
+                current_value=Decimal("0.00")
+            )
+
+    def test_position_value_create_missing_fields(self):
+        """Test that missing required fields are rejected."""
+        # Missing current_value
+        with pytest.raises(ValidationError):
+            PositionValueCreate(isin="IE00B4L5Y983")
+
+        # Missing isin
+        with pytest.raises(ValidationError):
+            PositionValueCreate(current_value=Decimal("1000.00"))

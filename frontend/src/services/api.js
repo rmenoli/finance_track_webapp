@@ -108,7 +108,46 @@ export const analyticsAPI = {
   },
 };
 
+// Position Values API methods
+export const positionValuesAPI = {
+  // Create or update position value (UPSERT)
+  upsert: async (isin, currentValue) => {
+    const response = await fetch(`${API_BASE_URL}/position-values`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        isin: isin,
+        current_value: currentValue.toString(), // Send as string for Decimal precision
+      }),
+    });
+    return handleResponse(response);
+  },
+
+  // Get all position values
+  getAll: async () => {
+    const response = await fetch(`${API_BASE_URL}/position-values`);
+    return handleResponse(response);
+  },
+
+  // Get position value for specific ISIN
+  getByIsin: async (isin) => {
+    const response = await fetch(`${API_BASE_URL}/position-values/${isin}`);
+    return handleResponse(response);
+  },
+
+  // Delete position value
+  delete: async (isin) => {
+    const response = await fetch(`${API_BASE_URL}/position-values/${isin}`, {
+      method: 'DELETE',
+    });
+    return handleResponse(response);
+  },
+};
+
 export default {
   transactions: transactionsAPI,
   analytics: analyticsAPI,
+  positionValues: positionValuesAPI,
 };
