@@ -11,22 +11,12 @@ function Navigation() {
         <ul className="nav-menu">
           <li>
             <NavLink to="/" className={({ isActive }) => isActive ? 'active' : ''}>
-              Dashboard
+              Investment Dashboard
             </NavLink>
           </li>
           <li>
             <NavLink to="/transactions" className={({ isActive }) => isActive ? 'active' : ''}>
               Transactions
-            </NavLink>
-          </li>
-          <li>
-            <NavLink to="/holdings" className={({ isActive }) => isActive ? 'active' : ''}>
-              Holdings
-            </NavLink>
-          </li>
-          <li>
-            <NavLink to="/analytics" className={({ isActive }) => isActive ? 'active' : ''}>
-              Analytics
             </NavLink>
           </li>
         </ul>

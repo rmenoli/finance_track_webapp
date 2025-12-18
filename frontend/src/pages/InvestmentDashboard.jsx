@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react';
 import { analyticsAPI, transactionsAPI } from '../services/api';
 import PortfolioSummary from '../components/PortfolioSummary';
-import './Dashboard.css';
+import './InvestmentDashboard.css';
 
-function Dashboard() {
+function InvestmentDashboard() {
   const [summary, setSummary] = useState(null);
   const [recentTransactions, setRecentTransactions] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -41,7 +41,7 @@ function Dashboard() {
 
   return (
     <div className="dashboard">
-      <h1>Dashboard</h1>
+      <h1>Investment Dashboard</h1>
 
       {summary && <PortfolioSummary data={summary} />}
 
@@ -86,4 +86,4 @@ function Dashboard() {
   );
 }
 
-export default Dashboard;
+export default InvestmentDashboard;

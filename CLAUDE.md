@@ -10,12 +10,20 @@ ETF Portfolio Tracker - Full-stack web application for tracking ETF transactions
 - **Backend**: FastAPI, SQLAlchemy 2.0, SQLite, Alembic, Pydantic 2.x, UV package manager
 - **Frontend**: React 18, Vite, React Router v6, CSS (component-scoped)
 
+**Documentation Structure**:
+- **README.md** (root): High-level overview, quick start, and project status
+- **backend/README.md**: Comprehensive backend documentation (architecture, API, testing, deployment)
+- **frontend/README.md**: Frontend-specific documentation (components, pages, styling)
+- **CLAUDE.md** (this file): Essential commands and development guidance for Claude Code
+
 ## Essential Commands
 
 ### Development Servers
 
 **Backend** (Terminal 1):
 ```bash
+cd backend
+
 # Start with auto-reload (development)
 uv run uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 
@@ -59,6 +67,8 @@ curl -I http://localhost:3000
 
 **Backend**:
 ```bash
+cd backend
+
 # Install all dependencies including dev tools
 uv sync --all-extras
 
@@ -82,6 +92,8 @@ npm install -D <package-name>
 
 ### Database Migrations
 ```bash
+cd backend
+
 # Create migration after model changes
 uv run alembic revision --autogenerate -m "description"
 
@@ -100,6 +112,8 @@ uv run alembic current
 
 ### Code Quality
 ```bash
+cd backend
+
 # Lint code
 uv run ruff check .
 
@@ -112,7 +126,9 @@ uv run ruff format .
 
 ### Testing
 ```bash
-# Run all tests
+cd backend
+
+# Run all tests (86 tests, 96% coverage)
 uv run pytest
 
 # Run with verbose output
@@ -134,7 +150,7 @@ uv run pytest tests/test_cost_basis_service.py::TestCostBasisService::test_calcu
 ### Database Inspection
 ```bash
 # Connect to SQLite database
-sqlite3 portfolio.db
+sqlite3 backend/portfolio.db
 
 # Inside sqlite3:
 .tables                    # List tables
@@ -143,275 +159,151 @@ SELECT * FROM transactions; # Query data
 .quit                      # Exit
 ```
 
+## Project Structure
+
+```
+finance_track_webapp/
+├── backend/                    # Backend application
+│   ├── app/                   # FastAPI application
+│   │   ├── main.py            # Application entry point
+│   │   ├── config.py          # Settings (Pydantic Settings)
+│   │   ├── database.py        # Database connection and session
+│   │   ├── constants.py       # Constants and enums
+│   │   ├── exceptions.py      # Custom exceptions
+│   │   ├── models/            # SQLAlchemy models (database layer)
+│   │   │   └── transaction.py
+│   │   ├── schemas/           # Pydantic schemas (validation layer)
+│   │   │   ├── transaction.py
+│   │   │   └── analytics.py
+│   │   ├── routers/           # API route handlers (HTTP layer)
+│   │   │   ├── transactions.py
+│   │   │   └── analytics.py
+│   │   └── services/          # Business logic (service layer)
+│   │       ├── transaction_service.py
+│   │       └── cost_basis_service.py
+│   ├── alembic/               # Database migrations
+│   │   ├── versions/          # Migration files
+│   │   ├── env.py             # Alembic environment
+│   │   └── script.py.mako     # Migration template
+│   ├── tests/                 # Test suite (96% coverage, 86 tests)
+│   │   ├── conftest.py       # Test fixtures
+│   │   ├── test_transaction_service.py
+│   │   ├── test_cost_basis_service.py
+│   │   ├── test_api_transactions.py
+│   │   ├── test_api_analytics.py
+│   │   └── test_schemas.py
+│   ├── .env                   # Environment variables (gitignored)
+│   ├── .env.example          # Environment template
+│   ├── alembic.ini            # Alembic configuration
+│   ├── pyproject.toml         # Dependencies and project metadata
+│   ├── uv.lock                # Dependency lock file
+│   ├── portfolio.db           # SQLite database (gitignored)
+│   └── README.md             # 📖 Comprehensive backend documentation
+│
+├── frontend/                   # React frontend application
+│   ├── src/
+│   │   ├── components/        # Reusable React components
+│   │   │   ├── Layout.jsx     # Main layout wrapper
+│   │   │   ├── Navigation.jsx # Navigation bar
+│   │   │   ├── TransactionForm.jsx    # Add/edit transaction form
+│   │   │   ├── TransactionList.jsx    # Transaction table
+│   │   │   ├── DashboardHoldingsTable.jsx  # Holdings table for dashboard
+│   │   │   └── PortfolioSummary.jsx   # Dashboard summary cards
+│   │   ├── pages/             # Page-level components
+│   │   │   ├── InvestmentDashboard.jsx  # Portfolio overview page
+│   │   │   ├── Transactions.jsx         # Transaction management
+│   │   │   └── AddTransaction.jsx       # Add/edit transaction page
+│   │   ├── services/          # API client
+│   │   │   └── api.js         # Fetch-based API client
+│   │   ├── App.jsx            # Main app with routing
+│   │   └── main.jsx           # Entry point
+│   ├── .env.development       # Development environment
+│   ├── .env.production        # Production environment
+│   ├── package.json           # Node dependencies
+│   ├── vite.config.js         # Vite configuration
+│   └── README.md             # 📖 Frontend documentation
+│
+├── .gitignore                 # Git ignore patterns
+├── CLAUDE.md                  # This file (development guidance)
+└── README.md                  # High-level overview
+```
+
 ## Architecture
 
 ### Three-Layer Architecture
 
-1. **Routers** (`app/routers/`): API endpoints, request validation, HTTP concerns
-   - `transactions.py`: CRUD operations for transactions
-   - `analytics.py`: Portfolio analytics and cost basis calculations
+The backend follows a clean three-layer architecture:
 
-2. **Services** (`app/services/`): Business logic, no HTTP knowledge
-   - `transaction_service.py`: Transaction CRUD operations, filtering, pagination
-   - `cost_basis_service.py`: Core financial calculations (average cost, realized gains)
+```
+┌─────────────┐
+│   Routers   │  ← HTTP layer (API endpoints, request/response)
+└─────────────┘
+      ↓
+┌─────────────┐
+│  Services   │  ← Business logic (calculations, validations)
+└─────────────┘
+      ↓
+┌─────────────┐
+│   Models    │  ← Data layer (database, SQLAlchemy ORM)
+└─────────────┘
+```
 
-3. **Models** (`app/models/`): Database schema via SQLAlchemy ORM
-   - `transaction.py`: Transaction model with constraints and indexes
+**1. Routers** (`backend/app/routers/`):
+- API endpoints and HTTP concerns
+- Request validation via Pydantic
+- No business logic - thin wrappers around services
 
-### Key Design Patterns
+**2. Services** (`backend/app/services/`):
+- Business logic and calculations
+- No HTTP knowledge (pure Python functions)
+- Testable in isolation
 
-**Dependency Injection**: Database sessions injected via FastAPI's `Depends(get_db)`
+**3. Models** (`backend/app/models/`):
+- Database schema via SQLAlchemy ORM
+- Database constraints and indexes
 
-**Schema Separation**:
-- `models/`: SQLAlchemy ORM (database layer)
-- `schemas/`: Pydantic models (API layer)
-- Never mix these - Pydantic for validation, SQLAlchemy for persistence
-
-**Service Layer Pattern**: All business logic in `services/`, routers are thin wrappers
+**Key Patterns**:
+- **Dependency Injection**: Database sessions via FastAPI's `Depends(get_db)`
+- **Schema Separation**: `models/` (SQLAlchemy) vs `schemas/` (Pydantic)
+- **Service Layer Pattern**: All business logic in `services/`
 
 ### Cost Basis Calculation Logic
 
-**Average Cost Method** (in `cost_basis_service.py`):
+**Average Cost Method** (in `backend/app/services/cost_basis_service.py`):
 
-1. **BUY transactions**: Add to total cost and units
-   - `total_cost += (price_per_unit × units) + fee`
-   - `total_units += units`
+**BUY transactions**:
+```python
+total_cost += (price_per_unit × units) + fee
+total_units += units
+average_cost = total_cost / total_units
+```
 
-2. **SELL transactions**: Remove proportional cost basis
-   - `proportion = units_sold / total_units`
-   - `cost_removed = total_cost × proportion`
-   - `total_cost -= cost_removed`
-   - `total_units -= units_sold`
+**SELL transactions**:
+```python
+proportion = units_sold / total_units
+cost_removed = total_cost × proportion
+realized_gain = (sell_price × units - fee) - cost_removed
+total_cost -= cost_removed
+total_units -= units_sold
+```
 
-3. **Realized Gain** = `(sell_price × units - fee) - (avg_cost × units)`
-
-**Critical**: Process transactions chronologically (ORDER BY date ASC) for accurate calculations.
+**Critical**: Process transactions chronologically (`ORDER BY date ASC`) for accurate calculations.
 
 ### Financial Precision
 
-**Always use `Decimal`** for monetary values, never `float`. Database columns are `Numeric(10, 2)` for fees, `Numeric(10, 4)` for prices and units.
+**Always use `Decimal`** for monetary values, never `float`:
 
 ```python
-# Correct
 from decimal import Decimal
+
+# Correct
 fee = Decimal("1.50")
 
 # Wrong - floating point errors
 fee = 1.50  # Never use float for money
 ```
 
-### Database Constraints
-
-Transaction model has SQLAlchemy CheckConstraints:
-- `units > 0`
-- `price_per_unit > 0`
-- `fee >= 0`
-
-These are enforced at database level, but also validate in Pydantic schemas.
-
-### ISIN Validation
-
-ISIN format: 12 characters (2 letters + 9 alphanumeric + 1 check digit)
-- Validated by regex in `constants.py`: `ISIN_PATTERN`
-- Applied in Pydantic schemas with `@field_validator`
-- Always uppercase ISINs before storage/queries
-
-### Pydantic Model Naming Convention
-
-Avoid using `date` as both a field name and importing `date` type. Use:
-```python
-from datetime import date as DateType
-```
-This prevents Pydantic field name clashing errors.
-
-## Configuration
-
-Environment variables in `.env`:
-- `DATABASE_URL`: SQLite path (default: `sqlite:///./portfolio.db`)
-- `API_V1_PREFIX`: API route prefix (default: `/api/v1`)
-- `DEBUG`: Enable debug mode and SQL logging
-- `CORS_ORIGINS`: JSON array of allowed origins for frontend
-
-Configuration loaded via Pydantic Settings in `app/config.py`.
-
-## Frontend Architecture
-
-### Project Structure
-
-```
-frontend/
-├── src/
-│   ├── components/        # Reusable React components
-│   │   ├── Layout.jsx     # Main layout wrapper with navigation
-│   │   ├── Navigation.jsx # Navigation bar
-│   │   ├── TransactionForm.jsx    # Add/edit transaction form
-│   │   ├── TransactionList.jsx    # Transaction table
-│   │   ├── HoldingsTable.jsx      # Holdings display
-│   │   └── PortfolioSummary.jsx   # Dashboard summary cards
-│   ├── pages/             # Page-level components
-│   │   ├── Dashboard.jsx  # Portfolio overview
-│   │   ├── Transactions.jsx       # Transaction management
-│   │   ├── AddTransaction.jsx     # Add/edit transaction page
-│   │   ├── Holdings.jsx   # Current holdings view
-│   │   └── Analytics.jsx  # Cost basis and gains
-│   ├── services/          # API client
-│   │   └── api.js         # Fetch-based API client
-│   ├── App.jsx            # Main app with routing
-│   └── main.jsx           # Entry point
-├── vite.config.js         # Vite configuration (proxy setup)
-└── package.json           # Dependencies
-```
-
-### Component Architecture
-
-**Pattern**: Functional components with hooks (useState, useEffect)
-
-**No state management library**: Simple useState/useEffect for all state (adequate for single-user app)
-
-**Routing**: React Router v6 with nested routes
-- Layout component wraps all pages
-- Navigation uses NavLink for active states
-- Routes: /, /transactions, /transactions/add, /transactions/edit/:id, /holdings, /analytics
-
-### API Client (`src/services/api.js`)
-
-All backend communication goes through `api.js`. Two main objects:
-
-**transactionsAPI**:
-- `getAll(params)` - GET /transactions with filters
-- `getById(id)` - GET /transactions/{id}
-- `create(data)` - POST /transactions
-- `update(id, data)` - PUT /transactions/{id}
-- `delete(id)` - DELETE /transactions/{id}
-
-**analyticsAPI**:
-- `getPortfolioSummary()` - GET /analytics/portfolio-summary
-- `getHoldings()` - GET /analytics/holdings
-- `getAllCostBases()` - GET /analytics/cost-basis
-- `getCostBasis(isin)` - GET /analytics/cost-basis/{isin}
-- `getRealizedGains(isin?)` - GET /analytics/realized-gains
-
-**Error Handling**: All API methods throw errors with descriptive messages. Components catch and display to users.
-
-**Base URL**: Configured via `VITE_API_URL` environment variable (defaults to http://localhost:8000/api/v1)
-
-### Key Components
-
-**TransactionForm.jsx**:
-- Handles both create and edit modes
-- Client-side validation matching backend rules:
-  - ISIN: 12 characters (2 letters + 9 alphanumeric + 1 digit)
-  - Date: Cannot be in future
-  - Units: Must be > 0
-  - Price per unit: Must be > 0
-  - Fee: Must be >= 0
-- Displays validation errors inline
-- Navigates back to transactions list on success
-
-**TransactionList.jsx**:
-- Displays transactions in table format
-- Edit/delete buttons per row
-- Shows total cost per transaction
-- Color-coded BUY/SELL badges
-
-**PortfolioSummary.jsx**:
-- Grid of summary cards (responsive)
-- Color-coded positive (green) and negative (red) values
-- Shows: total invested, fees, realized gains, unique ISINs, current holdings value
-
-**HoldingsTable.jsx**:
-- Current positions grouped by ISIN
-- Shows units, average cost, total cost
-- Footer row with totals
-
-### Styling Approach
-
-**Component-scoped CSS**: Each component has its own CSS file (e.g., `Layout.css`, `Dashboard.css`)
-
-**Global styles** (`index.css`):
-- Utility classes: `.btn`, `.btn-primary`, `.btn-secondary`
-- Input styles: `.input`, `.input-error`
-- Table styles: `.table`, `.table-container`
-- Badges: `.badge`, `.badge-buy`, `.badge-sell`
-- Loading/error states: `.loading`, `.error`
-
-**Responsive**: Uses CSS Grid and flexbox with mobile breakpoints
-
-**No CSS framework**: Clean, functional styles without external dependencies
-
-### Vite Configuration
-
-**Proxy setup** (`vite.config.js`):
-```javascript
-server: {
-  port: 3000,
-  proxy: {
-    '/api': {
-      target: 'http://localhost:8000',
-      changeOrigin: true,
-    }
-  }
-}
-```
-
-This proxies `/api/*` requests from frontend (port 3000) to backend (port 8000) during development, avoiding CORS issues.
-
-**Environment variables**:
-- `VITE_API_URL` - Backend API base URL
-- Access in code with `import.meta.env.VITE_API_URL`
-
-### Common Frontend Development Scenarios
-
-**Adding a New Page**:
-1. Create page component in `src/pages/MyPage.jsx`
-2. Create corresponding CSS file `src/pages/MyPage.css`
-3. Add route in `src/App.jsx` within the Layout Route
-4. Add navigation link in `src/components/Navigation.jsx`
-
-**Adding a New Component**:
-1. Create component in `src/components/MyComponent.jsx`
-2. Create CSS file `src/components/MyComponent.css`
-3. Import and use in pages or other components
-4. Follow existing patterns (functional components, useState/useEffect)
-
-**Modifying API Client**:
-1. Edit `src/services/api.js`
-2. Add new methods following existing patterns
-3. Always include error handling (try/catch, throw descriptive errors)
-4. Update components to use new API methods
-
-**Styling Guidelines**:
-- Prefer component-scoped CSS over inline styles
-- Use global utility classes from `index.css` when applicable
-- Follow existing color scheme (blues, greens, reds)
-- Maintain responsive design patterns
-- Test on mobile (viewport < 768px)
-
-**Form Validation**:
-- Always validate on client side before API call
-- Match backend validation rules exactly
-- Display errors inline near the invalid field
-- Use `.input-error` class for invalid inputs
-- Show success feedback after successful operations
-
-**Loading States**:
-- Show loading indicator during API calls (`<p>Loading...</p>`)
-- Disable buttons during submission to prevent double-clicks
-- Handle errors gracefully with user-friendly messages
-
-### Frontend Environment Variables
-
-**`.env.development`** (active during `npm run dev`):
-```env
-VITE_API_URL=http://localhost:8000/api/v1
-```
-
-**`.env.production`** (active during `npm run build`):
-```env
-VITE_API_URL=/api/v1
-```
-
-Production assumes frontend and backend are served from same origin.
+Database columns are `Numeric(10, 2)` for fees, `Numeric(10, 4)` for prices and units.
 
 ## API Structure
 
@@ -437,22 +329,24 @@ Interactive docs: http://localhost:8000/docs (Swagger UI)
 
 ### Adding a New Field to Transaction
 
-1. Update `app/models/transaction.py` (SQLAlchemy model)
-2. Update `app/schemas/transaction.py` (Pydantic schemas)
-3. Generate migration: `uv run alembic revision --autogenerate -m "add_field_name"`
-4. Review generated migration in `alembic/versions/`
-5. Apply: `uv run alembic upgrade head`
+1. Update `backend/app/models/transaction.py` (SQLAlchemy model)
+2. Update `backend/app/schemas/transaction.py` (Pydantic schemas)
+3. Generate migration: `cd backend && uv run alembic revision --autogenerate -m "add_field_name"`
+4. Review generated migration in `backend/alembic/versions/`
+5. Apply: `cd backend && uv run alembic upgrade head`
+6. Update tests as needed
 
 ### Adding a New Analytics Endpoint
 
-1. Add calculation function in `app/services/cost_basis_service.py`
-2. Add response schema in `app/schemas/analytics.py`
-3. Add route in `app/routers/analytics.py`
-4. Use existing patterns (dependency injection, error handling)
+1. Add calculation function in `backend/app/services/cost_basis_service.py`
+2. Add response schema in `backend/app/schemas/analytics.py`
+3. Add route in `backend/app/routers/analytics.py`
+4. Write tests
+5. Use existing patterns (dependency injection, error handling)
 
 ### Modifying Cost Basis Logic
 
-All cost basis calculations are in `cost_basis_service.py`. Key functions:
+All cost basis calculations are in `backend/app/services/cost_basis_service.py`:
 - `calculate_cost_basis()`: Average cost for one ISIN
 - `calculate_current_holdings()`: All holdings
 - `calculate_realized_gains()`: P&L from sells
@@ -460,164 +354,126 @@ All cost basis calculations are in `cost_basis_service.py`. Key functions:
 
 When modifying, maintain chronological transaction processing (ORDER BY date).
 
-## Test Suite
+## Frontend Architecture
 
-**Coverage**: 96% (86 tests)
+**Pattern**: Functional components with hooks (useState, useEffect)
 
-### Test Structure
+**No state management library**: Simple useState/useEffect for all state (adequate for single-user app)
 
-- `tests/conftest.py`: Fixtures for database and test client
-- `tests/test_transaction_service.py`: Transaction service CRUD operations (14 tests)
-- `tests/test_cost_basis_service.py`: Cost basis calculation logic (15 tests)
-- `tests/test_api_transactions.py`: Transaction API endpoints (20 tests)
-- `tests/test_api_analytics.py`: Analytics API endpoints (14 tests)
-- `tests/test_schemas.py`: Pydantic validation (23 tests)
+**Current Pages**:
+1. **Investment Dashboard** (`/`) - Portfolio summary, holdings table, key metrics
+2. **Transactions** (`/transactions`) - Full transaction list with filters and CRUD operations
+3. **Add/Edit Transaction** (`/transactions/add`, `/transactions/edit/:id`) - Transaction form
 
-### Key Test Patterns
+**Key Components**:
+- **Layout**: Main wrapper with navigation for all pages
+- **Navigation**: Navigation bar with route links
+- **TransactionForm**: Reusable form for creating/editing transactions
+- **TransactionList**: Table view with filters and actions
+- **DashboardHoldingsTable**: Detailed holdings display for dashboard
+- **PortfolioSummary**: Summary cards showing portfolio metrics
 
-**Database Isolation**: Each test gets a fresh database via `db_session` fixture
+**Routing**: React Router v6 with nested routes
+- Layout component wraps all pages
+- Routes: `/`, `/transactions`, `/transactions/add`, `/transactions/edit/:id`
 
-**API Testing**: Uses FastAPI TestClient with dependency override for database
+**API Client** (`frontend/src/services/api.js`):
+- `transactionsAPI`: CRUD operations for transactions
+- `analyticsAPI`: Portfolio analytics (holdings, cost basis, realized gains, summary)
 
-**Financial Calculations**: Extensive tests for cost basis edge cases:
-- Single/multiple buys
-- Partial/full sells
-- Average cost calculations
-- Realized gains (profit and loss)
-- Portfolio summaries
+**Styling**: Component-scoped CSS files with global utility classes in `index.css`
 
-**Validation Testing**: Tests all Pydantic validators:
-- ISIN format validation
-- Date validation (no future dates)
-- Positive value constraints
-- Fee non-negative constraint
-
-### Running Specific Test Categories
-
-```bash
-# Service layer tests
-uv run pytest tests/test_transaction_service.py tests/test_cost_basis_service.py
-
-# API tests
-uv run pytest tests/test_api_transactions.py tests/test_api_analytics.py
-
-# Validation tests
-uv run pytest tests/test_schemas.py
-```
-
-## Testing the API Manually
-
-Quick manual test:
-```bash
-# Start server
-uv run uvicorn app.main:app --reload
-
-# In another terminal:
-# Create BUY transaction
-curl -X POST http://localhost:8000/api/v1/transactions \
-  -H "Content-Type: application/json" \
-  -d '{"date": "2025-01-15", "isin": "IE00B4L5Y983", "broker": "IB", "fee": 1.50, "price_per_unit": 450.25, "units": 10.0, "transaction_type": "BUY"}'
-
-# Check portfolio
-curl http://localhost:8000/api/v1/analytics/portfolio-summary
-```
+**Vite Proxy**: Frontend proxies `/api/*` to backend during development (avoids CORS issues)
 
 ## Important Constraints
 
 1. **No Authentication**: Single-user system, no user model or auth
-2. **SQLite Only**: Not designed for high concurrency (but WAL mode enabled)
-3. **Synchronous**: Using sync SQLAlchemy, not async (adequate for single user)
+2. **SQLite Only**: Not designed for high concurrency (but WAL mode enabled for local dev)
+3. **Synchronous**: Using sync SQLAlchemy (adequate for single user)
 4. **Date Validation**: Transaction dates cannot be in the future
-5. **No Soft Deletes**: Transactions are hard-deleted (use with caution)
+5. **No Soft Deletes**: Transactions are hard-deleted
+6. **Financial Precision**: Always use Decimal for money, never float
+
+## Validation Rules
+
+**Transaction Schema**:
+- **ISIN**: Exactly 12 characters (2 letters + 9 alphanumeric + 1 digit)
+- **Date**: Cannot be in future
+- **Units**: Must be > 0
+- **Price per unit**: Must be > 0
+- **Fee**: Must be >= 0
+- **Transaction type**: "BUY" or "SELL"
+
+ISIN format validation in `backend/app/constants.py`: `ISIN_PATTERN`
+
+## Configuration
+
+**Backend Environment Variables** (`.env` in `backend/`):
+```env
+DATABASE_URL=sqlite:///./portfolio.db
+API_V1_PREFIX=/api/v1
+PROJECT_NAME=ETF Portfolio Tracker
+DEBUG=True
+CORS_ORIGINS=["http://localhost:3000", "http://localhost:8000"]
+```
+
+**Frontend Environment Variables**:
+- `.env.development`: `VITE_API_URL=http://localhost:8000/api/v1`
+- `.env.production`: `VITE_API_URL=/api/v1`
+
+## Testing
+
+**Test Suite**: 86 tests, 96% coverage
+
+**Test Structure**:
+- `tests/conftest.py`: Fixtures for database and test client
+- `tests/test_transaction_service.py`: Service layer (14 tests)
+- `tests/test_cost_basis_service.py`: Cost basis calculations (15 tests)
+- `tests/test_api_transactions.py`: Transaction API (20 tests)
+- `tests/test_api_analytics.py`: Analytics API (14 tests)
+- `tests/test_schemas.py`: Pydantic validation (23 tests)
+
+**Key Test Patterns**:
+- Database isolation via fixtures
+- API testing with FastAPI TestClient
+- Decimal precision for financial calculations
+- Chronological transaction processing
 
 ## Troubleshooting
 
 ### Frontend "Failed to fetch" Error
 
-**Symptoms**: Frontend shows "Failed to fetch", "Network Error", or API calls fail
+**Common cause**: Backend not running on correct port or wrong host.
 
-**Diagnostic Steps**:
-
-1. **Verify backend is running on port 8000**:
-   ```bash
-   curl http://localhost:8000/health
-   # Should return: {"status":"healthy"}
-   ```
-
-2. **Check if wrong process is on port 8000**:
-   ```bash
-   lsof -i :8000
-   # Should show uvicorn process, not something else
-   ```
-
-3. **Check backend is accessible**:
-   ```bash
-   # Backend must use 0.0.0.0 (not 127.0.0.1 only)
-   ps aux | grep uvicorn | grep 8000
-   # Should see: --host 0.0.0.0 --port 8000
-   ```
-
-4. **Verify CORS configuration**:
-   ```bash
-   cat .env | grep CORS_ORIGINS
-   # Should include: http://localhost:3000
-   ```
-
-**Common Solutions**:
-
+**Solution**:
 ```bash
-# Kill wrong process on port 8000
-lsof -i :8000 | grep LISTEN | awk '{print $2}' | xargs kill -9
-
-# Start backend correctly
-uv run uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
-
-# Verify it's working
+# 1. Verify backend is running
 curl http://localhost:8000/health
-curl http://localhost:8000/api/v1/transactions
-```
 
-**Frontend Configuration Check**:
-```bash
-# Verify frontend API URL
-cat frontend/.env.development
-# Should be: VITE_API_URL=http://localhost:8000/api/v1
+# 2. Check correct process on port 8000
+lsof -i :8000
 
-# Check Vite proxy config
-cat frontend/vite.config.js
-# Should proxy /api to http://localhost:8000
+# 3. Start backend correctly
+cd backend
+uv run uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
 ### Port Conflicts
 
-**Backend port 8000 in use**:
 ```bash
-# Find what's using the port
+# Find process on port
 lsof -i :8000
 
-# Kill the process
+# Kill process
 kill -9 <PID>
-```
-
-**Frontend port 3000 in use**:
-```bash
-# Use different port
-cd frontend
-npm run dev -- --port 3001
-
-# Update backend CORS to include new port
-# Edit .env: CORS_ORIGINS=["http://localhost:3001", ...]
 ```
 
 ### Database Issues
 
-**Database locked**:
-- Close all DB browser connections
-- Restart backend (SQLite WAL mode should prevent this)
-
-**Migration issues**:
 ```bash
-# Check current version
+cd backend
+
+# Check current migration
 uv run alembic current
 
 # Apply migrations
@@ -628,20 +484,52 @@ rm portfolio.db
 uv run alembic upgrade head
 ```
 
+### CORS Issues
+
+Update `CORS_ORIGINS` in `backend/.env`:
+```env
+CORS_ORIGINS=["http://localhost:3000", "http://localhost:8000"]
+```
+
+## Deployment Considerations
+
+**Current Setup (Local Development)**:
+- Backend: Uvicorn + SQLite
+- Frontend: Vite dev server
+
+**AWS Deployment (Future)**:
+- Backend: ECS/Lambda/EC2 with RDS PostgreSQL
+- Frontend: S3 + CloudFront or separate container
+- Change only `DATABASE_URL` environment variable for PostgreSQL
+
+**Containerization**:
+- `backend/` directory becomes Docker build context
+- `pyproject.toml` and `uv.lock` in backend/ for dependency installation
+- See `backend/README.md` for Dockerfile example
+
 ## Migration Notes
 
-When importing models in `alembic/env.py`, use `# noqa: F401` to silence unused import warnings. This is required for autogenerate to detect models.
+When importing models in `backend/alembic/env.py`, use `# noqa: F401` to silence unused import warnings. This is required for autogenerate to detect models.
 
 ```python
 from app.models.transaction import Transaction  # noqa: F401
 ```
 
-## Database Schema
+## Additional Documentation
 
-Single table: `transactions`
-- Primary key: `id` (auto-increment)
-- Indexes: `date`, `isin`, composite `(date, isin)`
-- Timestamps: `created_at`, `updated_at` (auto-managed)
-- Enum: `transaction_type` (BUY or SELL)
+For detailed information, see:
+- **Backend details**: `backend/README.md` (complete API docs, architecture, testing, deployment)
+- **Frontend details**: `frontend/README.md` (component architecture, styling, API client)
+- **Quick overview**: `README.md` (root, getting started guide, project status)
 
-SQLite database file: `portfolio.db` (gitignored)
+## Project Status Summary
+
+**Current Version**: Development
+**Test Coverage**: 96% (86 backend tests)
+**Backend Endpoints**: 10 total (5 transaction, 5 analytics)
+**Frontend Pages**: 3 (Investment Dashboard, Transactions, Add/Edit Transaction)
+**Frontend Components**: 6 main components (Layout, Navigation, TransactionForm, TransactionList, DashboardHoldingsTable, PortfolioSummary)
+
+---
+
+**Development Philosophy**: Keep it simple, test thoroughly, maintain separation of concerns, use Decimal for money.

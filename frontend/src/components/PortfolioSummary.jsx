@@ -1,4 +1,5 @@
 import './PortfolioSummary.css';
+import DashboardHoldingsTable from './DashboardHoldingsTable';
 
 function PortfolioSummary({ data }) {
   return (
@@ -25,12 +26,13 @@ function PortfolioSummary({ data }) {
         <p className="summary-value">{data.unique_isins}</p>
       </div>
 
-      <div className="summary-card full-width">
+      <div className="summary-section full-width">
         <h3>Current Holdings</h3>
-        <p className="summary-value">
-          €{data.holdings.reduce((sum, h) => sum + parseFloat(h.total_cost), 0).toFixed(2)}
-        </p>
-        <p className="summary-detail">{data.holdings.length} positions</p>
+        {data.holdings.length === 0 ? (
+          <p>No holdings yet.</p>
+        ) : (
+          <DashboardHoldingsTable holdings={data.holdings} />
+        )}
       </div>
     </div>
   );

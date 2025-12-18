@@ -55,38 +55,37 @@ The production build will be in the `dist/` directory.
 
 ```
 src/
-├── components/              # Reusable React components
-│   ├── Layout.jsx/css      # Main layout with navigation
-│   ├── Navigation.jsx/css  # Navigation bar
+├── components/                        # Reusable React components
+│   ├── Layout.jsx/css                # Main layout with navigation
+│   ├── Navigation.jsx/css            # Navigation bar
 │   ├── TransactionForm.jsx/css       # Add/edit transaction form
 │   ├── TransactionList.jsx/css       # Transaction table
-│   ├── HoldingsTable.jsx/css         # Holdings display
+│   ├── DashboardHoldingsTable.jsx/css # Holdings table for dashboard
 │   └── PortfolioSummary.jsx/css      # Dashboard summary cards
-├── pages/                   # Page-level components
-│   ├── Dashboard.jsx/css   # Portfolio overview page
+├── pages/                             # Page-level components
+│   ├── InvestmentDashboard.jsx/css   # Portfolio overview page
 │   ├── Transactions.jsx/css          # Transaction management
-│   ├── AddTransaction.jsx/css        # Add/edit transaction page
-│   ├── Holdings.jsx/css    # Current holdings page
-│   └── Analytics.jsx/css   # Cost basis and gains page
-├── services/                # API client
-│   └── api.js              # Backend API client
-├── App.jsx                  # Main app with routing
-├── main.jsx                 # Application entry point
-├── App.css                  # App-level styles
-└── index.css                # Global styles and utilities
+│   └── AddTransaction.jsx/css        # Add/edit transaction page
+├── services/                          # API client
+│   └── api.js                        # Backend API client
+├── App.jsx                            # Main app with routing
+├── main.jsx                           # Application entry point
+├── App.css                            # App-level styles
+└── index.css                          # Global styles and utilities
 ```
 
 ## Features
 
 ### Pages
 
-1. **Dashboard** (`/`)
-   - Portfolio summary with key metrics
-   - Current holdings preview
-   - Recent transactions
+1. **Investment Dashboard** (`/`)
+   - Portfolio summary with key metrics (total value, invested amount, realized gains)
+   - Current holdings table with detailed position information
+   - Average cost and total cost per holding
+   - Comprehensive portfolio overview
 
 2. **Transactions** (`/transactions`)
-   - Full transaction list
+   - Full transaction list with all details
    - Filter by ISIN, broker, type, date range
    - Edit and delete transactions
    - Navigation to add new transaction
@@ -96,24 +95,14 @@ src/
    - Client-side validation matching backend rules
    - Success/error feedback
 
-4. **Holdings** (`/holdings`)
-   - Current positions by ISIN
-   - Average cost and total cost per holding
-   - Cost basis details
-
-5. **Analytics** (`/analytics`)
-   - Cost basis breakdown by ISIN
-   - Realized gains/losses from sells
-   - Color-coded profit/loss indicators
-
 ### Components
 
 - **Layout**: Main wrapper with navigation
 - **Navigation**: Nav links for all pages
-- **TransactionForm**: Reusable form for add/edit
-- **TransactionList**: Table view of transactions
-- **HoldingsTable**: Display current holdings
-- **PortfolioSummary**: Dashboard summary cards
+- **TransactionForm**: Reusable form for add/edit transactions
+- **TransactionList**: Table view of all transactions with filters
+- **DashboardHoldingsTable**: Detailed holdings table for investment dashboard
+- **PortfolioSummary**: Dashboard summary cards showing portfolio metrics
 
 ### Validation
 
@@ -311,6 +300,7 @@ Ensure backend is running at http://localhost:8000:
 
 ```bash
 # In backend directory
+cd backend
 uv run uvicorn app.main:app --reload
 ```
 

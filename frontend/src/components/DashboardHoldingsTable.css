@@ -1,0 +1,85 @@
+.dashboard-holdings-table {
+  width: 100%;
+}
+
+.dashboard-holdings-table td {
+  vertical-align: top;
+  padding: 1rem;
+}
+
+.dashboard-holdings-table td > div {
+  margin: 0.25rem 0;
+}
+
+.sub-value {
+  font-size: 0.875rem;
+  color: #7f8c8d;
+}
+
+/* Current Position - Editable cell */
+.dashboard-holdings-table tbody tr td:nth-child(3) {
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.dashboard-holdings-table tbody tr td:nth-child(3):hover:not(:has(input)) {
+  background-color: #f8f9fa;
+}
+
+.dashboard-holdings-table .editable-cell:not(:has(input))::after {
+  content: ' ✎';
+  color: #95a5a6;
+  font-size: 0.875rem;
+  margin-left: 0.5rem;
+}
+
+.dashboard-holdings-table input[type="number"] {
+  width: 100%;
+  padding: 0.5rem;
+  border: 2px solid #3498db;
+  border-radius: 4px;
+  font-size: 1rem;
+  box-sizing: border-box;
+}
+
+.dashboard-holdings-table input[type="number"]:focus {
+  outline: none;
+  border-color: #2980b9;
+}
+
+/* Remove number input arrows */
+.dashboard-holdings-table input[type="number"]::-webkit-inner-spin-button,
+.dashboard-holdings-table input[type="number"]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.dashboard-holdings-table input[type="number"] {
+  -moz-appearance: textfield;
+}
+
+/* P/L Color Coding */
+.positive {
+  color: #27ae60;
+  font-weight: 600;
+}
+
+.negative {
+  color: #e74c3c;
+  font-weight: 600;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .dashboard-holdings-table td {
+    padding: 0.75rem;
+  }
+
+  .dashboard-holdings-table th {
+    font-size: 0.875rem;
+  }
+
+  .sub-value {
+    font-size: 0.8rem;
+  }
+}
