@@ -74,36 +74,9 @@ export const transactionsAPI = {
 
 // Analytics API methods
 export const analyticsAPI = {
-  // Get portfolio summary
+  // Get portfolio summary (includes holdings, total_invested, total_fees)
   getPortfolioSummary: async () => {
     const response = await fetch(`${API_BASE_URL}/analytics/portfolio-summary`);
-    return handleResponse(response);
-  },
-
-  // Get all holdings
-  getHoldings: async () => {
-    const response = await fetch(`${API_BASE_URL}/analytics/holdings`);
-    return handleResponse(response);
-  },
-
-  // Get all cost bases
-  getAllCostBases: async () => {
-    const response = await fetch(`${API_BASE_URL}/analytics/cost-basis`);
-    return handleResponse(response);
-  },
-
-  // Get cost basis for specific ISIN
-  getCostBasis: async (isin) => {
-    const response = await fetch(`${API_BASE_URL}/analytics/cost-basis/${isin}`);
-    return handleResponse(response);
-  },
-
-  // Get realized gains
-  getRealizedGains: async (isin = null) => {
-    const url = isin
-      ? `${API_BASE_URL}/analytics/realized-gains?isin=${isin}`
-      : `${API_BASE_URL}/analytics/realized-gains`;
-    const response = await fetch(url);
     return handleResponse(response);
   },
 };

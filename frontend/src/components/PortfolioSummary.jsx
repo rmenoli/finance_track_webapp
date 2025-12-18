@@ -14,18 +14,6 @@ function PortfolioSummary({ data }) {
         <p className="summary-value">€{parseFloat(data.total_fees).toFixed(2)}</p>
       </div>
 
-      <div className="summary-card">
-        <h3>Realized Gains</h3>
-        <p className={`summary-value ${parseFloat(data.net_realized_gains) >= 0 ? 'positive' : 'negative'}`}>
-          €{parseFloat(data.net_realized_gains).toFixed(2)}
-        </p>
-      </div>
-
-      <div className="summary-card">
-        <h3>Unique ISINs</h3>
-        <p className="summary-value">{data.unique_isins}</p>
-      </div>
-
       <div className="summary-section full-width">
         <h3>Current Holdings</h3>
         {data.holdings.length === 0 ? (

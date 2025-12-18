@@ -133,9 +133,6 @@ function DashboardHoldingsTable({ holdings }) {
                 {/* Buy In */}
                 <td>
                   <div>€{parseFloat(holding.total_cost).toFixed(2)}</div>
-                  <div className="sub-value">
-                    €{parseFloat(holding.average_cost_per_unit).toFixed(2)}/unit
-                  </div>
                 </td>
 
                 {/* Current Position - Editable */}

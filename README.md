@@ -26,7 +26,6 @@ A full-stack web application for tracking ETF portfolio transactions with automa
 - ✅ Track BUY/SELL transactions across multiple brokers
 - ✅ Automatic cost basis calculation (average cost method)
 - ✅ Real-time portfolio analytics and holdings
-- ✅ Realized gains/losses tracking
 - ✅ ISIN validation and date range filtering
 - ✅ Persistent position value tracking with manual entry
 
@@ -42,7 +41,7 @@ A full-stack web application for tracking ETF portfolio transactions with automa
 |-------|-----------|
 | **Backend** | FastAPI, SQLAlchemy 2.0, SQLite, Alembic, Pydantic |
 | **Frontend** | React 18, Vite, React Router v6, CSS |
-| **Testing** | Pytest (108 tests, 96% coverage) |
+| **Testing** | Pytest (92 tests, 96% coverage) |
 | **Tools** | UV (Python), npm (Node.js), Ruff (linting) |
 
 ---
@@ -279,11 +278,7 @@ All endpoints are prefixed with `/api/v1`
 #### Analytics Endpoints
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| GET | `/analytics/portfolio-summary` | Complete portfolio overview |
-| GET | `/analytics/holdings` | Current holdings with cost basis |
-| GET | `/analytics/cost-basis` | Cost basis for all ISINs |
-| GET | `/analytics/cost-basis/{isin}` | Cost basis for specific ISIN |
-| GET | `/analytics/realized-gains` | Realized P&L from sells |
+| GET | `/analytics/portfolio-summary` | Complete portfolio overview (includes holdings, total invested, total fees) |
 
 #### Position Value Endpoints
 | Method | Endpoint | Description |
@@ -387,9 +382,9 @@ realized_gain = (sell_price × units - fee) - cost_removed
 ## Project Status
 
 **Current Version**: Development
-**Test Coverage**: 96% (108 tests)
+**Test Coverage**: 96% (92 tests)
 **Frontend Pages**: Investment Dashboard, Transactions, Add/Edit Transaction
-**Backend Endpoints**: 14 endpoints (5 transaction, 5 analytics, 4 position values)
+**Backend Endpoints**: 10 endpoints (5 transaction, 1 analytics, 4 position values)
 
 ---
 

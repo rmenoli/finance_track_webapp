@@ -218,11 +218,7 @@ All endpoints are prefixed with `/api/v1`
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| GET | `/analytics/portfolio-summary` | Complete portfolio overview with all metrics |
-| GET | `/analytics/holdings` | Current holdings with cost basis |
-| GET | `/analytics/cost-basis` | Cost basis for all ISINs |
-| GET | `/analytics/cost-basis/{isin}` | Cost basis for specific ISIN |
-| GET | `/analytics/realized-gains` | Realized gains/losses from sells (optional ISIN filter) |
+| GET | `/analytics/portfolio-summary` | Complete portfolio overview including holdings, total invested, and total fees |
 
 #### Position Value Endpoints
 

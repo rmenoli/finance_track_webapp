@@ -317,11 +317,7 @@ All routes prefixed with `/api/v1`:
 - `DELETE /transactions/{id}` - Delete
 
 **Analytics**:
-- `GET /analytics/cost-basis` - All holdings
-- `GET /analytics/cost-basis/{isin}` - Specific ISIN
-- `GET /analytics/holdings` - Current positions
-- `GET /analytics/realized-gains` - P&L from sells
-- `GET /analytics/portfolio-summary` - Complete overview
+- `GET /analytics/portfolio-summary` - Complete portfolio overview (includes holdings, total invested, total fees)
 
 **Position Values**:
 - `POST /position-values` - Create or update (UPSERT by ISIN)
@@ -355,8 +351,7 @@ Interactive docs: http://localhost:8000/docs (Swagger UI)
 All cost basis calculations are in `backend/app/services/cost_basis_service.py`:
 - `calculate_cost_basis()`: Average cost for one ISIN
 - `calculate_current_holdings()`: All holdings
-- `calculate_realized_gains()`: P&L from sells
-- `get_portfolio_summary()`: Aggregates all metrics
+- `get_portfolio_summary()`: Aggregates total invested, total fees, and holdings
 
 When modifying, maintain chronological transaction processing (ORDER BY date).
 
@@ -400,7 +395,7 @@ When modifying, maintain chronological transaction processing (ORDER BY date).
 
 **API Client** (`frontend/src/services/api.js`):
 - `transactionsAPI`: CRUD operations for transactions
-- `analyticsAPI`: Portfolio analytics (holdings, cost basis, realized gains, summary)
+- `analyticsAPI`: Portfolio analytics (summary with holdings, total invested, total fees)
 - `positionValuesAPI`: Manual position value tracking (UPSERT, list, get, delete)
 
 **Styling**: Component-scoped CSS files with global utility classes in `index.css`
@@ -449,15 +444,15 @@ CORS_ORIGINS=["http://localhost:3000", "http://localhost:8000"]
 
 ## Testing
 
-**Test Suite**: 108 tests, 96% coverage
+**Test Suite**: 92 tests, 96% coverage
 
 **Test Structure**:
 - `tests/conftest.py`: Fixtures for database and test client
 - `tests/test_transaction_service.py`: Service layer (14 tests)
-- `tests/test_cost_basis_service.py`: Cost basis calculations (15 tests)
+- `tests/test_cost_basis_service.py`: Cost basis calculations (11 tests)
 - `tests/test_position_value_service.py`: Position value service (9 tests)
 - `tests/test_api_transactions.py`: Transaction API (20 tests)
-- `tests/test_api_analytics.py`: Analytics API (14 tests)
+- `tests/test_api_analytics.py`: Analytics API (2 tests)
 - `tests/test_api_position_values.py`: Position values API (9 tests)
 - `tests/test_schemas.py`: Pydantic validation (27 tests)
 
@@ -553,8 +548,8 @@ For detailed information, see:
 ## Project Status Summary
 
 **Current Version**: Development
-**Test Coverage**: 96% (108 backend tests)
-**Backend Endpoints**: 14 total (5 transaction, 5 analytics, 4 position values)
+**Test Coverage**: 96% (92 backend tests)
+**Backend Endpoints**: 10 total (5 transaction, 1 analytics, 4 position values)
 **Frontend Pages**: 3 (Investment Dashboard, Transactions, Add/Edit Transaction)
 **Frontend Components**: 6 main components (Layout, Navigation, TransactionForm, TransactionList, DashboardHoldingsTable, PortfolioSummary)
 
