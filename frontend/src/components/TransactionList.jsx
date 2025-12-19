@@ -1,4 +1,5 @@
 import './TransactionList.css';
+import FormattedNumber from './FormattedNumber';
 
 function TransactionList({ transactions, onEdit, onDelete }) {
   if (transactions.length === 0) {
@@ -41,11 +42,21 @@ function TransactionList({ transactions, onEdit, onDelete }) {
                       {txn.transaction_type}
                     </span>
                   </td>
-                  <td>{parseFloat(txn.units).toFixed(0)}</td>
-                  <td>€{parseFloat(txn.price_per_unit).toFixed(2)}</td>
-                  <td>€{total.toFixed(2)}</td>
-                  <td>€{parseFloat(txn.fee).toFixed(2)}</td>
-                  <td>€{totalWithFees.toFixed(2)}</td>
+                  <td>
+                    <FormattedNumber value={txn.units} currency={false} decimals={0} />
+                  </td>
+                  <td>
+                    <FormattedNumber value={txn.price_per_unit} currency={true} />
+                  </td>
+                  <td>
+                    <FormattedNumber value={total} currency={true} />
+                  </td>
+                  <td>
+                    <FormattedNumber value={txn.fee} currency={true} />
+                  </td>
+                  <td>
+                    <FormattedNumber value={totalWithFees} currency={true} />
+                  </td>
                   <td>
                     <div className="action-buttons">
                       <button

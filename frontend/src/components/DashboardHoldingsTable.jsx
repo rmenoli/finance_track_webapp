@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { positionValuesAPI } from '../services/api';
 import './DashboardHoldingsTable.css';
+import FormattedNumber from './FormattedNumber';
 
 function DashboardHoldingsTable({ holdings, onPositionValueChange }) {
   const [currentValues, setCurrentValues] = useState({});
@@ -149,10 +150,19 @@ function DashboardHoldingsTable({ holdings, onPositionValueChange }) {
 
                 {/* Buy In */}
                 <td>
-                  <div>€{(parseFloat(holding.total_cost_without_fees) - parseFloat(holding.total_gains_without_fees)).toFixed(2)}</div>
+                  <div>
+                    <FormattedNumber
+                      value={parseFloat(holding.total_cost_without_fees) - parseFloat(holding.total_gains_without_fees)}
+                      currency={true}
+                    />
+                  </div>
                   {holding.total_units > 0 && (
                     <div className="sub-value">
-                      €{((parseFloat(holding.total_cost_without_fees) - parseFloat(holding.total_gains_without_fees)) / parseFloat(holding.total_units)).toFixed(2)}/unit
+                      <FormattedNumber
+                        value={(parseFloat(holding.total_cost_without_fees) - parseFloat(holding.total_gains_without_fees)) / parseFloat(holding.total_units)}
+                        currency={true}
+                      />
+                      /unit
                     </div>
                   )}
                 </td>
@@ -177,12 +187,17 @@ function DashboardHoldingsTable({ holdings, onPositionValueChange }) {
                   ) : (
                     <>
                       <div>
-                        {currentValue > 0 ? `€${currentValue.toFixed(2)}` : '€0.00 (click to edit)'}
+                        {currentValue > 0 ? (
+                          <FormattedNumber value={currentValue} currency={true} />
+                        ) : (
+                          '€0.00 (click to edit)'
+                        )}
                         {isSaving && <span style={{ marginLeft: '5px', fontSize: '0.9em' }}>💾</span>}
                       </div>
                       {currentValue > 0 && (
                         <div className="sub-value">
-                          €{currentPricePerUnit.toFixed(2)}/unit
+                          <FormattedNumber value={currentPricePerUnit} currency={true} />
+                          /unit
                         </div>
                       )}
                     </>
@@ -194,10 +209,13 @@ function DashboardHoldingsTable({ holdings, onPositionValueChange }) {
                   {currentValue > 0 ? (
                     <>
                       <div className={plData.withoutFees.absolutePL >= 0 ? 'positive' : 'negative'}>
-                        {plData.withoutFees.absolutePL >= 0 ? '+' : ''}€{plData.withoutFees.absolutePL.toFixed(2)}
+                        {plData.withoutFees.absolutePL >= 0 ? '+' : ''}
+                        <FormattedNumber value={plData.withoutFees.absolutePL} currency={true} />
                       </div>
                       <div className={`sub-value ${plData.withoutFees.percentagePL >= 0 ? 'positive' : 'negative'}`}>
-                        {plData.withoutFees.percentagePL >= 0 ? '↑' : '↓'}{Math.abs(plData.withoutFees.percentagePL).toFixed(2)}%
+                        {plData.withoutFees.percentagePL >= 0 ? '↑' : '↓'}
+                        <FormattedNumber value={Math.abs(plData.withoutFees.percentagePL)} currency={false} />
+                        %
                       </div>
                     </>
                   ) : (
@@ -207,7 +225,9 @@ function DashboardHoldingsTable({ holdings, onPositionValueChange }) {
 
                 {/* Total Fees */}
                 <td>
-                  <div>€{parseFloat(holding.total_fees).toFixed(2)}</div>
+                  <div>
+                    <FormattedNumber value={holding.total_fees} currency={true} />
+                  </div>
                 </td>
 
                 {/* P/L (including fees) */}
@@ -215,10 +235,13 @@ function DashboardHoldingsTable({ holdings, onPositionValueChange }) {
                   {currentValue > 0 ? (
                     <>
                       <div className={plData.withFees.absolutePL >= 0 ? 'positive' : 'negative'}>
-                        {plData.withFees.absolutePL >= 0 ? '+' : ''}€{plData.withFees.absolutePL.toFixed(2)}
+                        {plData.withFees.absolutePL >= 0 ? '+' : ''}
+                        <FormattedNumber value={plData.withFees.absolutePL} currency={true} />
                       </div>
                       <div className={`sub-value ${plData.withFees.percentagePL >= 0 ? 'positive' : 'negative'}`}>
-                        {plData.withFees.percentagePL >= 0 ? '↑' : '↓'}{Math.abs(plData.withFees.percentagePL).toFixed(2)}%
+                        {plData.withFees.percentagePL >= 0 ? '↑' : '↓'}
+                        <FormattedNumber value={Math.abs(plData.withFees.percentagePL)} currency={false} />
+                        %
                       </div>
                     </>
                   ) : (

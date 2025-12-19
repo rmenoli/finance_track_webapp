@@ -1,0 +1,16 @@
+.formatted-number {
+  display: inline-block;
+  font-feature-settings: 'tnum'; /* Use tabular numbers for better alignment */
+}
+
+.formatted-number .integer-part {
+  font-size: 1em;
+}
+
+.formatted-number .decimal-separator {
+  font-size: 0.75em;
+}
+
+.formatted-number .decimal-part {
+  font-size: 0.75em;
+}

@@ -1,5 +1,6 @@
 import './PortfolioSummary.css';
 import DashboardHoldingsTable from './DashboardHoldingsTable';
+import FormattedNumber from './FormattedNumber';
 
 function PortfolioSummary({ data, onDataChange }) {
   return (
@@ -9,14 +10,20 @@ function PortfolioSummary({ data, onDataChange }) {
         <div className="summary-card hero-card">
           <h3>Current Portfolio Value</h3>
           <p className="summary-value hero-value">
-            €{parseFloat(data.total_current_portfolio_invested_value).toFixed(2)}
+            <FormattedNumber
+              value={data.total_current_portfolio_invested_value}
+              currency={true}
+            />
           </p>
         </div>
 
         <div className="summary-card hero-card">
           <h3>Total P/L</h3>
           <p className={`summary-value hero-value ${parseFloat(data.total_profit_loss) >= 0 ? 'positive' : 'negative'}`}>
-            €{parseFloat(data.total_profit_loss).toFixed(2)}
+            <FormattedNumber
+              value={data.total_profit_loss}
+              currency={true}
+            />
           </p>
         </div>
       </div>
@@ -26,15 +33,21 @@ function PortfolioSummary({ data, onDataChange }) {
         <div className="details-grid">
           <div className="detail-item">
             <span className="detail-label">Total Invested</span>
-            <span className="detail-value">€{parseFloat(data.total_invested).toFixed(2)}</span>
+            <span className="detail-value">
+              <FormattedNumber value={data.total_invested} currency={true} />
+            </span>
           </div>
           <div className="detail-item">
             <span className="detail-label">Total Fees</span>
-            <span className="detail-value">€{parseFloat(data.total_fees).toFixed(2)}</span>
+            <span className="detail-value">
+              <FormattedNumber value={data.total_fees} currency={true} />
+            </span>
           </div>
           <div className="detail-item">
             <span className="detail-label">Total Withdrawn</span>
-            <span className="detail-value">€{parseFloat(data.total_withdrawn).toFixed(2)}</span>
+            <span className="detail-value">
+              <FormattedNumber value={data.total_withdrawn} currency={true} />
+            </span>
           </div>
         </div>
       </div>
