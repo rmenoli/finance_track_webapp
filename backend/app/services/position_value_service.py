@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 from app.exceptions import PositionValueNotFoundError
 from app.models.position_value import PositionValue
 from app.schemas.position_value import PositionValueCreate
+from app.services import cost_basis_service
 
 
 def upsert_position_value(
@@ -104,3 +105,57 @@ def delete_position_value(db: Session, isin: str) -> None:
     position_value = get_position_value(db, isin)
     db.delete(position_value)
     db.commit()
+
+
+def cleanup_orphaned_position_values(db: Session) -> dict:
+    """
+    Clean up all orphaned position values for closed or non-existent positions.
+
+    This maintenance utility removes position values for:
+    1. ISINs with no transactions (orphaned data)
+    2. ISINs with closed positions (total_units == 0)
+
+    Args:
+        db: Database session
+
+    Returns:
+        Dictionary with cleanup statistics:
+        {
+            "checked": int,
+            "deleted": int,
+            "deleted_isins": list[str],
+            "errors": list[dict]
+        }
+    """
+    position_values = get_all_position_values(db)
+
+    stats = {
+        "checked": len(position_values),
+        "deleted": 0,
+        "deleted_isins": [],
+        "errors": []
+    }
+
+    for pv in position_values:
+        try:
+            # Calculate current position state
+            cost_basis = cost_basis_service.calculate_cost_basis(db, pv.isin)
+
+            # Delete if no transactions or position closed
+            should_delete = (
+                cost_basis is None or  # No transactions
+                cost_basis.total_units == 0  # Position closed
+            )
+
+            if should_delete:
+                delete_position_value(db, pv.isin)
+                stats["deleted"] += 1
+                stats["deleted_isins"].append(pv.isin)
+
+        except Exception as e:
+            stats["errors"].append({
+                "isin": pv.isin,
+                "error": str(e)
+            })
+
+    return stats

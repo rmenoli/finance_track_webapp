@@ -1,5 +1,6 @@
 import './PortfolioSummary.css';
 import DashboardHoldingsTable from './DashboardHoldingsTable';
+import ClosedPositionsTable from './ClosedPositionsTable';
 import FormattedNumber from './FormattedNumber';
 
 function PortfolioSummary({ data, onDataChange }) {
@@ -59,6 +60,16 @@ function PortfolioSummary({ data, onDataChange }) {
           <p>No holdings yet.</p>
         ) : (
           <DashboardHoldingsTable holdings={data.holdings} onPositionValueChange={onDataChange} />
+        )}
+      </div>
+
+      {/* Closed Positions Section */}
+      <div className="summary-section full-width">
+        <h3>Closed Positions</h3>
+        {!data.closed_positions || data.closed_positions.length === 0 ? (
+          <p>No closed positions yet.</p>
+        ) : (
+          <ClosedPositionsTable closedPositions={data.closed_positions} />
         )}
       </div>
     </div>

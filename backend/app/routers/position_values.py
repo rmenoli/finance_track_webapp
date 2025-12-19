@@ -77,3 +77,20 @@ def delete_position_value(
 ) -> None:
     """Delete a position value."""
     position_value_service.delete_position_value(db, isin)
+
+
+@router.post(
+    "/cleanup",
+    status_code=status.HTTP_200_OK,
+    summary="Clean up orphaned position values",
+    description="Remove position values for closed or non-existent positions (maintenance utility)",
+)
+def cleanup_orphaned_position_values_endpoint(
+    db: Session = Depends(get_db),
+) -> dict:
+    """
+    Clean up orphaned position values.
+
+    Returns statistics about the cleanup operation.
+    """
+    return position_value_service.cleanup_orphaned_position_values(db)

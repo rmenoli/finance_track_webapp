@@ -33,5 +33,8 @@ class PortfolioSummaryResponse(BaseModel):
         ..., description="Total profit/loss (current value + withdrawn - fees - invested)"
     )
     holdings: list[CostBasisResponse] = Field(..., description="Current holdings")
+    closed_positions: list[CostBasisResponse] = Field(
+        ..., description="Closed positions with zero units held"
+    )
 
     model_config = ConfigDict(from_attributes=True)

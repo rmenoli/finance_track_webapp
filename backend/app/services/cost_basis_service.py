@@ -75,7 +75,7 @@ def calculate_cost_basis(
     )
 
 
-def calculate_current_holdings(db: Session) -> list[CostBasisResponse]:
+def calculate_current_holdings_and_closed_positions(db: Session) -> list[CostBasisResponse]:
     """
     Calculate current holdings for all ISINs.
 
@@ -89,12 +89,15 @@ def calculate_current_holdings(db: Session) -> list[CostBasisResponse]:
     isins = db.query(Transaction.isin).distinct().all()
 
     holdings = []
+    closed_positions = []
     for (isin,) in isins:
         cost_basis = calculate_cost_basis(db, isin)
         if cost_basis and cost_basis.total_units > 0:
             holdings.append(cost_basis)
+        elif cost_basis and cost_basis.total_units == 0:
+            closed_positions.append(cost_basis)
 
-    return holdings
+    return holdings, closed_positions
 
 
 def get_portfolio_summary(db: Session) -> PortfolioSummaryResponse:
@@ -108,7 +111,7 @@ def get_portfolio_summary(db: Session) -> PortfolioSummaryResponse:
         Portfolio summary
     """
     # Calculate current holdings
-    holdings = calculate_current_holdings(db)
+    holdings, closed_positions = calculate_current_holdings_and_closed_positions(db)
 
     # Calculate total invested (all BUY transactions)
     buy_transactions = (
@@ -144,4 +147,5 @@ def get_portfolio_summary(db: Session) -> PortfolioSummaryResponse:
         total_current_portfolio_invested_value=total_current_portfolio_invested_value,
         total_profit_loss=total_profit_loss,
         holdings=holdings,
+        closed_positions=closed_positions,
     )
