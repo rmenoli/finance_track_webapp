@@ -7,6 +7,7 @@ React frontend for the ETF Portfolio Tracker application. Built with Vite for fa
 - **React 18**: Modern React with hooks
 - **Vite**: Fast build tool and dev server
 - **React Router v6**: Client-side routing
+- **Chart.js**: Interactive charts and visualizations
 - **CSS**: Component-scoped styling
 - **Fetch API**: HTTP requests to backend
 
@@ -61,6 +62,10 @@ src/
 │   ├── TransactionForm.jsx/css       # Add/edit transaction form
 │   ├── TransactionList.jsx/css       # Transaction table
 │   ├── DashboardHoldingsTable.jsx/css # Holdings table for dashboard
+│   ├── HoldingsDistributionChart.jsx/css # Portfolio distribution pie chart
+│   ├── ClosedPositionsTable.jsx/css  # Closed positions table
+│   ├── ISINMetadataForm.jsx/css      # ISIN metadata form
+│   ├── ISINMetadataList.jsx/css      # ISIN metadata list
 │   └── PortfolioSummary.jsx/css      # Dashboard summary cards
 ├── pages/                             # Page-level components
 │   ├── InvestmentDashboard.jsx/css   # Portfolio overview page
@@ -80,8 +85,11 @@ src/
 
 1. **Investment Dashboard** (`/`)
    - Portfolio summary with key metrics (total value, invested amount, realized gains)
-   - Current holdings table with detailed position information
+   - Portfolio distribution pie chart showing asset allocation by percentage
+   - Current holdings table with asset names and detailed position information
+   - Closed positions table showing realized gains/losses
    - Average cost and total cost per holding
+   - Interactive tooltips with asset values and percentages
    - Comprehensive portfolio overview
 
 2. **Transactions** (`/transactions`)
@@ -101,8 +109,29 @@ src/
 - **Navigation**: Nav links for all pages
 - **TransactionForm**: Reusable form for add/edit transactions
 - **TransactionList**: Table view of all transactions with filters
-- **DashboardHoldingsTable**: Detailed holdings table for investment dashboard
+- **DashboardHoldingsTable**: Detailed holdings table with asset names and editable position values
+- **HoldingsDistributionChart**: Pie chart showing portfolio distribution by asset with percentages (uses Chart.js)
+- **ClosedPositionsTable**: Table showing closed positions with realized P/L
+- **ISINMetadataForm**: Form for creating/editing ISIN metadata (name and type)
+- **ISINMetadataList**: Table displaying ISIN metadata with type-based filtering
 - **PortfolioSummary**: Dashboard summary cards showing portfolio metrics
+
+### Visualization Features
+
+- **Portfolio Distribution Chart**:
+  - Interactive pie chart built with Chart.js and react-chartjs-2
+  - Shows percentage allocation of each asset in the portfolio
+  - Displays asset names (from ISIN metadata) in legend with percentages
+  - Interactive tooltips showing asset name, current value, and percentage share
+  - Auto-updates when position values are modified
+  - Color-coded segments for easy visual distinction
+  - Responsive design adapting to different screen sizes
+
+- **Asset Name Display**:
+  - Asset names from ISIN metadata displayed above ISIN codes in holdings tables
+  - Bold asset names for easy recognition
+  - Italic ISIN codes for secondary information
+  - Seamless integration with ISIN metadata management
 
 ### Validation
 

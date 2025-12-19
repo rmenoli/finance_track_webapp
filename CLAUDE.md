@@ -90,6 +90,12 @@ npm install <package-name>
 npm install -D <package-name>
 ```
 
+**Key Frontend Dependencies**:
+- `chart.js` (v4.5.1) - Chart library for data visualization
+- `react-chartjs-2` (v5.3.1) - React wrapper for Chart.js
+- `react-router-dom` - Client-side routing
+- `react` / `react-dom` - React framework
+
 ### Database Migrations
 ```bash
 cd backend
@@ -223,6 +229,8 @@ finance_track_webapp/
 │   │   │   ├── ISINMetadataForm.jsx   # Add/edit ISIN metadata form
 │   │   │   ├── ISINMetadataList.jsx   # ISIN metadata table
 │   │   │   ├── DashboardHoldingsTable.jsx  # Holdings table for dashboard
+│   │   │   ├── HoldingsDistributionChart.jsx # Portfolio distribution pie chart (Chart.js)
+│   │   │   ├── ClosedPositionsTable.jsx    # Closed positions table
 │   │   │   └── PortfolioSummary.jsx   # Dashboard summary cards
 │   │   ├── pages/             # Page-level components
 │   │   │   ├── InvestmentDashboard.jsx  # Portfolio overview page
@@ -402,7 +410,7 @@ When modifying, maintain chronological transaction processing (ORDER BY date).
 **No state management library**: Simple useState/useEffect for all state (adequate for single-user app)
 
 **Current Pages**:
-1. **Investment Dashboard** (`/`) - Portfolio summary, holdings table, key metrics
+1. **Investment Dashboard** (`/`) - Portfolio summary, portfolio distribution chart, holdings table, key metrics
 2. **Transactions** (`/transactions`) - Full transaction list with filters and CRUD operations
 3. **Add/Edit Transaction** (`/transactions/add`, `/transactions/edit/:id`) - Transaction form
 4. **ISIN Metadata** (`/isin-metadata`) - ISIN metadata list with type filtering and CRUD operations
@@ -415,8 +423,16 @@ When modifying, maintain chronological transaction processing (ORDER BY date).
 - **TransactionList**: Table view with filters and actions
 - **ISINMetadataForm**: Reusable form for creating/editing ISIN metadata (ISIN, name, type)
 - **ISINMetadataList**: Table view with type badges and actions
-- **DashboardHoldingsTable**: Detailed holdings display for dashboard
+- **DashboardHoldingsTable**: Detailed holdings display with asset names above ISIN codes
+- **HoldingsDistributionChart**: Interactive pie chart showing portfolio distribution by asset (Chart.js)
+- **ClosedPositionsTable**: Table showing closed positions with realized P/L
 - **PortfolioSummary**: Summary cards showing portfolio metrics
+
+**Visualization Features**:
+- **Portfolio Distribution Chart**: Interactive pie chart built with Chart.js showing percentage allocation of each asset
+- **Asset Name Display**: ISIN names from metadata displayed above ISIN codes in holdings tables (bold names, italic ISINs)
+- **Interactive Tooltips**: Chart tooltips show asset name, current value, and percentage share
+- **Auto-updates**: Chart refreshes when position values change
 
 **Routing**: React Router v6 with nested routes
 - Layout component wraps all pages
@@ -586,7 +602,8 @@ For detailed information, see:
 **Test Coverage**: 95% (152 backend tests)
 **Backend Endpoints**: 16 total (5 transaction, 1 analytics, 4 position values, 6 ISIN metadata)
 **Frontend Pages**: 5 (Investment Dashboard, Transactions, Add/Edit Transaction, ISIN Metadata, Add/Edit ISIN Metadata)
-**Frontend Components**: 8 main components (Layout, Navigation, TransactionForm, TransactionList, ISINMetadataForm, ISINMetadataList, DashboardHoldingsTable, PortfolioSummary)
+**Frontend Components**: 10 main components (Layout, Navigation, TransactionForm, TransactionList, ISINMetadataForm, ISINMetadataList, DashboardHoldingsTable, HoldingsDistributionChart, ClosedPositionsTable, PortfolioSummary)
+**Visualization**: Portfolio distribution pie chart with Chart.js, asset name display in holdings tables
 
 ---
 

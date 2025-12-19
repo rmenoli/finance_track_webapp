@@ -29,6 +29,8 @@ A full-stack web application for tracking ETF portfolio transactions with automa
 - ✅ ISIN validation and date range filtering
 - ✅ Persistent position value tracking with manual entry
 - ✅ ISIN metadata management (asset names and types)
+- ✅ Asset names displayed in holdings tables
+- ✅ Portfolio distribution pie chart with interactive visualization
 
 **User Experience**
 - ✅ Clean, responsive React UI
