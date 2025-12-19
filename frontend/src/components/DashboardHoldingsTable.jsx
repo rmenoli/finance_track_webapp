@@ -103,9 +103,6 @@ function DashboardHoldingsTable({ holdings, onPositionValueChange, isinNames = {
         <tbody>
           {holdings.map(holding => {
             const currentValue = holding.current_value ? parseFloat(holding.current_value) : 0;
-            const currentPricePerUnit = currentValue > 0 && holding.total_units > 0
-              ? currentValue / parseFloat(holding.total_units)
-              : 0;
             const isSaving = savingIsin === holding.isin;
             const isEditing = editingIsin === holding.isin;
 
@@ -125,14 +122,14 @@ function DashboardHoldingsTable({ holdings, onPositionValueChange, isinNames = {
                 <td>
                   <div>
                     <FormattedNumber
-                      value={parseFloat(holding.total_cost_without_fees) - parseFloat(holding.total_gains_without_fees)}
+                      value={holding.net_buy_in_cost}
                       currency={true}
                     />
                   </div>
-                  {holding.total_units > 0 && (
+                  {holding.net_buy_in_cost_per_unit && (
                     <div className="sub-value">
                       <FormattedNumber
-                        value={(parseFloat(holding.total_cost_without_fees) - parseFloat(holding.total_gains_without_fees)) / parseFloat(holding.total_units)}
+                        value={holding.net_buy_in_cost_per_unit}
                         currency={true}
                       />
                       /unit
@@ -167,9 +164,9 @@ function DashboardHoldingsTable({ holdings, onPositionValueChange, isinNames = {
                         )}
                         {isSaving && <span style={{ marginLeft: '5px', fontSize: '0.9em' }}>💾</span>}
                       </div>
-                      {currentValue > 0 && (
+                      {holding.current_price_per_unit && (
                         <div className="sub-value">
-                          <FormattedNumber value={currentPricePerUnit} currency={true} />
+                          <FormattedNumber value={holding.current_price_per_unit} currency={true} />
                           /unit
                         </div>
                       )}

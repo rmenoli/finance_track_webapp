@@ -3,7 +3,7 @@ from datetime import datetime
 from decimal import Decimal
 from typing import Optional
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, computed_field, field_validator
 
 from app.constants import ISIN_PATTERN, TransactionType
 
@@ -93,6 +93,18 @@ class TransactionResponse(TransactionBase):
     id: int = Field(..., description="Transaction ID")
     created_at: datetime = Field(..., description="Creation timestamp")
     updated_at: datetime = Field(..., description="Last update timestamp")
+
+    @computed_field
+    @property
+    def total_without_fees(self) -> Decimal:
+        """Calculate total without fees (units × price_per_unit)."""
+        return self.units * self.price_per_unit
+
+    @computed_field
+    @property
+    def total_with_fees(self) -> Decimal:
+        """Calculate total with fees (total_without_fees + fee)."""
+        return self.total_without_fees + self.fee
 
     model_config = ConfigDict(from_attributes=True, use_enum_values=False)
 

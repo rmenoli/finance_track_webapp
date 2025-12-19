@@ -25,7 +25,7 @@ FastAPI backend service for tracking ETF transactions with automatic cost basis 
 - **Validation**: Pydantic 2.12.5 (data validation and settings)
 - **Package Manager**: UV (fast Python package manager)
 - **Server**: Uvicorn 0.38.0 (ASGI server)
-- **Testing**: Pytest 9.0.2 with 95% coverage (196 tests)
+- **Testing**: Pytest 9.0.2 with 95% coverage (206 tests)
 - **Code Quality**: Ruff 0.14.9 (linting and formatting)
 
 ## Prerequisites
@@ -413,6 +413,61 @@ The `/analytics/portfolio-summary` endpoint returns comprehensive portfolio data
 - For closed positions, P/L represents the realized gains/losses from selling
 - P/L calculations use the average cost method for cost basis
 
+### Computed Fields
+
+The API uses Pydantic's `@computed_field` decorator to include calculated values in responses without storing them in the database. This ensures all financial calculations happen on the backend with `Decimal` precision.
+
+**Transaction Responses** include these computed fields:
+- `total_without_fees`: Calculated as `units × price_per_unit`
+- `total_with_fees`: Calculated as `total_without_fees + fee`
+
+**Holdings Responses** include these computed fields:
+- `net_buy_in_cost`: Net cost basis (total_cost_without_fees - total_gains_without_fees)
+- `net_buy_in_cost_per_unit`: Per-unit net cost basis (returns `null` if no units held)
+- `current_price_per_unit`: Current market price per unit (returns `null` if no current_value or no units)
+
+Example transaction response:
+```json
+{
+  "id": 1,
+  "date": "2024-01-15",
+  "isin": "IE00B4L5Y983",
+  "broker": "Interactive Brokers",
+  "transaction_type": "BUY",
+  "units": "10.0000",
+  "price_per_unit": "450.25",
+  "fee": "1.50",
+  "total_without_fees": "4502.50",
+  "total_with_fees": "4504.00",
+  "created_at": "2024-01-15T10:00:00",
+  "updated_at": "2024-01-15T10:00:00"
+}
+```
+
+Example holding response with computed fields:
+```json
+{
+  "isin": "IE00B4L5Y983",
+  "total_units": "10.0000",
+  "total_cost_without_fees": "4500.00",
+  "total_gains_without_fees": "0.00",
+  "total_fees": "12.50",
+  "transactions_count": 2,
+  "current_value": "5000.00",
+  "net_buy_in_cost": "4500.00",
+  "net_buy_in_cost_per_unit": "450.00",
+  "current_price_per_unit": "500.00",
+  "absolute_pl_without_fees": "500.00",
+  "percentage_pl_without_fees": "11.11"
+}
+```
+
+**Benefits:**
+- Single source of truth for calculations
+- No database migrations needed for new computed fields
+- Frontend becomes pure presentation layer
+- All calculations tested in backend with proper precision
+
 ## Database Management
 
 ### View Database
@@ -481,7 +536,7 @@ uv run alembic upgrade head
 ### Run All Tests
 
 ```bash
-# Run all 196 tests
+# Run all 206 tests
 uv run pytest
 
 # Run with verbose output
@@ -522,7 +577,7 @@ uv run pytest tests/test_other_asset_service.py tests/test_api_other_assets.py t
 
 ### Test Coverage
 
-Current coverage: **95%** (196 tests)
+Current coverage: **95%** (206 tests)
 
 To view detailed coverage:
 ```bash
@@ -636,7 +691,7 @@ backend/
 │   ├── versions/              # Migration files
 │   ├── env.py                 # Alembic environment
 │   └── script.py.mako         # Migration template
-├── tests/                     # Test suite (95% coverage, 152 tests)
+├── tests/                     # Test suite (95% coverage, 206 tests)
 │   ├── conftest.py           # Test fixtures
 │   ├── test_transaction_service.py
 │   ├── test_cost_basis_service.py

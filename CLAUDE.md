@@ -134,7 +134,7 @@ uv run ruff format .
 ```bash
 cd backend
 
-# Run all tests (196 tests, 95% coverage)
+# Run all tests (206 tests, 95% coverage)
 uv run pytest
 
 # Run with verbose output
@@ -199,7 +199,7 @@ finance_track_webapp/
 │   │   ├── versions/          # Migration files
 │   │   ├── env.py             # Alembic environment
 │   │   └── script.py.mako     # Migration template
-│   ├── tests/                 # Test suite (95% coverage, 152 tests)
+│   ├── tests/                 # Test suite (95% coverage, 206 tests)
 │   │   ├── conftest.py       # Test fixtures
 │   │   ├── test_transaction_service.py
 │   │   ├── test_cost_basis_service.py
@@ -366,6 +366,25 @@ fee = 1.50  # Never use float for money
 
 Database columns are `Numeric(10, 2)` for fees, `Numeric(10, 4)` for prices and units.
 
+### Computed Fields Pattern
+
+**Backend Computed Fields**: The application uses Pydantic's `@computed_field` decorator to add calculated values to API responses without storing them in the database. This ensures all financial calculations happen on the backend using `Decimal` precision.
+
+**Transaction Response Computed Fields** (`backend/app/schemas/transaction.py`):
+- `total_without_fees: Decimal` - Calculated as `units × price_per_unit`
+- `total_with_fees: Decimal` - Calculated as `total_without_fees + fee`
+
+**Holdings Response Computed Fields** (`backend/app/schemas/analytics.py`):
+- `net_buy_in_cost: Decimal` - Net cost basis (total_cost_without_fees - total_gains_without_fees)
+- `net_buy_in_cost_per_unit: Optional[Decimal]` - Per-unit net cost (returns None if no units)
+- `current_price_per_unit: Optional[Decimal]` - Current market price per unit (returns None if no current_value)
+
+**Benefits**:
+- Single source of truth for calculations
+- No database migrations required for new computed fields
+- Frontend becomes pure presentation layer
+- All calculations tested in backend with `Decimal` precision
+
 ## API Structure
 
 All routes prefixed with `/api/v1`:
@@ -376,9 +395,11 @@ All routes prefixed with `/api/v1`:
 - `GET /transactions/{id}` - Get one
 - `PUT /transactions/{id}` - Update
 - `DELETE /transactions/{id}` - Delete
+- **Note**: All transaction responses include computed fields: `total_without_fees`, `total_with_fees`
 
 **Analytics**:
 - `GET /analytics/portfolio-summary` - Complete portfolio overview (includes holdings, total invested, total fees)
+- **Note**: Holdings responses include computed fields: `net_buy_in_cost`, `net_buy_in_cost_per_unit`, `current_price_per_unit`
 
 **Position Values**:
 - `POST /position-values` - Create or update (UPSERT by ISIN)
@@ -540,7 +561,7 @@ CORS_ORIGINS=["http://localhost:3000", "http://localhost:8000"]
 
 ## Testing
 
-**Test Suite**: 196 tests, 95% coverage
+**Test Suite**: 206 tests, 95% coverage
 
 **Test Structure**:
 - `tests/conftest.py`: Fixtures for database and test client
@@ -649,13 +670,14 @@ For detailed information, see:
 ## Project Status Summary
 
 **Current Version**: Development
-**Test Coverage**: 95% (196 backend tests)
+**Test Coverage**: 95% (206 backend tests)
 **Backend Endpoints**: 20 total (5 transaction, 1 analytics, 4 position values, 6 ISIN metadata, 4 other assets)
 **Frontend Pages**: 6 (Investment Dashboard, Transactions, Add/Edit Transaction, ISIN Metadata, Add/Edit ISIN Metadata, Other Assets)
 **Frontend Components**: 12 main components (Layout, Navigation, TransactionForm, TransactionList, ISINMetadataForm, ISINMetadataList, DashboardHoldingsTable, HoldingsDistributionChart, ClosedPositionsTable, PortfolioSummary, OtherAssetsTable, OtherAssetsDistributionChart)
 **Visualization**: Portfolio distribution pie chart with Chart.js, other assets distribution chart, asset name display in holdings tables
 **Multi-Currency**: EUR/CZK support with client-side conversion for other assets
+**Architecture**: Backend-first calculations - all financial math performed on backend using Decimal, frontend is pure presentation layer
 
 ---
 
-**Development Philosophy**: Keep it simple, test thoroughly, maintain separation of concerns, use Decimal for money.
+**Development Philosophy**: Keep it simple, test thoroughly, maintain separation of concerns, use Decimal for money, all calculations on backend.

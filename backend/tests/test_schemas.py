@@ -1,12 +1,13 @@
 """Tests for Pydantic schema validation."""
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 from decimal import Decimal
 
 import pytest
 from pydantic import ValidationError
 
 from app.constants import AssetType, Currency, ISINType, TransactionType
-from app.schemas.transaction import TransactionCreate, TransactionUpdate
+from app.schemas.transaction import TransactionCreate, TransactionUpdate, TransactionResponse
+from app.schemas.analytics import CostBasisResponse
 from app.schemas.position_value import PositionValueCreate
 from app.schemas.isin_metadata import ISINMetadataCreate, ISINMetadataUpdate
 from app.schemas.other_asset import OtherAssetCreate
@@ -628,3 +629,173 @@ class TestOtherAssetSchemas:
         )
 
         assert asset.value == Decimal("0.00")
+
+
+class TestTransactionResponseComputedFields:
+    """Test computed fields in TransactionResponse schema."""
+
+    def test_total_without_fees_calculation(self):
+        """Test that total_without_fees is calculated correctly."""
+        transaction = TransactionResponse(
+            id=1,
+            date=date.today(),
+            isin="IE00B4L5Y983",
+            broker="Interactive Brokers",
+            fee=Decimal("1.50"),
+            price_per_unit=Decimal("25.75"),
+            units=Decimal("100.0"),
+            transaction_type=TransactionType.BUY,
+            created_at=datetime.now(),
+            updated_at=datetime.now()
+        )
+
+        expected_total = Decimal("100.0") * Decimal("25.75")
+        assert transaction.total_without_fees == expected_total
+        assert transaction.total_without_fees == Decimal("2575.00")
+
+    def test_total_with_fees_calculation(self):
+        """Test that total_with_fees is calculated correctly."""
+        transaction = TransactionResponse(
+            id=1,
+            date=date.today(),
+            isin="IE00B4L5Y983",
+            broker="Interactive Brokers",
+            fee=Decimal("1.50"),
+            price_per_unit=Decimal("25.75"),
+            units=Decimal("100.0"),
+            transaction_type=TransactionType.BUY,
+            created_at=datetime.now(),
+            updated_at=datetime.now()
+        )
+
+        expected_total = Decimal("2575.00") + Decimal("1.50")
+        assert transaction.total_with_fees == expected_total
+        assert transaction.total_with_fees == Decimal("2576.50")
+
+    def test_computed_fields_with_decimal_precision(self):
+        """Test computed fields with high precision decimals."""
+        transaction = TransactionResponse(
+            id=1,
+            date=date.today(),
+            isin="IE00B4L5Y983",
+            broker="Interactive Brokers",
+            fee=Decimal("2.35"),
+            price_per_unit=Decimal("123.4567"),
+            units=Decimal("50.1234"),
+            transaction_type=TransactionType.BUY,
+            created_at=datetime.now(),
+            updated_at=datetime.now()
+        )
+
+        expected_total_without_fees = Decimal("123.4567") * Decimal("50.1234")
+        assert transaction.total_without_fees == expected_total_without_fees
+        assert transaction.total_with_fees == expected_total_without_fees + Decimal("2.35")
+
+    def test_computed_fields_with_zero_fee(self):
+        """Test computed fields when fee is zero."""
+        transaction = TransactionResponse(
+            id=1,
+            date=date.today(),
+            isin="IE00B4L5Y983",
+            broker="Interactive Brokers",
+            fee=Decimal("0.00"),
+            price_per_unit=Decimal("100.00"),
+            units=Decimal("10.0"),
+            transaction_type=TransactionType.BUY,
+            created_at=datetime.now(),
+            updated_at=datetime.now()
+        )
+
+        assert transaction.total_without_fees == Decimal("1000.00")
+        assert transaction.total_with_fees == Decimal("1000.00")
+
+
+class TestCostBasisResponseComputedFields:
+    """Test computed fields in CostBasisResponse schema."""
+
+    def test_net_buy_in_cost_calculation(self):
+        """Test that net_buy_in_cost is calculated correctly."""
+        holding = CostBasisResponse(
+            isin="IE00B4L5Y983",
+            total_units=Decimal("100.0"),
+            total_cost_without_fees=Decimal("5000.00"),
+            total_gains_without_fees=Decimal("1000.00"),
+            total_fees=Decimal("50.00"),
+            transactions_count=5
+        )
+
+        expected_net_cost = Decimal("5000.00") - Decimal("1000.00")
+        assert holding.net_buy_in_cost == expected_net_cost
+        assert holding.net_buy_in_cost == Decimal("4000.00")
+
+    def test_net_buy_in_cost_per_unit_with_units(self):
+        """Test net_buy_in_cost_per_unit calculation when units > 0."""
+        holding = CostBasisResponse(
+            isin="IE00B4L5Y983",
+            total_units=Decimal("100.0"),
+            total_cost_without_fees=Decimal("5000.00"),
+            total_gains_without_fees=Decimal("1000.00"),
+            total_fees=Decimal("50.00"),
+            transactions_count=5
+        )
+
+        expected_per_unit = Decimal("4000.00") / Decimal("100.0")
+        assert holding.net_buy_in_cost_per_unit == expected_per_unit
+        assert holding.net_buy_in_cost_per_unit == Decimal("40.00")
+
+    def test_net_buy_in_cost_per_unit_zero_units(self):
+        """Test net_buy_in_cost_per_unit returns None when units = 0."""
+        holding = CostBasisResponse(
+            isin="IE00B4L5Y983",
+            total_units=Decimal("0.0"),
+            total_cost_without_fees=Decimal("5000.00"),
+            total_gains_without_fees=Decimal("5000.00"),
+            total_fees=Decimal("50.00"),
+            transactions_count=5
+        )
+
+        assert holding.net_buy_in_cost_per_unit is None
+
+    def test_current_price_per_unit_with_current_value(self):
+        """Test current_price_per_unit calculation when current_value is available."""
+        holding = CostBasisResponse(
+            isin="IE00B4L5Y983",
+            total_units=Decimal("100.0"),
+            total_cost_without_fees=Decimal("5000.00"),
+            total_gains_without_fees=Decimal("0.00"),
+            total_fees=Decimal("50.00"),
+            transactions_count=3,
+            current_value=Decimal("6000.00")
+        )
+
+        expected_price = Decimal("6000.00") / Decimal("100.0")
+        assert holding.current_price_per_unit == expected_price
+        assert holding.current_price_per_unit == Decimal("60.00")
+
+    def test_current_price_per_unit_no_current_value(self):
+        """Test current_price_per_unit returns None when current_value is None."""
+        holding = CostBasisResponse(
+            isin="IE00B4L5Y983",
+            total_units=Decimal("100.0"),
+            total_cost_without_fees=Decimal("5000.00"),
+            total_gains_without_fees=Decimal("0.00"),
+            total_fees=Decimal("50.00"),
+            transactions_count=3,
+            current_value=None
+        )
+
+        assert holding.current_price_per_unit is None
+
+    def test_current_price_per_unit_zero_units(self):
+        """Test current_price_per_unit returns None when units = 0."""
+        holding = CostBasisResponse(
+            isin="IE00B4L5Y983",
+            total_units=Decimal("0.0"),
+            total_cost_without_fees=Decimal("5000.00"),
+            total_gains_without_fees=Decimal("5000.00"),
+            total_fees=Decimal("50.00"),
+            transactions_count=5,
+            current_value=Decimal("0.00")
+        )
+
+        assert holding.current_price_per_unit is None

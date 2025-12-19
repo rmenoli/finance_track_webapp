@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { analyticsAPI, transactionsAPI, isinMetadataAPI } from '../services/api';
 import PortfolioSummary from '../components/PortfolioSummary';
+import FormattedNumber from '../components/FormattedNumber';
 import './InvestmentDashboard.css';
 
 function InvestmentDashboard() {
@@ -82,9 +83,15 @@ function InvestmentDashboard() {
                         {txn.transaction_type}
                       </span>
                     </td>
-                    <td>{parseFloat(txn.units).toFixed(4)}</td>
-                    <td>€{parseFloat(txn.price_per_unit).toFixed(2)}</td>
-                    <td>€{(parseFloat(txn.units) * parseFloat(txn.price_per_unit)).toFixed(2)}</td>
+                    <td>
+                      <FormattedNumber value={txn.units} currency={false} decimals={4} />
+                    </td>
+                    <td>
+                      <FormattedNumber value={txn.price_per_unit} currency={true} />
+                    </td>
+                    <td>
+                      <FormattedNumber value={txn.total_without_fees} currency={true} />
+                    </td>
                   </tr>
                 ))}
               </tbody>

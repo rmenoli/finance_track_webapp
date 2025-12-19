@@ -2,7 +2,6 @@ from datetime import date
 from decimal import Decimal
 from typing import Optional
 
-from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.constants import DEFAULT_PAGE_SIZE, TransactionType

@@ -170,6 +170,25 @@ src/
   - Color-coded segments matching portfolio distribution chart style
   - Auto-updates when asset values or exchange rate changes
 
+### Architecture & Design Principles
+
+**Backend-First Calculations**: The frontend follows a pure presentation layer pattern where all financial calculations are performed on the backend. Components display pre-calculated values from API responses rather than performing calculations locally.
+
+**Benefits of this approach:**
+- Single source of truth for all financial calculations
+- Backend uses Python `Decimal` type for financial precision (no floating-point errors)
+- Consistent results across all views and components
+- Simpler frontend code focused on UI/UX
+- Calculations are thoroughly tested on the backend (206 tests)
+
+**Examples:**
+- Transaction totals (`total_without_fees`, `total_with_fees`) are computed fields from backend
+- Holdings metrics (`net_buy_in_cost`, `net_buy_in_cost_per_unit`, `current_price_per_unit`) come from backend
+- P/L calculations (absolute and percentage) are performed on backend
+- Components like `TransactionList` and `DashboardHoldingsTable` only display these pre-calculated values
+
+**Note**: The only exception is the Other Assets currency conversion (CZK to EUR), which is currently client-side but may be moved to backend in future iterations for full consistency.
+
 ### Validation
 
 Client-side validation matches backend rules:

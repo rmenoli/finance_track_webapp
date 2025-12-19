@@ -29,55 +29,51 @@ function TransactionList({ transactions, onEdit, onDelete }) {
             </tr>
           </thead>
           <tbody>
-            {transactions.map((txn) => {
-              const total = parseFloat(txn.units) * parseFloat(txn.price_per_unit);
-              const totalWithFees = total + parseFloat(txn.fee);
-              return (
-                <tr key={txn.id}>
-                  <td>{new Date(txn.date).toLocaleDateString()}</td>
-                  <td><strong>{txn.isin}</strong></td>
-                  <td>{txn.broker}</td>
-                  <td>
-                    <span className={`badge badge-${txn.transaction_type.toLowerCase()}`}>
-                      {txn.transaction_type}
-                    </span>
-                  </td>
-                  <td>
-                    <FormattedNumber value={txn.units} currency={false} decimals={0} />
-                  </td>
-                  <td>
-                    <FormattedNumber value={txn.price_per_unit} currency={true} />
-                  </td>
-                  <td>
-                    <FormattedNumber value={total} currency={true} />
-                  </td>
-                  <td>
-                    <FormattedNumber value={txn.fee} currency={true} />
-                  </td>
-                  <td>
-                    <FormattedNumber value={totalWithFees} currency={true} />
-                  </td>
-                  <td>
-                    <div className="action-buttons">
-                      <button
-                        onClick={() => onEdit(txn.id)}
-                        className="btn-icon"
-                        title="Edit"
-                      >
-                        ✏️
-                      </button>
-                      <button
-                        onClick={() => onDelete(txn.id)}
-                        className="btn-icon"
-                        title="Delete"
-                      >
-                        🗑️
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              );
-            })}
+            {transactions.map((txn) => (
+              <tr key={txn.id}>
+                <td>{new Date(txn.date).toLocaleDateString()}</td>
+                <td><strong>{txn.isin}</strong></td>
+                <td>{txn.broker}</td>
+                <td>
+                  <span className={`badge badge-${txn.transaction_type.toLowerCase()}`}>
+                    {txn.transaction_type}
+                  </span>
+                </td>
+                <td>
+                  <FormattedNumber value={txn.units} currency={false} decimals={0} />
+                </td>
+                <td>
+                  <FormattedNumber value={txn.price_per_unit} currency={true} />
+                </td>
+                <td>
+                  <FormattedNumber value={txn.total_without_fees} currency={true} />
+                </td>
+                <td>
+                  <FormattedNumber value={txn.fee} currency={true} />
+                </td>
+                <td>
+                  <FormattedNumber value={txn.total_with_fees} currency={true} />
+                </td>
+                <td>
+                  <div className="action-buttons">
+                    <button
+                      onClick={() => onEdit(txn.id)}
+                      className="btn-icon"
+                      title="Edit"
+                    >
+                      ✏️
+                    </button>
+                    <button
+                      onClick={() => onDelete(txn.id)}
+                      className="btn-icon"
+                      title="Delete"
+                    >
+                      🗑️
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            ))}
           </tbody>
         </table>
       </div>

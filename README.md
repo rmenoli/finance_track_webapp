@@ -47,7 +47,7 @@ A full-stack web application for tracking ETF portfolio transactions with automa
 |-------|-----------|
 | **Backend** | FastAPI, SQLAlchemy 2.0, SQLite, Alembic, Pydantic |
 | **Frontend** | React 18, Vite, React Router v6, CSS, Chart.js |
-| **Testing** | Pytest (196 tests, 95% coverage) |
+| **Testing** | Pytest (206 tests, 95% coverage) |
 | **Tools** | UV (Python), npm (Node.js), Ruff (linting) |
 
 ---
@@ -406,7 +406,7 @@ realized_gain = (sell_price × units - fee) - cost_removed
 ## Project Status
 
 **Current Version**: Development
-**Test Coverage**: 95% (196 tests)
+**Test Coverage**: 95% (206 tests)
 **Frontend Pages**: 5 pages (Investment Dashboard, Transactions, Add/Edit Transaction, ISIN Metadata Management, Other Assets)
 **Backend Endpoints**: 20 endpoints (5 transaction, 1 analytics, 4 position values, 6 ISIN metadata, 4 other assets)
 

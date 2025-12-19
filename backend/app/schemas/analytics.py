@@ -1,7 +1,7 @@
 from decimal import Decimal
 from typing import Optional
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, computed_field
 
 
 class CostBasisResponse(BaseModel):
@@ -34,6 +34,28 @@ class CostBasisResponse(BaseModel):
     percentage_pl_with_fees: Optional[Decimal] = Field(
         None, description="Percentage profit/loss with fees"
     )
+
+    @computed_field
+    @property
+    def net_buy_in_cost(self) -> Decimal:
+        """Calculate net buy-in cost (total_cost - total_gains, both without fees)."""
+        return self.total_cost_without_fees - self.total_gains_without_fees
+
+    @computed_field
+    @property
+    def net_buy_in_cost_per_unit(self) -> Optional[Decimal]:
+        """Calculate net buy-in cost per unit. Returns None if no units held."""
+        if self.total_units > 0:
+            return self.net_buy_in_cost / self.total_units
+        return None
+
+    @computed_field
+    @property
+    def current_price_per_unit(self) -> Optional[Decimal]:
+        """Calculate current price per unit. Returns None if no current value or no units."""
+        if self.current_value and self.total_units > 0:
+            return self.current_value / self.total_units
+        return None
 
     model_config = ConfigDict(from_attributes=True)
 
