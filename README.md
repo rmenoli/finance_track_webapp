@@ -28,12 +28,13 @@ A full-stack web application for tracking ETF portfolio transactions with automa
 - ✅ Real-time portfolio analytics and holdings
 - ✅ ISIN validation and date range filtering
 - ✅ Persistent position value tracking with manual entry
+- ✅ ISIN metadata management (asset names and types)
 
 **User Experience**
 - ✅ Clean, responsive React UI
 - ✅ Interactive API documentation (Swagger UI)
 - ✅ Fast development with hot reload
-- ✅ Comprehensive test coverage (96%)
+- ✅ Comprehensive test coverage (95%)
 
 ### Tech Stack
 
@@ -41,7 +42,7 @@ A full-stack web application for tracking ETF portfolio transactions with automa
 |-------|-----------|
 | **Backend** | FastAPI, SQLAlchemy 2.0, SQLite, Alembic, Pydantic |
 | **Frontend** | React 18, Vite, React Router v6, CSS |
-| **Testing** | Pytest (92 tests, 96% coverage) |
+| **Testing** | Pytest (152 tests, 95% coverage) |
 | **Tools** | UV (Python), npm (Node.js), Ruff (linting) |
 
 ---
@@ -104,7 +105,7 @@ finance_track_webapp/
 │   │   └── schemas/                  # Pydantic schemas
 │   ├── alembic/                      # Database migrations
 │   │   └── versions/                 # Migration files
-│   ├── tests/                        # Backend tests (108 tests, 96% coverage)
+│   ├── tests/                        # Backend tests (152 tests, 95% coverage)
 │   ├── pyproject.toml                # Python dependencies
 │   ├── uv.lock                       # Dependency lock file
 │   ├── alembic.ini                   # Alembic configuration
@@ -196,7 +197,7 @@ npm run build              # Verify build works
 
 ### Backend Tests
 
-96% coverage across 108 tests:
+95% coverage across 152 tests:
 
 ```bash
 cd backend
@@ -287,6 +288,16 @@ All endpoints are prefixed with `/api/v1`
 | GET | `/position-values` | List all position values |
 | GET | `/position-values/{isin}` | Get position value by ISIN |
 | DELETE | `/position-values/{isin}` | Delete position value |
+
+#### ISIN Metadata Endpoints
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/isin-metadata` | Create ISIN metadata (name, type) |
+| POST | `/isin-metadata/upsert` | Create or update ISIN metadata |
+| GET | `/isin-metadata?type={type}` | List all ISIN metadata (with optional type filter) |
+| GET | `/isin-metadata/{isin}` | Get ISIN metadata by ISIN |
+| PUT | `/isin-metadata/{isin}` | Update ISIN metadata |
+| DELETE | `/isin-metadata/{isin}` | Delete ISIN metadata |
 
 **Full interactive API documentation:** http://localhost:8000/docs (Swagger UI)
 
@@ -382,9 +393,9 @@ realized_gain = (sell_price × units - fee) - cost_removed
 ## Project Status
 
 **Current Version**: Development
-**Test Coverage**: 96% (92 tests)
-**Frontend Pages**: Investment Dashboard, Transactions, Add/Edit Transaction
-**Backend Endpoints**: 10 endpoints (5 transaction, 1 analytics, 4 position values)
+**Test Coverage**: 95% (152 tests)
+**Frontend Pages**: 4 pages (Investment Dashboard, Transactions, Add/Edit Transaction, ISIN Metadata Management)
+**Backend Endpoints**: 16 endpoints (5 transaction, 1 analytics, 4 position values, 6 ISIN metadata)
 
 ---
 

@@ -19,6 +19,11 @@ function Navigation() {
               Transactions
             </NavLink>
           </li>
+          <li>
+            <NavLink to="/isin-metadata" className={({ isActive }) => isActive ? 'active' : ''}>
+              ISIN Metadata
+            </NavLink>
+          </li>
         </ul>
       </div>
     </nav>

@@ -1,24 +1,34 @@
 import { useEffect, useState, useCallback } from 'react';
-import { analyticsAPI, transactionsAPI } from '../services/api';
+import { analyticsAPI, transactionsAPI, isinMetadataAPI } from '../services/api';
 import PortfolioSummary from '../components/PortfolioSummary';
 import './InvestmentDashboard.css';
 
 function InvestmentDashboard() {
   const [summary, setSummary] = useState(null);
   const [recentTransactions, setRecentTransactions] = useState([]);
+  const [isinNames, setIsinNames] = useState({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
   const loadDashboardData = useCallback(async () => {
     try {
       setLoading(true);
-      const [summaryData, transactionsData] = await Promise.all([
+      const [summaryData, transactionsData, isinMetadataData] = await Promise.all([
         analyticsAPI.getPortfolioSummary(),
-        transactionsAPI.getAll({ limit: 5, sort_by: 'date', sort_order: 'desc' })
+        transactionsAPI.getAll({ limit: 5, sort_by: 'date', sort_order: 'desc' }),
+        isinMetadataAPI.getAll()
       ]);
 
       setSummary(summaryData);
       setRecentTransactions(transactionsData.transactions || []);
+
+      // Convert ISIN metadata array to map: { ISIN: name }
+      const namesMap = {};
+      isinMetadataData.items.forEach(metadata => {
+        namesMap[metadata.isin] = metadata.name;
+      });
+      setIsinNames(namesMap);
+
       setError(null);
     } catch (err) {
       setError(err.message);
@@ -43,7 +53,7 @@ function InvestmentDashboard() {
     <div className="dashboard">
       <h1>Investment Dashboard</h1>
 
-      {summary && <PortfolioSummary data={summary} onDataChange={loadDashboardData} />}
+      {summary && <PortfolioSummary data={summary} onDataChange={loadDashboardData} isinNames={isinNames} />}
 
       <div className="dashboard-section">
         <h2>Recent Transactions</h2>

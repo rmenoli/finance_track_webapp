@@ -128,7 +128,7 @@ uv run ruff format .
 ```bash
 cd backend
 
-# Run all tests (108 tests, 96% coverage)
+# Run all tests (152 tests, 95% coverage)
 uv run pytest
 
 # Run with verbose output
@@ -171,26 +171,39 @@ finance_track_webapp/
 │   │   ├── constants.py       # Constants and enums
 │   │   ├── exceptions.py      # Custom exceptions
 │   │   ├── models/            # SQLAlchemy models (database layer)
-│   │   │   └── transaction.py
+│   │   │   ├── transaction.py
+│   │   │   ├── position_value.py
+│   │   │   └── isin_metadata.py
 │   │   ├── schemas/           # Pydantic schemas (validation layer)
 │   │   │   ├── transaction.py
-│   │   │   └── analytics.py
+│   │   │   ├── analytics.py
+│   │   │   ├── position_value.py
+│   │   │   └── isin_metadata.py
 │   │   ├── routers/           # API route handlers (HTTP layer)
 │   │   │   ├── transactions.py
-│   │   │   └── analytics.py
+│   │   │   ├── analytics.py
+│   │   │   ├── position_values.py
+│   │   │   └── isin_metadata.py
 │   │   └── services/          # Business logic (service layer)
 │   │       ├── transaction_service.py
-│   │       └── cost_basis_service.py
+│   │       ├── cost_basis_service.py
+│   │       ├── position_value_service.py
+│   │       └── isin_metadata_service.py
 │   ├── alembic/               # Database migrations
 │   │   ├── versions/          # Migration files
 │   │   ├── env.py             # Alembic environment
 │   │   └── script.py.mako     # Migration template
-│   ├── tests/                 # Test suite (96% coverage, 108 tests)
+│   ├── tests/                 # Test suite (95% coverage, 152 tests)
 │   │   ├── conftest.py       # Test fixtures
 │   │   ├── test_transaction_service.py
 │   │   ├── test_cost_basis_service.py
+│   │   ├── test_position_value_service.py
+│   │   ├── test_isin_metadata_service.py
 │   │   ├── test_api_transactions.py
 │   │   ├── test_api_analytics.py
+│   │   ├── test_api_position_values.py
+│   │   ├── test_api_isin_metadata.py
+│   │   ├── test_position_value_cleanup.py
 │   │   └── test_schemas.py
 │   ├── .env                   # Environment variables (gitignored)
 │   ├── .env.example          # Environment template
@@ -207,14 +220,18 @@ finance_track_webapp/
 │   │   │   ├── Navigation.jsx # Navigation bar
 │   │   │   ├── TransactionForm.jsx    # Add/edit transaction form
 │   │   │   ├── TransactionList.jsx    # Transaction table
+│   │   │   ├── ISINMetadataForm.jsx   # Add/edit ISIN metadata form
+│   │   │   ├── ISINMetadataList.jsx   # ISIN metadata table
 │   │   │   ├── DashboardHoldingsTable.jsx  # Holdings table for dashboard
 │   │   │   └── PortfolioSummary.jsx   # Dashboard summary cards
 │   │   ├── pages/             # Page-level components
 │   │   │   ├── InvestmentDashboard.jsx  # Portfolio overview page
 │   │   │   ├── Transactions.jsx         # Transaction management
-│   │   │   └── AddTransaction.jsx       # Add/edit transaction page
+│   │   │   ├── AddTransaction.jsx       # Add/edit transaction page
+│   │   │   ├── ISINMetadata.jsx         # ISIN metadata management
+│   │   │   └── AddISINMetadata.jsx      # Add/edit ISIN metadata page
 │   │   ├── services/          # API client
-│   │   │   └── api.js         # Fetch-based API client
+│   │   │   └── api.js         # Fetch-based API client (transactions, analytics, positionValues, isinMetadata)
 │   │   ├── App.jsx            # Main app with routing
 │   │   └── main.jsx           # Entry point
 │   ├── .env.development       # Development environment
@@ -325,6 +342,14 @@ All routes prefixed with `/api/v1`:
 - `GET /position-values/{isin}` - Get by ISIN
 - `DELETE /position-values/{isin}` - Delete by ISIN
 
+**ISIN Metadata**:
+- `POST /isin-metadata` - Create ISIN metadata (name and type)
+- `POST /isin-metadata/upsert` - Create or update (UPSERT by ISIN)
+- `GET /isin-metadata?type={type}` - List all with optional type filter
+- `GET /isin-metadata/{isin}` - Get by ISIN
+- `PUT /isin-metadata/{isin}` - Update metadata
+- `DELETE /isin-metadata/{isin}` - Delete by ISIN
+
 Interactive docs: http://localhost:8000/docs (Swagger UI)
 
 ## Common Development Scenarios
@@ -380,23 +405,28 @@ When modifying, maintain chronological transaction processing (ORDER BY date).
 1. **Investment Dashboard** (`/`) - Portfolio summary, holdings table, key metrics
 2. **Transactions** (`/transactions`) - Full transaction list with filters and CRUD operations
 3. **Add/Edit Transaction** (`/transactions/add`, `/transactions/edit/:id`) - Transaction form
+4. **ISIN Metadata** (`/isin-metadata`) - ISIN metadata list with type filtering and CRUD operations
+5. **Add/Edit ISIN Metadata** (`/isin-metadata/add`, `/isin-metadata/edit/:isin`) - ISIN metadata form
 
 **Key Components**:
 - **Layout**: Main wrapper with navigation for all pages
-- **Navigation**: Navigation bar with route links
+- **Navigation**: Navigation bar with route links (Dashboard, Transactions, ISIN Metadata)
 - **TransactionForm**: Reusable form for creating/editing transactions
 - **TransactionList**: Table view with filters and actions
+- **ISINMetadataForm**: Reusable form for creating/editing ISIN metadata (ISIN, name, type)
+- **ISINMetadataList**: Table view with type badges and actions
 - **DashboardHoldingsTable**: Detailed holdings display for dashboard
 - **PortfolioSummary**: Summary cards showing portfolio metrics
 
 **Routing**: React Router v6 with nested routes
 - Layout component wraps all pages
-- Routes: `/`, `/transactions`, `/transactions/add`, `/transactions/edit/:id`
+- Routes: `/`, `/transactions`, `/transactions/add`, `/transactions/edit/:id`, `/isin-metadata`, `/isin-metadata/add`, `/isin-metadata/edit/:isin`
 
 **API Client** (`frontend/src/services/api.js`):
 - `transactionsAPI`: CRUD operations for transactions
 - `analyticsAPI`: Portfolio analytics (summary with holdings, total invested, total fees)
 - `positionValuesAPI`: Manual position value tracking (UPSERT, list, get, delete)
+- `isinMetadataAPI`: ISIN metadata management (CRUD, UPSERT, type filtering)
 
 **Styling**: Component-scoped CSS files with global utility classes in `index.css`
 
@@ -424,6 +454,11 @@ When modifying, maintain chronological transaction processing (ORDER BY date).
 **Position Value Schema**:
 - **ISIN**: 1-12 characters (no format validation - allows any string)
 - **Current value**: Must be > 0
+
+**ISIN Metadata Schema**:
+- **ISIN**: Exactly 12 characters (2 letters + 9 alphanumeric + 1 digit), auto-uppercase
+- **Name**: 1-255 characters, whitespace stripped
+- **Type**: Must be one of `STOCK`, `BOND`, or `REAL_ASSET`
 
 ISIN format validation in `backend/app/constants.py`: `ISIN_PATTERN`
 
@@ -548,10 +583,10 @@ For detailed information, see:
 ## Project Status Summary
 
 **Current Version**: Development
-**Test Coverage**: 96% (92 backend tests)
-**Backend Endpoints**: 10 total (5 transaction, 1 analytics, 4 position values)
-**Frontend Pages**: 3 (Investment Dashboard, Transactions, Add/Edit Transaction)
-**Frontend Components**: 6 main components (Layout, Navigation, TransactionForm, TransactionList, DashboardHoldingsTable, PortfolioSummary)
+**Test Coverage**: 95% (152 backend tests)
+**Backend Endpoints**: 16 total (5 transaction, 1 analytics, 4 position values, 6 ISIN metadata)
+**Frontend Pages**: 5 (Investment Dashboard, Transactions, Add/Edit Transaction, ISIN Metadata, Add/Edit ISIN Metadata)
+**Frontend Components**: 8 main components (Layout, Navigation, TransactionForm, TransactionList, ISINMetadataForm, ISINMetadataList, DashboardHoldingsTable, PortfolioSummary)
 
 ---
 

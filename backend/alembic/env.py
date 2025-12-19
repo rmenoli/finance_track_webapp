@@ -12,6 +12,7 @@ from app.database import Base
 # Import all models here for autogenerate support
 from app.models.transaction import Transaction  # noqa: F401
 from app.models.position_value import PositionValue  # noqa: F401
+from app.models.isin_metadata import ISINMetadata  # noqa: F401
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.

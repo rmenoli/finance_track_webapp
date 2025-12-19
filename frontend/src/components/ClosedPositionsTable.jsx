@@ -1,7 +1,7 @@
 import './DashboardHoldingsTable.css';
 import FormattedNumber from './FormattedNumber';
 
-function ClosedPositionsTable({ closedPositions }) {
+function ClosedPositionsTable({ closedPositions, isinNames = {} }) {
   const calculatePL = (position) => {
     // P/L without fees
     const totalCostWithoutFees = parseFloat(position.total_cost_without_fees);
@@ -47,7 +47,12 @@ function ClosedPositionsTable({ closedPositions }) {
               <tr key={position.isin}>
                 {/* ISIN */}
                 <td>
-                  <strong>{position.isin}</strong>
+                  {isinNames[position.isin] && (
+                    <div style={{ fontWeight: 'bold', fontSize: '0.9em', color: '#333', marginBottom: '2px' }}>
+                      {isinNames[position.isin]}
+                    </div>
+                  )}
+                  <span style={{ fontStyle: 'italic' }}>{position.isin}</span>
                 </td>
 
                 {/* Buy In (total cost without fees) */}

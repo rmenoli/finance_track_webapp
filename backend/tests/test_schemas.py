@@ -5,9 +5,10 @@ from decimal import Decimal
 import pytest
 from pydantic import ValidationError
 
-from app.constants import TransactionType
+from app.constants import ISINType, TransactionType
 from app.schemas.transaction import TransactionCreate, TransactionUpdate
 from app.schemas.position_value import PositionValueCreate
+from app.schemas.isin_metadata import ISINMetadataCreate, ISINMetadataUpdate
 
 
 class TestTransactionSchemas:
@@ -373,3 +374,132 @@ class TestPositionValueSchemas:
         # Missing isin
         with pytest.raises(ValidationError):
             PositionValueCreate(current_value=Decimal("1000.00"))
+
+
+class TestISINMetadataSchemas:
+    """Test ISIN metadata schema validation."""
+
+    def test_isin_metadata_create_valid(self):
+        """Test creating valid ISIN metadata schema."""
+        metadata = ISINMetadataCreate(
+            isin="IE00B4L5Y983",
+            name="iShares Core MSCI Emerging Markets ETF",
+            type=ISINType.STOCK
+        )
+
+        assert metadata.isin == "IE00B4L5Y983"
+        assert metadata.name == "iShares Core MSCI Emerging Markets ETF"
+        assert metadata.type == ISINType.STOCK
+
+    def test_isin_metadata_create_isin_uppercase_conversion(self):
+        """Test that ISIN is converted to uppercase."""
+        metadata = ISINMetadataCreate(
+            isin="ie00b4l5y983",  # lowercase
+            name="Test ETF",
+            type=ISINType.STOCK
+        )
+
+        assert metadata.isin == "IE00B4L5Y983"  # Should be uppercase
+
+    def test_isin_metadata_create_invalid_isin_format(self):
+        """Test that invalid ISIN format is rejected."""
+        with pytest.raises(ValidationError) as exc_info:
+            ISINMetadataCreate(
+                isin="1234567890AB",  # Wrong format (starts with digits)
+                name="Test ETF",
+                type=ISINType.STOCK
+            )
+
+        assert "ISIN must be 12 characters" in str(exc_info.value)
+
+    def test_isin_metadata_create_name_strip_whitespace(self):
+        """Test that name whitespace is stripped."""
+        metadata = ISINMetadataCreate(
+            isin="IE00B4L5Y983",
+            name="  Test ETF  ",  # Leading/trailing whitespace
+            type=ISINType.STOCK
+        )
+
+        assert metadata.name == "Test ETF"  # Whitespace should be stripped
+
+    def test_isin_metadata_create_empty_name_rejected(self):
+        """Test that empty name is rejected."""
+        with pytest.raises(ValidationError):
+            ISINMetadataCreate(
+                isin="IE00B4L5Y983",
+                name="",
+                type=ISINType.STOCK
+            )
+
+    def test_isin_metadata_create_invalid_type(self):
+        """Test that invalid type is rejected."""
+        with pytest.raises(ValidationError):
+            ISINMetadataCreate(
+                isin="IE00B4L5Y983",
+                name="Test ETF",
+                type="INVALID_TYPE"  # Not a valid ISINType
+            )
+
+    def test_isin_metadata_create_all_types(self):
+        """Test all valid ISIN types."""
+        for isin_type in [ISINType.STOCK, ISINType.BOND, ISINType.REAL_ASSET]:
+            metadata = ISINMetadataCreate(
+                isin="IE00B4L5Y983",
+                name="Test Asset",
+                type=isin_type
+            )
+            assert metadata.type == isin_type
+
+    def test_isin_metadata_create_missing_fields(self):
+        """Test that missing required fields are rejected."""
+        # Missing name
+        with pytest.raises(ValidationError):
+            ISINMetadataCreate(isin="IE00B4L5Y983", type=ISINType.STOCK)
+
+        # Missing type
+        with pytest.raises(ValidationError):
+            ISINMetadataCreate(isin="IE00B4L5Y983", name="Test ETF")
+
+        # Missing isin
+        with pytest.raises(ValidationError):
+            ISINMetadataCreate(name="Test ETF", type=ISINType.STOCK)
+
+    def test_isin_metadata_update_partial_fields(self):
+        """Test updating with only some fields."""
+        # Update only name
+        update = ISINMetadataUpdate(name="New Name")
+        assert update.name == "New Name"
+        assert update.type is None
+
+        # Update only type
+        update2 = ISINMetadataUpdate(type=ISINType.BOND)
+        assert update2.name is None
+        assert update2.type == ISINType.BOND
+
+    def test_isin_metadata_update_all_fields_optional(self):
+        """Test that all fields in update are optional."""
+        update = ISINMetadataUpdate()
+        assert update.name is None
+        assert update.type is None
+
+    def test_isin_metadata_update_name_strip_whitespace(self):
+        """Test that name whitespace is stripped in updates."""
+        update = ISINMetadataUpdate(name="  Updated Name  ")
+        assert update.name == "Updated Name"
+
+    def test_valid_isin_metadata_formats(self):
+        """Test various valid ISIN formats for metadata."""
+        valid_isins = [
+            "IE00B4L5Y983",  # Irish ISIN
+            "US0378331005",  # US ISIN
+            "GB0002374006",  # UK ISIN
+            "DE0005140008",  # German ISIN
+        ]
+
+        for isin in valid_isins:
+            metadata = ISINMetadataCreate(
+                isin=isin,
+                name="Test Asset",
+                type=ISINType.STOCK
+            )
+            assert metadata.isin == isin

@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import settings
-from app.routers import analytics, position_values, transactions
+from app.routers import analytics, isin_metadata, position_values, transactions
 
 # Create FastAPI application
 app = FastAPI(
@@ -24,6 +24,7 @@ app.add_middleware(
 # Include routers
 app.include_router(transactions.router, prefix=settings.api_v1_prefix)
 app.include_router(analytics.router, prefix=settings.api_v1_prefix)
+app.include_router(isin_metadata.router, prefix=settings.api_v1_prefix)
 app.include_router(position_values.router, prefix=settings.api_v1_prefix)
 
 

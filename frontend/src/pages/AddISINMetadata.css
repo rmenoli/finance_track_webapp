@@ -1,0 +1,43 @@
+.add-isin-metadata-page {
+  padding: 2rem;
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+.add-isin-metadata-page h1 {
+  margin-bottom: 2rem;
+  color: #212529;
+}
+
+.form-card {
+  background: white;
+  padding: 2rem;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.loading {
+  text-align: center;
+  padding: 3rem;
+  color: #6c757d;
+}
+
+.error {
+  padding: 1rem;
+  background-color: #f8d7da;
+  border: 1px solid #f5c6cb;
+  border-radius: 4px;
+  color: #721c24;
+  margin: 2rem;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .add-isin-metadata-page {
+    padding: 1rem;
+  }
+
+  .form-card {
+    padding: 1rem;
+  }
+}

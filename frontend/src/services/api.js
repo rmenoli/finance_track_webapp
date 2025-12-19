@@ -119,8 +119,76 @@ export const positionValuesAPI = {
   },
 };
 
+// ISIN Metadata API methods
+export const isinMetadataAPI = {
+  // Get all ISIN metadata with optional type filter
+  getAll: async (params = {}) => {
+    const query = new URLSearchParams();
+    Object.entries(params).forEach(([key, value]) => {
+      if (value !== undefined && value !== null && value !== '') {
+        query.append(key, value);
+      }
+    });
+
+    const url = `${API_BASE_URL}/isin-metadata${query.toString() ? '?' + query.toString() : ''}`;
+    const response = await fetch(url);
+    return handleResponse(response);
+  },
+
+  // Get single ISIN metadata by ISIN
+  getByIsin: async (isin) => {
+    const response = await fetch(`${API_BASE_URL}/isin-metadata/${isin}`);
+    return handleResponse(response);
+  },
+
+  // Create new ISIN metadata
+  create: async (data) => {
+    const response = await fetch(`${API_BASE_URL}/isin-metadata`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(data),
+    });
+    return handleResponse(response);
+  },
+
+  // Update existing ISIN metadata
+  update: async (isin, data) => {
+    const response = await fetch(`${API_BASE_URL}/isin-metadata/${isin}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(data),
+    });
+    return handleResponse(response);
+  },
+
+  // Delete ISIN metadata
+  delete: async (isin) => {
+    const response = await fetch(`${API_BASE_URL}/isin-metadata/${isin}`, {
+      method: 'DELETE',
+    });
+    return handleResponse(response);
+  },
+
+  // Create or update ISIN metadata (UPSERT)
+  upsert: async (data) => {
+    const response = await fetch(`${API_BASE_URL}/isin-metadata/upsert`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(data),
+    });
+    return handleResponse(response);
+  },
+};
+
 export default {
   transactions: transactionsAPI,
   analytics: analyticsAPI,
   positionValues: positionValuesAPI,
+  isinMetadata: isinMetadataAPI,
 };

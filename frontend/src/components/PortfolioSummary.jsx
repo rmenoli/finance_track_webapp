@@ -3,7 +3,7 @@ import DashboardHoldingsTable from './DashboardHoldingsTable';
 import ClosedPositionsTable from './ClosedPositionsTable';
 import FormattedNumber from './FormattedNumber';
 
-function PortfolioSummary({ data, onDataChange }) {
+function PortfolioSummary({ data, onDataChange, isinNames }) {
   return (
     <div className="portfolio-summary">
       {/* Hero Section - Most Important Metrics */}
@@ -59,7 +59,7 @@ function PortfolioSummary({ data, onDataChange }) {
         {data.holdings.length === 0 ? (
           <p>No holdings yet.</p>
         ) : (
-          <DashboardHoldingsTable holdings={data.holdings} onPositionValueChange={onDataChange} />
+          <DashboardHoldingsTable holdings={data.holdings} onPositionValueChange={onDataChange} isinNames={isinNames} />
         )}
       </div>
 
@@ -69,7 +69,7 @@ function PortfolioSummary({ data, onDataChange }) {
         {!data.closed_positions || data.closed_positions.length === 0 ? (
           <p>No closed positions yet.</p>
         ) : (
-          <ClosedPositionsTable closedPositions={data.closed_positions} />
+          <ClosedPositionsTable closedPositions={data.closed_positions} isinNames={isinNames} />
         )}
       </div>
     </div>

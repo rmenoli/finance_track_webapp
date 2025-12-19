@@ -42,3 +42,23 @@ class PositionValueNotFoundError(HTTPException):
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Position value for ISIN {isin} not found",
         )
+
+
+class ISINMetadataNotFoundError(HTTPException):
+    """Exception raised when ISIN metadata is not found."""
+
+    def __init__(self, isin: str):
+        super().__init__(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"ISIN metadata for {isin} not found",
+        )
+
+
+class ISINMetadataAlreadyExistsError(HTTPException):
+    """Exception raised when trying to create duplicate ISIN metadata."""
+
+    def __init__(self, isin: str):
+        super().__init__(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"ISIN metadata for {isin} already exists",
+        )

@@ -2,8 +2,9 @@ import { useState, useEffect } from 'react';
 import { positionValuesAPI } from '../services/api';
 import './DashboardHoldingsTable.css';
 import FormattedNumber from './FormattedNumber';
+import HoldingsDistributionChart from './HoldingsDistributionChart';
 
-function DashboardHoldingsTable({ holdings, onPositionValueChange }) {
+function DashboardHoldingsTable({ holdings, onPositionValueChange, isinNames = {} }) {
   const [currentValues, setCurrentValues] = useState({});
   const [editingIsin, setEditingIsin] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -116,14 +117,22 @@ function DashboardHoldingsTable({ holdings, onPositionValueChange }) {
   }
 
   return (
-    <div className="table-container">
-      {error && (
-        <div className="error-message" style={{ color: 'orange', marginBottom: '10px' }}>
-          {error}
-        </div>
-      )}
+    <>
+      {/* Holdings Distribution Chart */}
+      <HoldingsDistributionChart
+        holdings={holdings}
+        currentValues={currentValues}
+        isinNames={isinNames}
+      />
 
-      <table className="table dashboard-holdings-table">
+      <div className="table-container">
+        {error && (
+          <div className="error-message" style={{ color: 'orange', marginBottom: '10px' }}>
+            {error}
+          </div>
+        )}
+
+        <table className="table dashboard-holdings-table">
         <thead>
           <tr>
             <th>ISIN</th>
@@ -145,7 +154,12 @@ function DashboardHoldingsTable({ holdings, onPositionValueChange }) {
               <tr key={holding.isin}>
                 {/* ISIN */}
                 <td>
-                  <strong>{holding.isin}</strong>
+                  {isinNames[holding.isin] && (
+                    <div style={{ fontWeight: 'bold', fontSize: '0.9em', color: '#333', marginBottom: '2px' }}>
+                      {isinNames[holding.isin]}
+                    </div>
+                  )}
+                  <span style={{ fontStyle: 'italic' }}>{holding.isin}</span>
                 </td>
 
                 {/* Buy In */}
@@ -254,6 +268,7 @@ function DashboardHoldingsTable({ holdings, onPositionValueChange }) {
         </tbody>
       </table>
     </div>
+    </>
   );
 }
 

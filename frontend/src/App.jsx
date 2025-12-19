@@ -3,6 +3,8 @@ import Layout from './components/Layout';
 import InvestmentDashboard from './pages/InvestmentDashboard';
 import Transactions from './pages/Transactions';
 import AddTransaction from './pages/AddTransaction';
+import ISINMetadata from './pages/ISINMetadata';
+import AddISINMetadata from './pages/AddISINMetadata';
 import './App.css';
 
 function App() {
@@ -14,6 +16,9 @@ function App() {
           <Route path="transactions" element={<Transactions />} />
           <Route path="transactions/add" element={<AddTransaction />} />
           <Route path="transactions/edit/:id" element={<AddTransaction />} />
+          <Route path="isin-metadata" element={<ISINMetadata />} />
+          <Route path="isin-metadata/add" element={<AddISINMetadata />} />
+          <Route path="isin-metadata/edit/:isin" element={<AddISINMetadata />} />
         </Route>
       </Routes>
     </BrowserRouter>

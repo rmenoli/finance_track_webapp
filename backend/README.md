@@ -25,7 +25,7 @@ FastAPI backend service for tracking ETF transactions with automatic cost basis 
 - **Validation**: Pydantic 2.12.5 (data validation and settings)
 - **Package Manager**: UV (fast Python package manager)
 - **Server**: Uvicorn 0.38.0 (ASGI server)
-- **Testing**: Pytest 9.0.2 with 96% coverage (108 tests)
+- **Testing**: Pytest 9.0.2 with 95% coverage (152 tests)
 - **Code Quality**: Ruff 0.14.9 (linting and formatting)
 
 ## Prerequisites
@@ -231,6 +231,19 @@ All endpoints are prefixed with `/api/v1`
 
 **Position Values** allow users to manually track the current market value of their positions. Values are stored per ISIN with automatic timestamp tracking. When creating/updating, the system uses UPSERT logic - one row per ISIN that updates if it exists or creates if new.
 
+#### ISIN Metadata Endpoints
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/isin-metadata` | Create new ISIN metadata (name and type) |
+| POST | `/isin-metadata/upsert` | Create or update ISIN metadata (UPSERT by ISIN) |
+| GET | `/isin-metadata?type={type}` | List all ISIN metadata with optional type filter |
+| GET | `/isin-metadata/{isin}` | Get ISIN metadata for specific ISIN |
+| PUT | `/isin-metadata/{isin}` | Update ISIN metadata (name and/or type) |
+| DELETE | `/isin-metadata/{isin}` | Delete ISIN metadata by ISIN |
+
+**ISIN Metadata** stores asset information (name and type) for each ISIN. The type field is an enum with three values: `STOCK`, `BOND`, or `REAL_ASSET`. This feature enables categorizing ISINs and displaying meaningful names instead of bare ISIN codes. The metadata is independent of transactions - you can have metadata without transactions and vice versa.
+
 ### Example Requests
 
 #### Create a Transaction
@@ -272,6 +285,31 @@ curl -X POST http://localhost:8000/api/v1/position-values \
 curl http://localhost:8000/api/v1/position-values
 ```
 
+#### Create ISIN Metadata
+
+```bash
+curl -X POST http://localhost:8000/api/v1/isin-metadata \
+  -H "Content-Type: application/json" \
+  -d '{
+    "isin": "IE00B4L5Y983",
+    "name": "iShares Core MSCI Emerging Markets ETF",
+    "type": "STOCK"
+  }'
+```
+
+#### List ISIN Metadata by Type
+
+```bash
+# Get all stocks
+curl "http://localhost:8000/api/v1/isin-metadata?type=STOCK"
+
+# Get all bonds
+curl "http://localhost:8000/api/v1/isin-metadata?type=BOND"
+
+# Get all real assets
+curl "http://localhost:8000/api/v1/isin-metadata?type=REAL_ASSET"
+```
+
 ### Validation Rules
 
 **Transaction Validation:**
@@ -281,6 +319,11 @@ curl http://localhost:8000/api/v1/position-values
 - **Price per unit**: Must be > 0
 - **Fee**: Must be >= 0
 - **Transaction type**: Either "BUY" or "SELL"
+
+**ISIN Metadata Validation:**
+- **ISIN**: Exactly 12 characters (2 letters + 9 alphanumeric + 1 digit), auto-uppercase
+- **Name**: 1-255 characters, whitespace stripped
+- **Type**: Must be one of `STOCK`, `BOND`, or `REAL_ASSET`
 
 **Position Value Validation:**
 - **ISIN**: 1-12 characters (no format validation - allows any string)
@@ -354,13 +397,13 @@ uv run alembic upgrade head
 ### Run All Tests
 
 ```bash
-# Run all 86 tests
+# Run all 152 tests
 uv run pytest
 
 # Run with verbose output
 uv run pytest -v
 
-# Run with coverage report
+# Run with coverage report (95% coverage)
 uv run pytest --cov=app --cov-report=term-missing --cov-report=html
 ```
 
@@ -380,19 +423,22 @@ uv run pytest tests/test_cost_basis_service.py::TestCostBasisService::test_calcu
 ### Test Categories
 
 ```bash
-# Service layer tests (14 tests)
-uv run pytest tests/test_transaction_service.py tests/test_cost_basis_service.py
+# Service layer tests (44 tests)
+uv run pytest tests/test_transaction_service.py tests/test_cost_basis_service.py tests/test_isin_metadata_service.py tests/test_position_value_service.py
 
-# API tests (34 tests)
-uv run pytest tests/test_api_transactions.py tests/test_api_analytics.py
+# API tests (71 tests)
+uv run pytest tests/test_api_transactions.py tests/test_api_analytics.py tests/test_api_isin_metadata.py tests/test_api_position_values.py
 
-# Validation tests (23 tests)
+# Validation tests (39 tests)
 uv run pytest tests/test_schemas.py
+
+# ISIN metadata specific tests (45 tests)
+uv run pytest tests/test_isin_metadata_service.py tests/test_api_isin_metadata.py
 ```
 
 ### Test Coverage
 
-Current coverage: **96%** (86 tests)
+Current coverage: **95%** (152 tests)
 
 To view detailed coverage:
 ```bash
@@ -481,29 +527,42 @@ backend/
 │   ├── main.py                # FastAPI application entry point
 │   ├── config.py              # Settings (Pydantic Settings)
 │   ├── database.py            # Database connection and session
-│   ├── constants.py           # Constants and enums
+│   ├── constants.py           # Constants and enums (TransactionType, ISINType)
 │   ├── exceptions.py          # Custom exceptions
 │   ├── models/                # SQLAlchemy models (database layer)
-│   │   └── transaction.py     # Transaction model
+│   │   ├── transaction.py     # Transaction model
+│   │   ├── position_value.py  # Position value model
+│   │   └── isin_metadata.py   # ISIN metadata model
 │   ├── schemas/               # Pydantic schemas (validation layer)
 │   │   ├── transaction.py     # Transaction request/response schemas
-│   │   └── analytics.py       # Analytics response schemas
+│   │   ├── analytics.py       # Analytics response schemas
+│   │   ├── position_value.py  # Position value schemas
+│   │   └── isin_metadata.py   # ISIN metadata schemas
 │   ├── routers/               # API route handlers (HTTP layer)
 │   │   ├── transactions.py    # Transaction CRUD endpoints
-│   │   └── analytics.py       # Analytics endpoints
+│   │   ├── analytics.py       # Analytics endpoints
+│   │   ├── position_values.py # Position value endpoints
+│   │   └── isin_metadata.py   # ISIN metadata endpoints
 │   └── services/              # Business logic (service layer)
 │       ├── transaction_service.py  # Transaction operations
-│       └── cost_basis_service.py   # Cost basis calculations
+│       ├── cost_basis_service.py   # Cost basis calculations
+│       ├── position_value_service.py  # Position value operations
+│       └── isin_metadata_service.py   # ISIN metadata operations
 ├── alembic/                   # Database migrations
 │   ├── versions/              # Migration files
 │   ├── env.py                 # Alembic environment
 │   └── script.py.mako         # Migration template
-├── tests/                     # Test suite (96% coverage)
+├── tests/                     # Test suite (95% coverage, 152 tests)
 │   ├── conftest.py           # Test fixtures
 │   ├── test_transaction_service.py
 │   ├── test_cost_basis_service.py
+│   ├── test_position_value_service.py
+│   ├── test_isin_metadata_service.py
 │   ├── test_api_transactions.py
 │   ├── test_api_analytics.py
+│   ├── test_api_position_values.py
+│   ├── test_api_isin_metadata.py
+│   ├── test_position_value_cleanup.py
 │   └── test_schemas.py
 ├── .env                       # Environment variables (gitignored)
 ├── .env.example              # Environment template
@@ -598,6 +657,43 @@ All cost basis calculations are in `app/services/cost_basis_service.py`:
 - `get_portfolio_summary()`: Complete portfolio metrics
 
 **Important**: Maintain chronological transaction processing when modifying.
+
+### Managing ISIN Metadata
+
+ISIN metadata provides asset names and types for ISINs:
+
+**Add metadata for a new ISIN**:
+```bash
+curl -X POST http://localhost:8000/api/v1/isin-metadata \
+  -H "Content-Type: application/json" \
+  -d '{
+    "isin": "IE00B4L5Y983",
+    "name": "iShares Core MSCI Emerging Markets ETF",
+    "type": "STOCK"
+  }'
+```
+
+**Update existing metadata**:
+```bash
+curl -X PUT http://localhost:8000/api/v1/isin-metadata/IE00B4L5Y983 \
+  -H "Content-Type: application/json" \
+  -d '{"name": "Updated Name"}'
+```
+
+**Filter by asset type**:
+```bash
+# Get all stocks
+curl "http://localhost:8000/api/v1/isin-metadata?type=STOCK"
+
+# Get all bonds
+curl "http://localhost:8000/api/v1/isin-metadata?type=BOND"
+```
+
+**Key Points**:
+- Metadata is independent of transactions (no foreign key relationship)
+- ISIN is automatically normalized to uppercase
+- Type must be: `STOCK`, `BOND`, or `REAL_ASSET`
+- Use UPSERT endpoint for bulk imports: `POST /isin-metadata/upsert`
 
 ## Troubleshooting
 

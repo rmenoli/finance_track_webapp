@@ -9,6 +9,14 @@ class TransactionType(str, enum.Enum):
     SELL = "SELL"
 
 
+class ISINType(str, enum.Enum):
+    """Enumeration for ISIN asset types."""
+
+    STOCK = "STOCK"
+    BOND = "BOND"
+    REAL_ASSET = "REAL_ASSET"
+
+
 # ISIN validation pattern
 # Format: 2-letter country code + 9 alphanumeric characters + 1 check digit
 ISIN_PATTERN = re.compile(r"^[A-Z]{2}[A-Z0-9]{9}[0-9]$")
