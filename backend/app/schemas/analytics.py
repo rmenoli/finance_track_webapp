@@ -1,4 +1,5 @@
 from decimal import Decimal
+from typing import Optional
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -16,6 +17,23 @@ class CostBasisResponse(BaseModel):
     )
     total_fees: Decimal = Field(..., description="Total fees")
     transactions_count: int = Field(..., description="Number of transactions")
+
+    # Position value and P/L fields (None if position value not available)
+    current_value: Optional[Decimal] = Field(
+        None, description="Current market value of the position"
+    )
+    absolute_pl_without_fees: Optional[Decimal] = Field(
+        None, description="Absolute profit/loss without fees"
+    )
+    percentage_pl_without_fees: Optional[Decimal] = Field(
+        None, description="Percentage profit/loss without fees"
+    )
+    absolute_pl_with_fees: Optional[Decimal] = Field(
+        None, description="Absolute profit/loss with fees"
+    )
+    percentage_pl_with_fees: Optional[Decimal] = Field(
+        None, description="Percentage profit/loss with fees"
+    )
 
     model_config = ConfigDict(from_attributes=True)
 

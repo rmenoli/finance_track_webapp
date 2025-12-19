@@ -227,16 +227,3 @@ def _cleanup_position_value_for_closed_position(db: Session, isin: str) -> None:
     except Exception:
         # Silent failure - don't block transaction operations
         pass
-
-
-def get_total_transactions_count(db: Session) -> int:
-    """
-    Get total number of transactions.
-
-    Args:
-        db: Database session
-
-    Returns:
-        Total count
-    """
-    return db.query(func.count(Transaction.id)).scalar()

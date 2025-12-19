@@ -134,7 +134,7 @@ uv run ruff format .
 ```bash
 cd backend
 
-# Run all tests (152 tests, 95% coverage)
+# Run all tests (158 tests, 95% coverage)
 uv run pytest
 
 # Run with verbose output
@@ -313,6 +313,42 @@ total_units -= units_sold
 ```
 
 **Critical**: Process transactions chronologically (`ORDER BY date ASC`) for accurate calculations.
+
+### Profit/Loss (P/L) Calculation
+
+**Important**: All P/L calculations are performed **on the backend** using Python `Decimal` for financial precision. The frontend displays these pre-calculated values.
+
+**Backend P/L Calculation** (in `backend/app/services/cost_basis_service.py`):
+
+For **open positions** (with current value entered):
+```python
+# P/L without fees
+total_cost_without_fees = total_cost - total_gains_without_fees
+absolute_pl_without_fees = current_value - total_cost_without_fees
+percentage_pl_without_fees = (absolute_pl_without_fees / total_cost_without_fees * 100)
+
+# P/L with fees
+total_cost_with_fees = total_cost_without_fees + total_fees
+absolute_pl_with_fees = current_value - total_cost_with_fees
+percentage_pl_with_fees = (absolute_pl_with_fees / total_cost_with_fees * 100)
+```
+
+For **closed positions** (fully sold):
+```python
+# Realized P/L without fees
+absolute_pl_without_fees = total_gains_without_fees - total_cost_without_fees
+percentage_pl_without_fees = (absolute_pl_without_fees / total_cost_without_fees * 100)
+
+# Realized P/L with fees
+absolute_pl_with_fees = absolute_pl_without_fees - total_fees
+percentage_pl_with_fees = (absolute_pl_with_fees / total_cost_with_fees * 100)
+```
+
+**Frontend Behavior**:
+- Holdings table displays P/L from backend API response
+- Shows "N/A" when no position value has been entered
+- Users can manually enter position values, which triggers backend recalculation
+- All financial calculations use backend `Decimal` type (no floating-point errors)
 
 ### Financial Precision
 
@@ -495,17 +531,20 @@ CORS_ORIGINS=["http://localhost:3000", "http://localhost:8000"]
 
 ## Testing
 
-**Test Suite**: 92 tests, 96% coverage
+**Test Suite**: 158 tests, 95% coverage
 
 **Test Structure**:
 - `tests/conftest.py`: Fixtures for database and test client
 - `tests/test_transaction_service.py`: Service layer (14 tests)
-- `tests/test_cost_basis_service.py`: Cost basis calculations (11 tests)
+- `tests/test_cost_basis_service.py`: Cost basis calculations including P/L (22 tests)
 - `tests/test_position_value_service.py`: Position value service (9 tests)
 - `tests/test_api_transactions.py`: Transaction API (20 tests)
-- `tests/test_api_analytics.py`: Analytics API (2 tests)
+- `tests/test_api_analytics.py`: Analytics API (3 tests)
 - `tests/test_api_position_values.py`: Position values API (9 tests)
-- `tests/test_schemas.py`: Pydantic validation (27 tests)
+- `tests/test_isin_metadata_service.py`: ISIN metadata service (15 tests)
+- `tests/test_api_isin_metadata.py`: ISIN metadata API (20 tests)
+- `tests/test_position_value_cleanup.py`: Position value cleanup (5 tests)
+- `tests/test_schemas.py`: Pydantic validation (41 tests)
 
 **Key Test Patterns**:
 - Database isolation via fixtures
@@ -599,7 +638,7 @@ For detailed information, see:
 ## Project Status Summary
 
 **Current Version**: Development
-**Test Coverage**: 95% (152 backend tests)
+**Test Coverage**: 95% (158 backend tests)
 **Backend Endpoints**: 16 total (5 transaction, 1 analytics, 4 position values, 6 ISIN metadata)
 **Frontend Pages**: 5 (Investment Dashboard, Transactions, Add/Edit Transaction, ISIN Metadata, Add/Edit ISIN Metadata)
 **Frontend Components**: 10 main components (Layout, Navigation, TransactionForm, TransactionList, ISINMetadataForm, ISINMetadataList, DashboardHoldingsTable, HoldingsDistributionChart, ClosedPositionsTable, PortfolioSummary)

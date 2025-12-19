@@ -72,18 +72,26 @@ def calculate_cost_basis(
         total_gains_without_fees=sum_gains_without_fees,
         total_fees=total_fees,
         transactions_count=transaction_count,
+        current_value=None,  # Will be set by caller if available
+        absolute_pl_without_fees=None,
+        percentage_pl_without_fees=None,
+        absolute_pl_with_fees=None,
+        percentage_pl_with_fees=None,
     )
 
 
-def calculate_current_holdings_and_closed_positions(db: Session) -> list[CostBasisResponse]:
+def calculate_current_holdings_and_closed_positions(
+    db: Session, position_values_map: dict[str, Decimal]
+) -> tuple[list[CostBasisResponse], list[CostBasisResponse]]:
     """
-    Calculate current holdings for all ISINs.
+    Calculate current holdings and closed positions for all ISINs with P/L calculations.
 
     Args:
         db: Database session
+        position_values_map: Dictionary mapping ISIN to current position value
 
     Returns:
-        List of holdings
+        Tuple of (holdings, closed_positions)
     """
     # Get all unique ISINs
     isins = db.query(Transaction.isin).distinct().all()
@@ -92,26 +100,94 @@ def calculate_current_holdings_and_closed_positions(db: Session) -> list[CostBas
     closed_positions = []
     for (isin,) in isins:
         cost_basis = calculate_cost_basis(db, isin)
-        if cost_basis and cost_basis.total_units > 0:
-            holdings.append(cost_basis)
-        elif cost_basis and cost_basis.total_units == 0:
-            closed_positions.append(cost_basis)
+        if cost_basis:
+            # Get position value for this ISIN
+            current_value = position_values_map.get(isin.upper())
+
+            # Calculate P/L if position value is available and position is open
+            if current_value is not None and cost_basis.total_units > 0:
+                # P/L without fees
+                total_cost_without_fees = (
+                    cost_basis.total_cost_without_fees - cost_basis.total_gains_without_fees
+                )
+                absolute_pl_without_fees = current_value - total_cost_without_fees
+                percentage_pl_without_fees = (
+                    (absolute_pl_without_fees / total_cost_without_fees * Decimal("100"))
+                    if total_cost_without_fees > 0
+                    else Decimal("0")
+                )
+
+                # P/L with fees
+                total_cost_with_fees = total_cost_without_fees + cost_basis.total_fees
+                absolute_pl_with_fees = current_value - total_cost_with_fees
+                percentage_pl_with_fees = (
+                    (absolute_pl_with_fees / total_cost_with_fees * Decimal("100"))
+                    if total_cost_with_fees > 0
+                    else Decimal("0")
+                )
+
+                # Update cost basis with P/L values
+                cost_basis.current_value = current_value
+                cost_basis.absolute_pl_without_fees = absolute_pl_without_fees
+                cost_basis.percentage_pl_without_fees = percentage_pl_without_fees
+                cost_basis.absolute_pl_with_fees = absolute_pl_with_fees
+                cost_basis.percentage_pl_with_fees = percentage_pl_with_fees
+
+            # For closed positions, calculate realized P/L
+            elif cost_basis.total_units == 0:
+                # Realized P/L without fees
+                absolute_pl_without_fees = (
+                    cost_basis.total_gains_without_fees - cost_basis.total_cost_without_fees
+                )
+                percentage_pl_without_fees = (
+                    (absolute_pl_without_fees / cost_basis.total_cost_without_fees * Decimal("100"))
+                    if cost_basis.total_cost_without_fees > 0
+                    else Decimal("0")
+                )
+
+                # Realized P/L with fees
+                absolute_pl_with_fees = absolute_pl_without_fees - cost_basis.total_fees
+                total_cost_with_fees = cost_basis.total_cost_without_fees + cost_basis.total_fees
+                percentage_pl_with_fees = (
+                    (absolute_pl_with_fees / total_cost_with_fees * Decimal("100"))
+                    if total_cost_with_fees > 0
+                    else Decimal("0")
+                )
+
+                # Update with realized P/L
+                cost_basis.current_value = Decimal("0")  # Closed position
+                cost_basis.absolute_pl_without_fees = absolute_pl_without_fees
+                cost_basis.percentage_pl_without_fees = percentage_pl_without_fees
+                cost_basis.absolute_pl_with_fees = absolute_pl_with_fees
+                cost_basis.percentage_pl_with_fees = percentage_pl_with_fees
+
+            # Categorize as holding or closed position
+            if cost_basis.total_units > 0:
+                holdings.append(cost_basis)
+            elif cost_basis.total_units == 0:
+                closed_positions.append(cost_basis)
 
     return holdings, closed_positions
 
 
 def get_portfolio_summary(db: Session) -> PortfolioSummaryResponse:
     """
-    Get overall portfolio summary.
+    Get overall portfolio summary with P/L calculations.
 
     Args:
         db: Database session
 
     Returns:
-        Portfolio summary
+        Portfolio summary with calculated P/L for each holding
     """
-    # Calculate current holdings
-    holdings, closed_positions = calculate_current_holdings_and_closed_positions(db)
+    # Fetch all position values and create a map for efficient lookup
+    position_values = position_value_service.get_all_position_values(db)
+    position_values_map = {pv.isin.upper(): pv.current_value for pv in position_values}
+
+    # Calculate current holdings and closed positions with P/L
+    holdings, closed_positions = calculate_current_holdings_and_closed_positions(
+        db, position_values_map
+    )
 
     # Calculate total invested (all BUY transactions)
     buy_transactions = (
@@ -130,7 +206,6 @@ def get_portfolio_summary(db: Session) -> PortfolioSummaryResponse:
     total_fees = sum(txn.fee for txn in all_transactions)
 
     # Calculate sum of all position values
-    position_values = position_value_service.get_all_position_values(db)
     total_current_portfolio_invested_value = (
         sum(pv.current_value for pv in position_values) if position_values else Decimal("0")
     )

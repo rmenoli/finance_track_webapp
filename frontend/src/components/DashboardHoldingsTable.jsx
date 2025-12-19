@@ -1,120 +1,84 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { positionValuesAPI } from '../services/api';
 import './DashboardHoldingsTable.css';
 import FormattedNumber from './FormattedNumber';
 import HoldingsDistributionChart from './HoldingsDistributionChart';
 
 function DashboardHoldingsTable({ holdings, onPositionValueChange, isinNames = {} }) {
-  const [currentValues, setCurrentValues] = useState({});
   const [editingIsin, setEditingIsin] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [editingValue, setEditingValue] = useState(null);
   const [error, setError] = useState(null);
   const [savingIsin, setSavingIsin] = useState(null);
 
-  // Load existing position values on mount
-  useEffect(() => {
-    const loadPositionValues = async () => {
-      try {
-        setLoading(true);
-        setError(null);
-
-        const response = await positionValuesAPI.getAll();
-
-        // Convert array to map: { ISIN: value }
-        const valuesMap = {};
-        response.position_values.forEach(pv => {
-          valuesMap[pv.isin] = parseFloat(pv.current_value);
-        });
-
-        setCurrentValues(valuesMap);
-      } catch (err) {
-        console.error('Failed to load position values:', err);
-        setError('Failed to load saved values. You can still enter new ones.');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    loadPositionValues();
-  }, []);
-
-  const updateCurrentValue = (isin, value) => {
-    setCurrentValues(prev => ({ ...prev, [isin]: value }));
+  const startEditing = (holding) => {
+    setEditingIsin(holding.isin);
+    setEditingValue(holding.current_value || '');
   };
 
   const savePositionValue = async (isin, value) => {
-    if (!value || value <= 0) {
-      // Don't save invalid values
+    const numValue = parseFloat(value);
+    if (!numValue || numValue <= 0) {
+      setError('Please enter a valid position value greater than 0');
+      setEditingIsin(null);
+      setEditingValue(null);
       return;
     }
 
     try {
       setSavingIsin(isin);
-      await positionValuesAPI.upsert(isin, value);
-      // Value already updated in local state, no need to reload
+      setError(null);
 
-      // Notify parent to refresh summary data
+      // Upsert position value
+      await positionValuesAPI.upsert(isin, numValue);
+
+      // Notify parent to refresh data (will fetch updated P/L from backend)
       if (onPositionValueChange) {
         onPositionValueChange();
       }
+
+      setEditingIsin(null);
+      setEditingValue(null);
     } catch (err) {
-      console.error(`Failed to save position value for ${isin}:`, err);
-      // Show error to user but keep local value
-      alert(`Failed to save value for ${isin}. Please try again.`);
-    } finally {
+      console.error('Failed to save position value:', err);
+      setError(`Failed to save value for ${isin}. Please try again.`);
       setSavingIsin(null);
     }
   };
 
   const handleBlur = (isin) => {
-    setEditingIsin(null);
-    const value = currentValues[isin];
-    if (value && value > 0) {
-      savePositionValue(isin, value);
+    if (editingValue !== null && editingValue !== '') {
+      savePositionValue(isin, editingValue);
+    } else {
+      setEditingIsin(null);
+      setEditingValue(null);
     }
   };
 
   const handleKeyDown = (e, isin) => {
     if (e.key === 'Enter') {
-      setEditingIsin(null);
-      const value = currentValues[isin];
-      if (value && value > 0) {
-        savePositionValue(isin, value);
+      if (editingValue !== null && editingValue !== '') {
+        savePositionValue(isin, editingValue);
+      } else {
+        setEditingIsin(null);
+        setEditingValue(null);
       }
     } else if (e.key === 'Escape') {
       setEditingIsin(null);
+      setEditingValue(null);
     }
-  };
-
-  const getCurrentPricePerUnit = (holding, currentValue) => {
-    if (!currentValue || currentValue === 0) return 0;
-    return currentValue / parseFloat(holding.total_units);
-  };
-
-  const calculatePL = (holding, currentValue) => {
-    // P/L without fees
-    const totalCostWithoutFees = parseFloat(holding.total_cost_without_fees) - parseFloat(holding.total_gains_without_fees);
-    const absolutePLWithoutFees = currentValue - totalCostWithoutFees;
-    const percentagePLWithoutFees = totalCostWithoutFees > 0 ? (absolutePLWithoutFees / totalCostWithoutFees) * 100 : 0;
-
-    // P/L including fees
-    const totalCostWithFees = totalCostWithoutFees + parseFloat(holding.total_fees);
-    const absolutePLWithFees = currentValue - totalCostWithFees;
-    const percentagePLWithFees = totalCostWithFees > 0 ? (absolutePLWithFees / totalCostWithFees) * 100 : 0;
-
-    return {
-      withoutFees: { absolutePL: absolutePLWithoutFees, percentagePL: percentagePLWithoutFees },
-      withFees: { absolutePL: absolutePLWithFees, percentagePL: percentagePLWithFees }
-    };
   };
 
   if (!holdings || holdings.length === 0) {
     return <p>No holdings yet.</p>;
   }
 
-  if (loading) {
-    return <p>Loading position values...</p>;
-  }
+  // Create currentValues map from holdings for the chart
+  const currentValues = holdings.reduce((map, holding) => {
+    if (holding.current_value) {
+      map[holding.isin] = parseFloat(holding.current_value);
+    }
+    return map;
+  }, {});
 
   return (
     <>
@@ -145,10 +109,12 @@ function DashboardHoldingsTable({ holdings, onPositionValueChange, isinNames = {
         </thead>
         <tbody>
           {holdings.map(holding => {
-            const currentValue = currentValues[holding.isin] || 0;
-            const currentPricePerUnit = getCurrentPricePerUnit(holding, currentValue);
-            const plData = calculatePL(holding, currentValue);
+            const currentValue = holding.current_value ? parseFloat(holding.current_value) : 0;
+            const currentPricePerUnit = currentValue > 0 && holding.total_units > 0
+              ? currentValue / parseFloat(holding.total_units)
+              : 0;
             const isSaving = savingIsin === holding.isin;
+            const isEditing = editingIsin === holding.isin;
 
             return (
               <tr key={holding.isin}>
@@ -184,15 +150,15 @@ function DashboardHoldingsTable({ holdings, onPositionValueChange, isinNames = {
                 {/* Current Position - Editable */}
                 <td
                   className="editable-cell"
-                  onClick={() => setEditingIsin(holding.isin)}
+                  onClick={() => !isEditing && startEditing(holding)}
                   title="Click to enter current value"
                 >
-                  {editingIsin === holding.isin ? (
+                  {isEditing ? (
                     <input
                       type="number"
                       step="0.01"
-                      value={currentValue || ''}
-                      onChange={(e) => updateCurrentValue(holding.isin, parseFloat(e.target.value) || 0)}
+                      value={editingValue}
+                      onChange={(e) => setEditingValue(e.target.value)}
                       onBlur={() => handleBlur(holding.isin)}
                       onKeyDown={(e) => handleKeyDown(e, holding.isin)}
                       autoFocus
@@ -220,20 +186,20 @@ function DashboardHoldingsTable({ holdings, onPositionValueChange, isinNames = {
 
                 {/* P/L (without fees) */}
                 <td>
-                  {currentValue > 0 ? (
+                  {holding.absolute_pl_without_fees !== null && holding.absolute_pl_without_fees !== undefined ? (
                     <>
-                      <div className={plData.withoutFees.absolutePL >= 0 ? 'positive' : 'negative'}>
-                        {plData.withoutFees.absolutePL >= 0 ? '+' : ''}
-                        <FormattedNumber value={plData.withoutFees.absolutePL} currency={true} />
+                      <div className={parseFloat(holding.absolute_pl_without_fees) >= 0 ? 'positive' : 'negative'}>
+                        {parseFloat(holding.absolute_pl_without_fees) >= 0 ? '+' : ''}
+                        <FormattedNumber value={holding.absolute_pl_without_fees} currency={true} />
                       </div>
-                      <div className={`sub-value ${plData.withoutFees.percentagePL >= 0 ? 'positive' : 'negative'}`}>
-                        {plData.withoutFees.percentagePL >= 0 ? '↑' : '↓'}
-                        <FormattedNumber value={Math.abs(plData.withoutFees.percentagePL)} currency={false} />
+                      <div className={`sub-value ${parseFloat(holding.percentage_pl_without_fees) >= 0 ? 'positive' : 'negative'}`}>
+                        {parseFloat(holding.percentage_pl_without_fees) >= 0 ? '↑' : '↓'}
+                        <FormattedNumber value={Math.abs(parseFloat(holding.percentage_pl_without_fees))} currency={false} />
                         %
                       </div>
                     </>
                   ) : (
-                    <div className="sub-value">-</div>
+                    <div className="sub-value">N/A</div>
                   )}
                 </td>
 
@@ -246,20 +212,20 @@ function DashboardHoldingsTable({ holdings, onPositionValueChange, isinNames = {
 
                 {/* P/L (including fees) */}
                 <td>
-                  {currentValue > 0 ? (
+                  {holding.absolute_pl_with_fees !== null && holding.absolute_pl_with_fees !== undefined ? (
                     <>
-                      <div className={plData.withFees.absolutePL >= 0 ? 'positive' : 'negative'}>
-                        {plData.withFees.absolutePL >= 0 ? '+' : ''}
-                        <FormattedNumber value={plData.withFees.absolutePL} currency={true} />
+                      <div className={parseFloat(holding.absolute_pl_with_fees) >= 0 ? 'positive' : 'negative'}>
+                        {parseFloat(holding.absolute_pl_with_fees) >= 0 ? '+' : ''}
+                        <FormattedNumber value={holding.absolute_pl_with_fees} currency={true} />
                       </div>
-                      <div className={`sub-value ${plData.withFees.percentagePL >= 0 ? 'positive' : 'negative'}`}>
-                        {plData.withFees.percentagePL >= 0 ? '↑' : '↓'}
-                        <FormattedNumber value={Math.abs(plData.withFees.percentagePL)} currency={false} />
+                      <div className={`sub-value ${parseFloat(holding.percentage_pl_with_fees) >= 0 ? 'positive' : 'negative'}`}>
+                        {parseFloat(holding.percentage_pl_with_fees) >= 0 ? '↑' : '↓'}
+                        <FormattedNumber value={Math.abs(parseFloat(holding.percentage_pl_with_fees))} currency={false} />
                         %
                       </div>
                     </>
                   ) : (
-                    <div className="sub-value">-</div>
+                    <div className="sub-value">N/A</div>
                   )}
                 </td>
               </tr>

@@ -44,7 +44,7 @@ A full-stack web application for tracking ETF portfolio transactions with automa
 |-------|-----------|
 | **Backend** | FastAPI, SQLAlchemy 2.0, SQLite, Alembic, Pydantic |
 | **Frontend** | React 18, Vite, React Router v6, CSS |
-| **Testing** | Pytest (152 tests, 95% coverage) |
+| **Testing** | Pytest (158 tests, 95% coverage) |
 | **Tools** | UV (Python), npm (Node.js), Ruff (linting) |
 
 ---
@@ -107,7 +107,7 @@ finance_track_webapp/
 │   │   └── schemas/                  # Pydantic schemas
 │   ├── alembic/                      # Database migrations
 │   │   └── versions/                 # Migration files
-│   ├── tests/                        # Backend tests (152 tests, 95% coverage)
+│   ├── tests/                        # Backend tests (158 tests, 95% coverage)
 │   ├── pyproject.toml                # Python dependencies
 │   ├── uv.lock                       # Dependency lock file
 │   ├── alembic.ini                   # Alembic configuration
@@ -199,7 +199,7 @@ npm run build              # Verify build works
 
 ### Backend Tests
 
-95% coverage across 152 tests:
+95% coverage across 158 tests:
 
 ```bash
 cd backend
@@ -395,7 +395,7 @@ realized_gain = (sell_price × units - fee) - cost_removed
 ## Project Status
 
 **Current Version**: Development
-**Test Coverage**: 95% (152 tests)
+**Test Coverage**: 95% (158 tests)
 **Frontend Pages**: 4 pages (Investment Dashboard, Transactions, Add/Edit Transaction, ISIN Metadata Management)
 **Backend Endpoints**: 16 endpoints (5 transaction, 1 analytics, 4 position values, 6 ISIN metadata)
 

@@ -25,7 +25,7 @@ FastAPI backend service for tracking ETF transactions with automatic cost basis 
 - **Validation**: Pydantic 2.12.5 (data validation and settings)
 - **Package Manager**: UV (fast Python package manager)
 - **Server**: Uvicorn 0.38.0 (ASGI server)
-- **Testing**: Pytest 9.0.2 with 95% coverage (152 tests)
+- **Testing**: Pytest 9.0.2 with 95% coverage (158 tests)
 - **Code Quality**: Ruff 0.14.9 (linting and formatting)
 
 ## Prerequisites
@@ -328,6 +328,74 @@ curl "http://localhost:8000/api/v1/isin-metadata?type=REAL_ASSET"
 **Position Value Validation:**
 - **ISIN**: 1-12 characters (no format validation - allows any string)
 - **Current value**: Must be > 0
+
+### Response Schemas
+
+#### Portfolio Summary Response
+
+The `/analytics/portfolio-summary` endpoint returns comprehensive portfolio data including calculated P/L for each holding:
+
+```json
+{
+  "total_invested": "10000.00",
+  "total_withdrawn": "2000.00",
+  "total_fees": "25.50",
+  "total_current_portfolio_invested_value": "11500.00",
+  "total_profit_loss": "3474.50",
+  "holdings": [
+    {
+      "isin": "IE00B4L5Y983",
+      "total_units": "10.5000",
+      "total_cost_without_fees": "5000.00",
+      "total_gains_without_fees": "0.00",
+      "total_fees": "12.50",
+      "transactions_count": 2,
+      "current_value": "5500.00",
+      "absolute_pl_without_fees": "500.00",
+      "percentage_pl_without_fees": "10.00",
+      "absolute_pl_with_fees": "487.50",
+      "percentage_pl_with_fees": "9.73"
+    }
+  ],
+  "closed_positions": [
+    {
+      "isin": "US0378331005",
+      "total_units": "0.0000",
+      "total_cost_without_fees": "3000.00",
+      "total_gains_without_fees": "3500.00",
+      "total_fees": "15.00",
+      "transactions_count": 4,
+      "current_value": "0",
+      "absolute_pl_without_fees": "500.00",
+      "percentage_pl_without_fees": "16.67",
+      "absolute_pl_with_fees": "485.00",
+      "percentage_pl_with_fees": "16.08"
+    }
+  ]
+}
+```
+
+**Key Fields Explained:**
+
+**Holdings (Open Positions):**
+- `current_value`: Current market value of the position (from manual entry, `null` if not set)
+- `absolute_pl_without_fees`: Profit/Loss without fees in currency (`null` if no current value)
+- `percentage_pl_without_fees`: Profit/Loss percentage without fees (`null` if no current value)
+- `absolute_pl_with_fees`: Profit/Loss including fees in currency (`null` if no current value)
+- `percentage_pl_with_fees`: Profit/Loss percentage including fees (`null` if no current value)
+
+**Closed Positions (Fully Sold):**
+- `current_value`: Always `0` for closed positions
+- `absolute_pl_without_fees`: Realized profit/loss without fees
+- `percentage_pl_without_fees`: Realized profit/loss percentage without fees
+- `absolute_pl_with_fees`: Realized profit/loss including fees
+- `percentage_pl_with_fees`: Realized profit/loss percentage including fees
+
+**Important Notes:**
+- All P/L calculations are performed on the backend using Python `Decimal` for financial precision
+- For open positions, P/L is `null` if no `current_value` has been manually entered
+- For closed positions, P/L represents the realized gains/losses from selling
+- P/L calculations use the average cost method for cost basis
 
 ## Database Management
 

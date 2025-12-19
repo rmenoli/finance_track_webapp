@@ -103,20 +103,6 @@ export const positionValuesAPI = {
     const response = await fetch(`${API_BASE_URL}/position-values`);
     return handleResponse(response);
   },
-
-  // Get position value for specific ISIN
-  getByIsin: async (isin) => {
-    const response = await fetch(`${API_BASE_URL}/position-values/${isin}`);
-    return handleResponse(response);
-  },
-
-  // Delete position value
-  delete: async (isin) => {
-    const response = await fetch(`${API_BASE_URL}/position-values/${isin}`, {
-      method: 'DELETE',
-    });
-    return handleResponse(response);
-  },
 };
 
 // ISIN Metadata API methods
@@ -169,18 +155,6 @@ export const isinMetadataAPI = {
   delete: async (isin) => {
     const response = await fetch(`${API_BASE_URL}/isin-metadata/${isin}`, {
       method: 'DELETE',
-    });
-    return handleResponse(response);
-  },
-
-  // Create or update ISIN metadata (UPSERT)
-  upsert: async (data) => {
-    const response = await fetch(`${API_BASE_URL}/isin-metadata/upsert`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(data),
     });
     return handleResponse(response);
   },

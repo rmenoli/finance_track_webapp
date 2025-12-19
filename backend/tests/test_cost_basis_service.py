@@ -249,7 +249,9 @@ class TestCostBasisService:
             ),
         )
 
-        holdings, closed_positions = cost_basis_service.calculate_current_holdings_and_closed_positions(db_session)
+        holdings, closed_positions = cost_basis_service.calculate_current_holdings_and_closed_positions(
+            db_session, {}
+        )
 
         assert len(holdings) == 2
         isins = [h.isin for h in holdings]
@@ -284,7 +286,9 @@ class TestCostBasisService:
             ),
         )
 
-        holdings, closed_positions = cost_basis_service.calculate_current_holdings_and_closed_positions(db_session)
+        holdings, closed_positions = cost_basis_service.calculate_current_holdings_and_closed_positions(
+            db_session, {}
+        )
         assert len(holdings) == 0
         assert len(closed_positions) == 1
 
@@ -324,7 +328,9 @@ class TestCostBasisService:
             ),
         )
 
-        holdings, closed_positions = cost_basis_service.calculate_current_holdings_and_closed_positions(db_session)
+        holdings, closed_positions = cost_basis_service.calculate_current_holdings_and_closed_positions(
+            db_session, {}
+        )
 
         assert len(holdings) == 0
         assert len(closed_positions) == 1
@@ -394,7 +400,9 @@ class TestCostBasisService:
             ),
         )
 
-        holdings, closed_positions = cost_basis_service.calculate_current_holdings_and_closed_positions(db_session)
+        holdings, closed_positions = cost_basis_service.calculate_current_holdings_and_closed_positions(
+            db_session, {}
+        )
 
         assert len(holdings) == 0
         assert len(closed_positions) == 2
@@ -477,7 +485,9 @@ class TestCostBasisService:
             ),
         )
 
-        holdings, closed_positions = cost_basis_service.calculate_current_holdings_and_closed_positions(db_session)
+        holdings, closed_positions = cost_basis_service.calculate_current_holdings_and_closed_positions(
+            db_session, {}
+        )
 
         # Verify counts
         assert len(holdings) == 2  # IE00B4L5Y983 and LU0274208692
@@ -550,7 +560,9 @@ class TestCostBasisService:
             ),
         )
 
-        holdings, closed_positions = cost_basis_service.calculate_current_holdings_and_closed_positions(db_session)
+        holdings, closed_positions = cost_basis_service.calculate_current_holdings_and_closed_positions(
+            db_session, {}
+        )
 
         assert len(holdings) == 0
         assert len(closed_positions) == 1
@@ -722,3 +734,264 @@ class TestCostBasisService:
 
         for pos in summary.closed_positions:
             assert pos.total_units == Decimal("0")
+
+    def test_pl_calculation_with_position_value(self, db_session):
+        """Test P/L calculation when position value is available."""
+        from app.services import position_value_service
+        from app.schemas.position_value import PositionValueCreate
+
+        # Create a buy transaction: 10 units at 100 with 1.50 fee
+        transaction_service.create_transaction(
+            db_session,
+            TransactionCreate(
+                date=date.today() - timedelta(days=1),
+                isin="IE00B4L5Y983",
+                broker="Broker",
+                fee=Decimal("1.50"),
+                price_per_unit=Decimal("100.00"),
+                units=Decimal("10.0"),
+                transaction_type=TransactionType.BUY,
+            ),
+        )
+
+        # Set current position value to 1200 (20% gain)
+        position_value_service.upsert_position_value(
+            db_session,
+            PositionValueCreate(isin="IE00B4L5Y983", current_value=Decimal("1200.00")),
+        )
+
+        summary = cost_basis_service.get_portfolio_summary(db_session)
+
+        assert len(summary.holdings) == 1
+        holding = summary.holdings[0]
+
+        # Verify P/L calculations
+        assert holding.current_value == Decimal("1200.00")
+
+        # P/L without fees: 1200 - 1000 = 200 (20%)
+        assert holding.absolute_pl_without_fees == Decimal("200.00")
+        assert holding.percentage_pl_without_fees == Decimal("20.00")
+
+        # P/L with fees: 1200 - (1000 + 1.50) = 198.50 (19.82%)
+        assert holding.absolute_pl_with_fees == Decimal("198.50")
+        assert abs(holding.percentage_pl_with_fees - Decimal("19.82017982017982017982017982")) < Decimal(
+            "0.01"
+        )
+
+    def test_pl_calculation_without_position_value(self, db_session):
+        """Test P/L fields are None when position value is not available."""
+        # Create a buy transaction without setting position value
+        transaction_service.create_transaction(
+            db_session,
+            TransactionCreate(
+                date=date.today() - timedelta(days=1),
+                isin="IE00B4L5Y983",
+                broker="Broker",
+                fee=Decimal("1.50"),
+                price_per_unit=Decimal("100.00"),
+                units=Decimal("10.0"),
+                transaction_type=TransactionType.BUY,
+            ),
+        )
+
+        summary = cost_basis_service.get_portfolio_summary(db_session)
+
+        assert len(summary.holdings) == 1
+        holding = summary.holdings[0]
+
+        # Verify P/L fields are None
+        assert holding.current_value is None
+        assert holding.absolute_pl_without_fees is None
+        assert holding.percentage_pl_without_fees is None
+        assert holding.absolute_pl_with_fees is None
+        assert holding.percentage_pl_with_fees is None
+
+    def test_pl_calculation_negative_pl(self, db_session):
+        """Test P/L calculation with negative P/L (loss)."""
+        from app.services import position_value_service
+        from app.schemas.position_value import PositionValueCreate
+
+        # Create a buy transaction: 10 units at 100 with 2.00 fee
+        transaction_service.create_transaction(
+            db_session,
+            TransactionCreate(
+                date=date.today() - timedelta(days=1),
+                isin="IE00B4L5Y983",
+                broker="Broker",
+                fee=Decimal("2.00"),
+                price_per_unit=Decimal("100.00"),
+                units=Decimal("10.0"),
+                transaction_type=TransactionType.BUY,
+            ),
+        )
+
+        # Set current position value to 800 (20% loss)
+        position_value_service.upsert_position_value(
+            db_session,
+            PositionValueCreate(isin="IE00B4L5Y983", current_value=Decimal("800.00")),
+        )
+
+        summary = cost_basis_service.get_portfolio_summary(db_session)
+
+        holding = summary.holdings[0]
+
+        # P/L without fees: 800 - 1000 = -200 (-20%)
+        assert holding.absolute_pl_without_fees == Decimal("-200.00")
+        assert holding.percentage_pl_without_fees == Decimal("-20.00")
+
+        # P/L with fees: 800 - (1000 + 2.00) = -202 (-20.16%)
+        assert holding.absolute_pl_with_fees == Decimal("-202.00")
+        assert abs(holding.percentage_pl_with_fees - Decimal("-20.15968063872255489021956088")) < Decimal(
+            "0.01"
+        )
+
+    def test_pl_calculation_with_partial_sell(self, db_session):
+        """Test P/L calculation after partial sell."""
+        from app.services import position_value_service
+        from app.schemas.position_value import PositionValueCreate
+
+        # Buy 20 units at 100 with 2.00 fee
+        transaction_service.create_transaction(
+            db_session,
+            TransactionCreate(
+                date=date.today() - timedelta(days=2),
+                isin="IE00B4L5Y983",
+                broker="Broker",
+                fee=Decimal("2.00"),
+                price_per_unit=Decimal("100.00"),
+                units=Decimal("20.0"),
+                transaction_type=TransactionType.BUY,
+            ),
+        )
+
+        # Sell 10 units at 120 with 1.50 fee
+        transaction_service.create_transaction(
+            db_session,
+            TransactionCreate(
+                date=date.today() - timedelta(days=1),
+                isin="IE00B4L5Y983",
+                broker="Broker",
+                fee=Decimal("1.50"),
+                price_per_unit=Decimal("120.00"),
+                units=Decimal("10.0"),
+                transaction_type=TransactionType.SELL,
+            ),
+        )
+
+        # Set current position value for remaining 10 units to 1100
+        position_value_service.upsert_position_value(
+            db_session,
+            PositionValueCreate(isin="IE00B4L5Y983", current_value=Decimal("1100.00")),
+        )
+
+        summary = cost_basis_service.get_portfolio_summary(db_session)
+
+        holding = summary.holdings[0]
+
+        # Remaining cost basis without fees: 2000 - 1200 = 800 (for 10 units)
+        # P/L without fees: 1100 - 800 = 300
+        assert holding.absolute_pl_without_fees == Decimal("300.00")
+        assert holding.percentage_pl_without_fees == Decimal("37.5")
+
+    def test_closed_position_pl_calculation(self, db_session):
+        """Test P/L calculation for closed positions (fully sold)."""
+        # Buy 10 units at 100 with 1.50 fee
+        transaction_service.create_transaction(
+            db_session,
+            TransactionCreate(
+                date=date.today() - timedelta(days=2),
+                isin="IE00B4L5Y983",
+                broker="Broker",
+                fee=Decimal("1.50"),
+                price_per_unit=Decimal("100.00"),
+                units=Decimal("10.0"),
+                transaction_type=TransactionType.BUY,
+            ),
+        )
+
+        # Sell all 10 units at 120 with 2.00 fee
+        transaction_service.create_transaction(
+            db_session,
+            TransactionCreate(
+                date=date.today(),
+                isin="IE00B4L5Y983",
+                broker="Broker",
+                fee=Decimal("2.00"),
+                price_per_unit=Decimal("120.00"),
+                units=Decimal("10.0"),
+                transaction_type=TransactionType.SELL,
+            ),
+        )
+
+        summary = cost_basis_service.get_portfolio_summary(db_session)
+
+        assert len(summary.closed_positions) == 1
+        closed_pos = summary.closed_positions[0]
+
+        # Verify realized P/L
+        # P/L without fees: 1200 - 1000 = 200 (20%)
+        assert closed_pos.absolute_pl_without_fees == Decimal("200.00")
+        assert closed_pos.percentage_pl_without_fees == Decimal("20.00")
+
+        # P/L with fees: 200 - (1.50 + 2.00) = 196.50
+        # Percentage: 196.50 / (1000 + 3.50) * 100 = 19.58%
+        assert closed_pos.absolute_pl_with_fees == Decimal("196.50")
+        assert abs(closed_pos.percentage_pl_with_fees - Decimal("19.58")) < Decimal("0.01")
+
+        # Current value should be 0 for closed position
+        assert closed_pos.current_value == Decimal("0")
+
+    def test_multiple_holdings_with_mixed_position_values(self, db_session):
+        """Test P/L calculation with multiple holdings, some with position values."""
+        from app.services import position_value_service
+        from app.schemas.position_value import PositionValueCreate
+
+        # Holding 1: With position value
+        transaction_service.create_transaction(
+            db_session,
+            TransactionCreate(
+                date=date.today() - timedelta(days=1),
+                isin="IE00B4L5Y983",
+                broker="Broker",
+                fee=Decimal("1.00"),
+                price_per_unit=Decimal("100.00"),
+                units=Decimal("10.0"),
+                transaction_type=TransactionType.BUY,
+            ),
+        )
+        position_value_service.upsert_position_value(
+            db_session,
+            PositionValueCreate(isin="IE00B4L5Y983", current_value=Decimal("1100.00")),
+        )
+
+        # Holding 2: Without position value
+        transaction_service.create_transaction(
+            db_session,
+            TransactionCreate(
+                date=date.today() - timedelta(days=1),
+                isin="US0378331005",
+                broker="Broker",
+                fee=Decimal("2.00"),
+                price_per_unit=Decimal("200.00"),
+                units=Decimal("5.0"),
+                transaction_type=TransactionType.BUY,
+            ),
+        )
+
+        summary = cost_basis_service.get_portfolio_summary(db_session)
+
+        assert len(summary.holdings) == 2
+
+        # Find each holding
+        holding_with_value = next(h for h in summary.holdings if h.isin == "IE00B4L5Y983")
+        holding_without_value = next(h for h in summary.holdings if h.isin == "US0378331005")
+
+        # Verify holding with position value has P/L
+        assert holding_with_value.current_value == Decimal("1100.00")
+        assert holding_with_value.absolute_pl_without_fees == Decimal("100.00")
+        assert holding_with_value.percentage_pl_without_fees == Decimal("10.00")
+
+        # Verify holding without position value has None for P/L
+        assert holding_without_value.current_value is None
+        assert holding_without_value.absolute_pl_without_fees is None
+        assert holding_without_value.percentage_pl_without_fees is None

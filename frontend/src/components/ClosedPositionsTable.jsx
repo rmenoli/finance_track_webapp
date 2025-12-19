@@ -2,24 +2,6 @@ import './DashboardHoldingsTable.css';
 import FormattedNumber from './FormattedNumber';
 
 function ClosedPositionsTable({ closedPositions, isinNames = {} }) {
-  const calculatePL = (position) => {
-    // P/L without fees
-    const totalCostWithoutFees = parseFloat(position.total_cost_without_fees);
-    const totalGainsWithoutFees = parseFloat(position.total_gains_without_fees);
-    const absolutePLWithoutFees = totalGainsWithoutFees - totalCostWithoutFees;
-    const percentagePLWithoutFees = totalCostWithoutFees > 0 ? (absolutePLWithoutFees / totalCostWithoutFees) * 100 : 0;
-
-    // P/L including fees
-    const totalFees = parseFloat(position.total_fees);
-    const absolutePLWithFees = absolutePLWithoutFees - totalFees;
-    const percentagePLWithFees = totalCostWithoutFees > 0 ? (absolutePLWithFees / totalCostWithoutFees) * 100 : 0;
-
-    return {
-      withoutFees: { absolutePL: absolutePLWithoutFees, percentagePL: percentagePLWithoutFees },
-      withFees: { absolutePL: absolutePLWithFees, percentagePL: percentagePLWithFees }
-    };
-  };
-
   if (!closedPositions || closedPositions.length === 0) {
     return <p>No closed positions yet.</p>;
   }
@@ -39,7 +21,6 @@ function ClosedPositionsTable({ closedPositions, isinNames = {} }) {
         </thead>
         <tbody>
           {closedPositions.map(position => {
-            const plData = calculatePL(position);
             const totalCostWithoutFees = parseFloat(position.total_cost_without_fees);
             const totalGainsWithoutFees = parseFloat(position.total_gains_without_fees);
 
@@ -77,13 +58,13 @@ function ClosedPositionsTable({ closedPositions, isinNames = {} }) {
 
                 {/* P/L (without fees) */}
                 <td>
-                  <div className={plData.withoutFees.absolutePL >= 0 ? 'positive' : 'negative'}>
-                    {plData.withoutFees.absolutePL >= 0 ? '+' : ''}
-                    <FormattedNumber value={plData.withoutFees.absolutePL} currency={true} />
+                  <div className={parseFloat(position.absolute_pl_without_fees) >= 0 ? 'positive' : 'negative'}>
+                    {parseFloat(position.absolute_pl_without_fees) >= 0 ? '+' : ''}
+                    <FormattedNumber value={position.absolute_pl_without_fees} currency={true} />
                   </div>
-                  <div className={`sub-value ${plData.withoutFees.percentagePL >= 0 ? 'positive' : 'negative'}`}>
-                    {plData.withoutFees.percentagePL >= 0 ? '↑' : '↓'}
-                    <FormattedNumber value={Math.abs(plData.withoutFees.percentagePL)} currency={false} />
+                  <div className={`sub-value ${parseFloat(position.percentage_pl_without_fees) >= 0 ? 'positive' : 'negative'}`}>
+                    {parseFloat(position.percentage_pl_without_fees) >= 0 ? '↑' : '↓'}
+                    <FormattedNumber value={Math.abs(parseFloat(position.percentage_pl_without_fees))} currency={false} />
                     %
                   </div>
                 </td>
@@ -97,13 +78,13 @@ function ClosedPositionsTable({ closedPositions, isinNames = {} }) {
 
                 {/* P/L (including fees) */}
                 <td>
-                  <div className={plData.withFees.absolutePL >= 0 ? 'positive' : 'negative'}>
-                    {plData.withFees.absolutePL >= 0 ? '+' : ''}
-                    <FormattedNumber value={plData.withFees.absolutePL} currency={true} />
+                  <div className={parseFloat(position.absolute_pl_with_fees) >= 0 ? 'positive' : 'negative'}>
+                    {parseFloat(position.absolute_pl_with_fees) >= 0 ? '+' : ''}
+                    <FormattedNumber value={position.absolute_pl_with_fees} currency={true} />
                   </div>
-                  <div className={`sub-value ${plData.withFees.percentagePL >= 0 ? 'positive' : 'negative'}`}>
-                    {plData.withFees.percentagePL >= 0 ? '↑' : '↓'}
-                    <FormattedNumber value={Math.abs(plData.withFees.percentagePL)} currency={false} />
+                  <div className={`sub-value ${parseFloat(position.percentage_pl_with_fees) >= 0 ? 'positive' : 'negative'}`}>
+                    {parseFloat(position.percentage_pl_with_fees) >= 0 ? '↑' : '↓'}
+                    <FormattedNumber value={Math.abs(parseFloat(position.percentage_pl_with_fees))} currency={false} />
                     %
                   </div>
                 </td>
