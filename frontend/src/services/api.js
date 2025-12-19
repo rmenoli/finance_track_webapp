@@ -160,9 +160,53 @@ export const isinMetadataAPI = {
   },
 };
 
+// Other Assets API methods
+export const otherAssetsAPI = {
+  // Create or update other asset (UPSERT)
+  upsert: async (assetType, assetDetail, currency, value) => {
+    const response = await fetch(`${API_BASE_URL}/other-assets`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        asset_type: assetType,
+        asset_detail: assetDetail,
+        currency: currency,
+        value: value.toString(), // Send as string for Decimal precision
+      }),
+    });
+    return handleResponse(response);
+  },
+
+  // Get all other assets with optional investments row
+  getAll: async (includeInvestments = true) => {
+    const url = `${API_BASE_URL}/other-assets?include_investments=${includeInvestments}`;
+    const response = await fetch(url);
+    return handleResponse(response);
+  },
+
+  // Get single other asset by type and optional detail
+  get: async (assetType, assetDetail = null) => {
+    const query = assetDetail ? `?asset_detail=${encodeURIComponent(assetDetail)}` : '';
+    const response = await fetch(`${API_BASE_URL}/other-assets/${assetType}${query}`);
+    return handleResponse(response);
+  },
+
+  // Delete other asset
+  delete: async (assetType, assetDetail = null) => {
+    const query = assetDetail ? `?asset_detail=${encodeURIComponent(assetDetail)}` : '';
+    const response = await fetch(`${API_BASE_URL}/other-assets/${assetType}${query}`, {
+      method: 'DELETE',
+    });
+    return handleResponse(response);
+  },
+};
+
 export default {
   transactions: transactionsAPI,
   analytics: analyticsAPI,
   positionValues: positionValuesAPI,
   isinMetadata: isinMetadataAPI,
+  otherAssets: otherAssetsAPI,
 };

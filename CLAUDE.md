@@ -134,7 +134,7 @@ uv run ruff format .
 ```bash
 cd backend
 
-# Run all tests (158 tests, 95% coverage)
+# Run all tests (196 tests, 95% coverage)
 uv run pytest
 
 # Run with verbose output
@@ -394,6 +394,12 @@ All routes prefixed with `/api/v1`:
 - `PUT /isin-metadata/{isin}` - Update metadata
 - `DELETE /isin-metadata/{isin}` - Delete by ISIN
 
+**Other Assets**:
+- `POST /other-assets` - Create or update (UPSERT by asset_type and asset_detail)
+- `GET /other-assets?include_investments={bool}` - List all with optional synthetic investments row
+- `GET /other-assets/{type}?asset_detail={detail}` - Get by type and optional detail
+- `DELETE /other-assets/{type}?asset_detail={detail}` - Delete by type and optional detail
+
 Interactive docs: http://localhost:8000/docs (Swagger UI)
 
 ## Common Development Scenarios
@@ -451,12 +457,15 @@ When modifying, maintain chronological transaction processing (ORDER BY date).
 3. **Add/Edit Transaction** (`/transactions/add`, `/transactions/edit/:id`) - Transaction form
 4. **ISIN Metadata** (`/isin-metadata`) - ISIN metadata list with type filtering and CRUD operations
 5. **Add/Edit ISIN Metadata** (`/isin-metadata/add`, `/isin-metadata/edit/:isin`) - ISIN metadata form
+6. **Other Assets** (`/other-assets`) - Track non-ETF holdings with multi-currency support and distribution chart
 
 **Key Components**:
 - **Layout**: Main wrapper with navigation for all pages
-- **Navigation**: Navigation bar with route links (Dashboard, Transactions, ISIN Metadata)
+- **Navigation**: Navigation bar with route links (Dashboard, Transactions, ISIN Metadata, Other Assets)
 - **TransactionForm**: Reusable form for creating/editing transactions
 - **TransactionList**: Table view with filters and actions
+- **OtherAssetsTable**: Editable table for tracking non-ETF assets with multi-currency support
+- **OtherAssetsDistributionChart**: Pie chart visualization for other assets distribution
 - **ISINMetadataForm**: Reusable form for creating/editing ISIN metadata (ISIN, name, type)
 - **ISINMetadataList**: Table view with type badges and actions
 - **DashboardHoldingsTable**: Detailed holdings display with asset names above ISIN codes
@@ -531,20 +540,22 @@ CORS_ORIGINS=["http://localhost:3000", "http://localhost:8000"]
 
 ## Testing
 
-**Test Suite**: 158 tests, 95% coverage
+**Test Suite**: 196 tests, 95% coverage
 
 **Test Structure**:
 - `tests/conftest.py`: Fixtures for database and test client
 - `tests/test_transaction_service.py`: Service layer (14 tests)
 - `tests/test_cost_basis_service.py`: Cost basis calculations including P/L (22 tests)
 - `tests/test_position_value_service.py`: Position value service (9 tests)
+- `tests/test_other_asset_service.py`: Other asset service (15 tests)
 - `tests/test_api_transactions.py`: Transaction API (20 tests)
 - `tests/test_api_analytics.py`: Analytics API (3 tests)
 - `tests/test_api_position_values.py`: Position values API (9 tests)
+- `tests/test_api_other_assets.py`: Other assets API (15 tests)
 - `tests/test_isin_metadata_service.py`: ISIN metadata service (15 tests)
 - `tests/test_api_isin_metadata.py`: ISIN metadata API (20 tests)
 - `tests/test_position_value_cleanup.py`: Position value cleanup (5 tests)
-- `tests/test_schemas.py`: Pydantic validation (41 tests)
+- `tests/test_schemas.py`: Pydantic validation (49 tests, includes OtherAssetSchemas)
 
 **Key Test Patterns**:
 - Database isolation via fixtures
@@ -638,11 +649,12 @@ For detailed information, see:
 ## Project Status Summary
 
 **Current Version**: Development
-**Test Coverage**: 95% (158 backend tests)
-**Backend Endpoints**: 16 total (5 transaction, 1 analytics, 4 position values, 6 ISIN metadata)
-**Frontend Pages**: 5 (Investment Dashboard, Transactions, Add/Edit Transaction, ISIN Metadata, Add/Edit ISIN Metadata)
-**Frontend Components**: 10 main components (Layout, Navigation, TransactionForm, TransactionList, ISINMetadataForm, ISINMetadataList, DashboardHoldingsTable, HoldingsDistributionChart, ClosedPositionsTable, PortfolioSummary)
-**Visualization**: Portfolio distribution pie chart with Chart.js, asset name display in holdings tables
+**Test Coverage**: 95% (196 backend tests)
+**Backend Endpoints**: 20 total (5 transaction, 1 analytics, 4 position values, 6 ISIN metadata, 4 other assets)
+**Frontend Pages**: 6 (Investment Dashboard, Transactions, Add/Edit Transaction, ISIN Metadata, Add/Edit ISIN Metadata, Other Assets)
+**Frontend Components**: 12 main components (Layout, Navigation, TransactionForm, TransactionList, ISINMetadataForm, ISINMetadataList, DashboardHoldingsTable, HoldingsDistributionChart, ClosedPositionsTable, PortfolioSummary, OtherAssetsTable, OtherAssetsDistributionChart)
+**Visualization**: Portfolio distribution pie chart with Chart.js, other assets distribution chart, asset name display in holdings tables
+**Multi-Currency**: EUR/CZK support with client-side conversion for other assets
 
 ---
 

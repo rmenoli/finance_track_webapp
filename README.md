@@ -31,6 +31,9 @@ A full-stack web application for tracking ETF portfolio transactions with automa
 - ✅ ISIN metadata management (asset names and types)
 - ✅ Asset names displayed in holdings tables
 - ✅ Portfolio distribution pie chart with interactive visualization
+- ✅ Other assets tracking (crypto, cash accounts, CD, pension funds)
+- ✅ Multi-currency support with client-side conversion (EUR/CZK)
+- ✅ Other assets distribution visualization with pie chart
 
 **User Experience**
 - ✅ Clean, responsive React UI
@@ -43,8 +46,8 @@ A full-stack web application for tracking ETF portfolio transactions with automa
 | Layer | Technology |
 |-------|-----------|
 | **Backend** | FastAPI, SQLAlchemy 2.0, SQLite, Alembic, Pydantic |
-| **Frontend** | React 18, Vite, React Router v6, CSS |
-| **Testing** | Pytest (158 tests, 95% coverage) |
+| **Frontend** | React 18, Vite, React Router v6, CSS, Chart.js |
+| **Testing** | Pytest (196 tests, 95% coverage) |
 | **Tools** | UV (Python), npm (Node.js), Ruff (linting) |
 
 ---
@@ -301,6 +304,14 @@ All endpoints are prefixed with `/api/v1`
 | PUT | `/isin-metadata/{isin}` | Update ISIN metadata |
 | DELETE | `/isin-metadata/{isin}` | Delete ISIN metadata |
 
+#### Other Assets Endpoints
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/other-assets` | Create or update other asset (UPSERT) |
+| GET | `/other-assets?include_investments={bool}` | List all other assets (optionally include synthetic investments row) |
+| GET | `/other-assets/{type}?asset_detail={detail}` | Get specific other asset by type and optional detail |
+| DELETE | `/other-assets/{type}?asset_detail={detail}` | Delete other asset |
+
 **Full interactive API documentation:** http://localhost:8000/docs (Swagger UI)
 
 ---
@@ -395,9 +406,9 @@ realized_gain = (sell_price × units - fee) - cost_removed
 ## Project Status
 
 **Current Version**: Development
-**Test Coverage**: 95% (158 tests)
-**Frontend Pages**: 4 pages (Investment Dashboard, Transactions, Add/Edit Transaction, ISIN Metadata Management)
-**Backend Endpoints**: 16 endpoints (5 transaction, 1 analytics, 4 position values, 6 ISIN metadata)
+**Test Coverage**: 95% (196 tests)
+**Frontend Pages**: 5 pages (Investment Dashboard, Transactions, Add/Edit Transaction, ISIN Metadata Management, Other Assets)
+**Backend Endpoints**: 20 endpoints (5 transaction, 1 analytics, 4 position values, 6 ISIN metadata, 4 other assets)
 
 ---
 

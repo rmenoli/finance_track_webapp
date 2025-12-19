@@ -5,10 +5,11 @@ from decimal import Decimal
 import pytest
 from pydantic import ValidationError
 
-from app.constants import ISINType, TransactionType
+from app.constants import AssetType, Currency, ISINType, TransactionType
 from app.schemas.transaction import TransactionCreate, TransactionUpdate
 from app.schemas.position_value import PositionValueCreate
 from app.schemas.isin_metadata import ISINMetadataCreate, ISINMetadataUpdate
+from app.schemas.other_asset import OtherAssetCreate
 
 
 class TestTransactionSchemas:
@@ -503,3 +504,127 @@ class TestISINMetadataSchemas:
                 type=ISINType.STOCK
             )
             assert metadata.isin == isin
+
+
+class TestOtherAssetSchemas:
+    """Test other asset schema validation."""
+
+    def test_other_asset_create_valid_crypto(self):
+        """Test creating valid crypto asset schema."""
+        asset = OtherAssetCreate(
+            asset_type=AssetType.CRYPTO,
+            asset_detail=None,
+            currency=Currency.EUR,
+            value=Decimal("700.00")
+        )
+
+        assert asset.asset_type == AssetType.CRYPTO
+        assert asset.asset_detail is None
+        assert asset.currency == Currency.EUR
+        assert asset.value == Decimal("700.00")
+
+    def test_other_asset_create_valid_cash_eur(self):
+        """Test creating valid cash EUR asset with account."""
+        asset = OtherAssetCreate(
+            asset_type=AssetType.CASH_EUR,
+            asset_detail="CSOB",
+            currency=Currency.EUR,
+            value=Decimal("1500.00")
+        )
+
+        assert asset.asset_type == AssetType.CASH_EUR
+        assert asset.asset_detail == "CSOB"
+        assert asset.currency == Currency.EUR
+
+    def test_other_asset_create_cannot_create_investments(self):
+        """Test that investments asset type cannot be manually created."""
+        with pytest.raises(ValidationError) as exc_info:
+            OtherAssetCreate(
+                asset_type=AssetType.INVESTMENTS,
+                asset_detail=None,
+                currency=Currency.EUR,
+                value=Decimal("10000.00")
+            )
+
+        assert "investments" in str(exc_info.value).lower()
+
+    def test_other_asset_create_cash_requires_account(self):
+        """Test that cash assets require account name."""
+        with pytest.raises(ValidationError) as exc_info:
+            OtherAssetCreate(
+                asset_type=AssetType.CASH_EUR,
+                asset_detail=None,  # Missing account name
+                currency=Currency.EUR,
+                value=Decimal("1000.00")
+            )
+
+        assert "account name" in str(exc_info.value).lower()
+
+    def test_other_asset_create_invalid_account_name(self):
+        """Test that invalid account names are rejected."""
+        with pytest.raises(ValidationError) as exc_info:
+            OtherAssetCreate(
+                asset_type=AssetType.CASH_EUR,
+                asset_detail="InvalidBank",  # Not in VALID_ACCOUNT_NAMES
+                currency=Currency.EUR,
+                value=Decimal("1000.00")
+            )
+
+        assert "invalid account name" in str(exc_info.value).lower()
+
+    def test_other_asset_create_non_cash_cannot_have_account(self):
+        """Test that non-cash assets cannot have asset_detail."""
+        with pytest.raises(ValidationError) as exc_info:
+            OtherAssetCreate(
+                asset_type=AssetType.CRYPTO,
+                asset_detail="CSOB",  # Should be None for crypto
+                currency=Currency.EUR,
+                value=Decimal("700.00")
+            )
+
+        assert "must not have" in str(exc_info.value).lower()
+
+    def test_other_asset_create_currency_mismatch_cash_eur(self):
+        """Test that cash_eur requires EUR currency."""
+        with pytest.raises(ValidationError) as exc_info:
+            OtherAssetCreate(
+                asset_type=AssetType.CASH_EUR,
+                asset_detail="CSOB",
+                currency=Currency.CZK,  # Wrong currency
+                value=Decimal("1000.00")
+            )
+
+        assert "currency mismatch" in str(exc_info.value).lower()
+
+    def test_other_asset_create_currency_mismatch_cash_czk(self):
+        """Test that cash_czk requires CZK currency."""
+        with pytest.raises(ValidationError) as exc_info:
+            OtherAssetCreate(
+                asset_type=AssetType.CASH_CZK,
+                asset_detail="CSOB",
+                currency=Currency.EUR,  # Wrong currency
+                value=Decimal("1000.00")
+            )
+
+        assert "currency mismatch" in str(exc_info.value).lower()
+
+    def test_other_asset_create_negative_value_rejected(self):
+        """Test that negative values are rejected."""
+        with pytest.raises(ValidationError):
+            OtherAssetCreate(
+                asset_type=AssetType.CRYPTO,
+                asset_detail=None,
+                currency=Currency.EUR,
+                value=Decimal("-100.00")
+            )
+
+    def test_other_asset_create_zero_value_accepted(self):
+        """Test that zero value is accepted (unlike position values)."""
+        asset = OtherAssetCreate(
+            asset_type=AssetType.CRYPTO,
+            asset_detail=None,
+            currency=Currency.EUR,
+            value=Decimal("0.00")
+        )
+
+        assert asset.value == Decimal("0.00")

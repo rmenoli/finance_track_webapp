@@ -39,3 +39,18 @@ class ISINMetadataAlreadyExistsError(HTTPException):
             status_code=status.HTTP_409_CONFLICT,
             detail=f"ISIN metadata for {isin} already exists",
         )
+
+
+class OtherAssetNotFoundError(HTTPException):
+    """Exception raised when an other asset is not found."""
+
+    def __init__(self, asset_type: str, asset_detail: str | None = None):
+        if asset_detail:
+            detail = f"Other asset with type '{asset_type}' and detail '{asset_detail}' not found"
+        else:
+            detail = f"Other asset with type '{asset_type}' not found"
+
+        super().__init__(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=detail,
+        )

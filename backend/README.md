@@ -25,7 +25,7 @@ FastAPI backend service for tracking ETF transactions with automatic cost basis 
 - **Validation**: Pydantic 2.12.5 (data validation and settings)
 - **Package Manager**: UV (fast Python package manager)
 - **Server**: Uvicorn 0.38.0 (ASGI server)
-- **Testing**: Pytest 9.0.2 with 95% coverage (158 tests)
+- **Testing**: Pytest 9.0.2 with 95% coverage (196 tests)
 - **Code Quality**: Ruff 0.14.9 (linting and formatting)
 
 ## Prerequisites
@@ -243,6 +243,22 @@ All endpoints are prefixed with `/api/v1`
 | DELETE | `/isin-metadata/{isin}` | Delete ISIN metadata by ISIN |
 
 **ISIN Metadata** stores asset information (name and type) for each ISIN. The type field is an enum with three values: `STOCK`, `BOND`, or `REAL_ASSET`. This feature enables categorizing ISINs and displaying meaningful names instead of bare ISIN codes. The metadata is independent of transactions - you can have metadata without transactions and vice versa.
+
+#### Other Assets Endpoints
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/other-assets` | Create or update other asset (UPSERT by asset_type and asset_detail) |
+| GET | `/other-assets?include_investments={bool}` | List all other assets with optional synthetic investments row |
+| GET | `/other-assets/{type}?asset_detail={detail}` | Get specific other asset by type and optional detail |
+| DELETE | `/other-assets/{type}?asset_detail={detail}` | Delete other asset by type and optional detail |
+
+**Other Assets** track non-ETF holdings such as crypto, cash in multiple accounts (EUR/CZK), CD accounts, and pension funds. The system supports:
+- **Asset Types**: `investments` (read-only, computed from portfolio), `crypto`, `cash_eur`, `cash_czk`, `cd_account`, `pension_fund`
+- **Multi-Currency**: EUR and CZK with client-side conversion
+- **Account Tracking**: Cash assets support multiple accounts (CSOB, RAIF, Revolut, Wise, Degiro)
+- **UPSERT Logic**: Composite key on (asset_type, asset_detail) ensures one value per asset/account combination
+- **Synthetic Investments Row**: The investments asset type is auto-generated from portfolio current value and cannot be manually created
 
 ### Example Requests
 
@@ -465,7 +481,7 @@ uv run alembic upgrade head
 ### Run All Tests
 
 ```bash
-# Run all 152 tests
+# Run all 196 tests
 uv run pytest
 
 # Run with verbose output
@@ -491,22 +507,22 @@ uv run pytest tests/test_cost_basis_service.py::TestCostBasisService::test_calcu
 ### Test Categories
 
 ```bash
-# Service layer tests (44 tests)
-uv run pytest tests/test_transaction_service.py tests/test_cost_basis_service.py tests/test_isin_metadata_service.py tests/test_position_value_service.py
+# Service layer tests (59 tests)
+uv run pytest tests/test_transaction_service.py tests/test_cost_basis_service.py tests/test_isin_metadata_service.py tests/test_position_value_service.py tests/test_other_asset_service.py
 
-# API tests (71 tests)
-uv run pytest tests/test_api_transactions.py tests/test_api_analytics.py tests/test_api_isin_metadata.py tests/test_api_position_values.py
+# API tests (86 tests)
+uv run pytest tests/test_api_transactions.py tests/test_api_analytics.py tests/test_api_isin_metadata.py tests/test_api_position_values.py tests/test_api_other_assets.py
 
-# Validation tests (39 tests)
+# Validation tests (49 tests)
 uv run pytest tests/test_schemas.py
 
-# ISIN metadata specific tests (45 tests)
-uv run pytest tests/test_isin_metadata_service.py tests/test_api_isin_metadata.py
+# Other assets specific tests (38 tests)
+uv run pytest tests/test_other_asset_service.py tests/test_api_other_assets.py tests/test_schemas.py::TestOtherAssetSchemas
 ```
 
 ### Test Coverage
 
-Current coverage: **95%** (152 tests)
+Current coverage: **95%** (196 tests)
 
 To view detailed coverage:
 ```bash

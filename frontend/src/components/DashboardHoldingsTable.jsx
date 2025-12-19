@@ -82,13 +82,6 @@ function DashboardHoldingsTable({ holdings, onPositionValueChange, isinNames = {
 
   return (
     <>
-      {/* Holdings Distribution Chart */}
-      <HoldingsDistributionChart
-        holdings={holdings}
-        currentValues={currentValues}
-        isinNames={isinNames}
-      />
-
       <div className="table-container">
         {error && (
           <div className="error-message" style={{ color: 'orange', marginBottom: '10px' }}>
@@ -234,6 +227,13 @@ function DashboardHoldingsTable({ holdings, onPositionValueChange, isinNames = {
         </tbody>
       </table>
     </div>
+
+      {/* Holdings Distribution Chart */}
+      <HoldingsDistributionChart
+        holdings={holdings}
+        currentValues={currentValues}
+        isinNames={isinNames}
+      />
     </>
   );
 }

@@ -66,11 +66,16 @@ src/
 │   ├── ClosedPositionsTable.jsx/css  # Closed positions table
 │   ├── ISINMetadataForm.jsx/css      # ISIN metadata form
 │   ├── ISINMetadataList.jsx/css      # ISIN metadata list
+│   ├── OtherAssetsTable.jsx/css      # Editable other assets table
+│   ├── OtherAssetsDistributionChart.jsx # Other assets pie chart
 │   └── PortfolioSummary.jsx/css      # Dashboard summary cards
 ├── pages/                             # Page-level components
 │   ├── InvestmentDashboard.jsx/css   # Portfolio overview page
 │   ├── Transactions.jsx/css          # Transaction management
-│   └── AddTransaction.jsx/css        # Add/edit transaction page
+│   ├── AddTransaction.jsx/css        # Add/edit transaction page
+│   ├── ISINMetadata.jsx/css          # ISIN metadata management
+│   ├── AddISINMetadata.jsx/css       # Add/edit ISIN metadata page
+│   └── OtherAssets.jsx/css           # Other assets tracking page
 ├── services/                          # API client
 │   └── api.js                        # Backend API client
 ├── App.jsx                            # Main app with routing
@@ -103,10 +108,31 @@ src/
    - Client-side validation matching backend rules
    - Success/error feedback
 
+4. **ISIN Metadata** (`/isin-metadata`)
+   - Manage ISIN metadata (asset names and types)
+   - Filter by asset type (STOCK, BOND, REAL_ASSET)
+   - Add, edit, and delete ISIN metadata
+   - Asset names displayed in holdings tables
+
+5. **Add/Edit ISIN Metadata** (`/isin-metadata/add`, `/isin-metadata/edit/:isin`)
+   - Form for creating and editing ISIN metadata
+   - ISIN validation and type selection
+   - Success/error feedback
+
+6. **Other Assets** (`/other-assets`)
+   - Track non-ETF holdings (crypto, cash, CD, pension funds)
+   - Multi-currency support (EUR/CZK) with exchange rate input
+   - Editable table with click-to-edit cells
+   - Client-side currency conversion
+   - Multiple cash accounts support (CSOB, RAIF, Revolut, Wise, Degiro)
+   - Read-only Investimenti row (computed from portfolio)
+   - Distribution pie chart showing asset allocation in EUR
+   - Persistent exchange rate in localStorage
+
 ### Components
 
 - **Layout**: Main wrapper with navigation
-- **Navigation**: Nav links for all pages
+- **Navigation**: Nav links for all pages (Dashboard, Transactions, ISIN Metadata, Other Assets)
 - **TransactionForm**: Reusable form for add/edit transactions
 - **TransactionList**: Table view of all transactions with filters
 - **DashboardHoldingsTable**: Detailed holdings table with asset names and editable position values
@@ -114,6 +140,8 @@ src/
 - **ClosedPositionsTable**: Table showing closed positions with realized P/L
 - **ISINMetadataForm**: Form for creating/editing ISIN metadata (name and type)
 - **ISINMetadataList**: Table displaying ISIN metadata with type-based filtering
+- **OtherAssetsTable**: Editable table for non-ETF holdings with multi-currency support and click-to-edit cells
+- **OtherAssetsDistributionChart**: Pie chart showing other assets distribution in EUR with percentages (uses Chart.js)
 - **PortfolioSummary**: Dashboard summary cards showing portfolio metrics
 
 ### Visualization Features
@@ -132,6 +160,15 @@ src/
   - Bold asset names for easy recognition
   - Italic ISIN codes for secondary information
   - Seamless integration with ISIN metadata management
+
+- **Other Assets Distribution Chart**:
+  - Interactive pie chart for non-ETF holdings (crypto, cash, CD, pension funds)
+  - Shows EUR-converted values for all assets
+  - Auto-converts CZK assets to EUR using user-defined exchange rate
+  - Displays asset type labels (Investimenti, Crypto, Cash EUR, etc.) with percentages
+  - Interactive tooltips showing EUR value and percentage share
+  - Color-coded segments matching portfolio distribution chart style
+  - Auto-updates when asset values or exchange rate changes
 
 ### Validation
 
@@ -238,6 +275,47 @@ const costBasis = await analyticsAPI.getCostBasis('IE00B4L5Y983');
 // Get realized gains (all or filtered by ISIN)
 const gains = await analyticsAPI.getRealizedGains();
 const gainsForIsin = await analyticsAPI.getRealizedGains('IE00B4L5Y983');
+```
+
+### Other Assets API
+
+```javascript
+import { otherAssetsAPI } from './services/api';
+
+// Create or update other asset (UPSERT)
+await otherAssetsAPI.upsert(
+  'crypto',        // asset_type
+  null,           // asset_detail (null for non-cash assets)
+  'EUR',          // currency
+  700.00          // value
+);
+
+// Create or update cash account
+await otherAssetsAPI.upsert(
+  'cash_eur',     // asset_type
+  'CSOB',         // asset_detail (account name)
+  'EUR',          // currency
+  1500.00         // value
+);
+
+// Get all other assets (includes synthetic investments row)
+const response = await otherAssetsAPI.getAll(true);
+const assets = response.other_assets;
+
+// Get all without investments row
+const responseNoInv = await otherAssetsAPI.getAll(false);
+
+// Get specific asset by type
+const crypto = await otherAssetsAPI.get('crypto', null);
+
+// Get specific cash account
+const csobAccount = await otherAssetsAPI.get('cash_eur', 'CSOB');
+
+// Delete asset
+await otherAssetsAPI.delete('crypto', null);
+
+// Delete cash account
+await otherAssetsAPI.delete('cash_eur', 'CSOB');
 ```
 
 ## Styling
