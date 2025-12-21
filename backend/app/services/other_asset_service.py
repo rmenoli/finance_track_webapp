@@ -1,5 +1,6 @@
 """Other asset service for business logic."""
 
+import logging
 from datetime import datetime
 from decimal import Decimal
 
@@ -7,9 +8,12 @@ from sqlalchemy.orm import Session
 
 from app.constants import AssetType, Currency
 from app.exceptions import OtherAssetNotFoundError
+from app.logging_config import log_with_context
 from app.models.other_asset import OtherAsset
 from app.schemas.other_asset import OtherAssetCreate
 from app.services import cost_basis_service
+
+logger = logging.getLogger(__name__)
 
 
 def upsert_other_asset(
@@ -39,11 +43,36 @@ def upsert_other_asset(
 
     if existing:
         # Update existing record
+        # Track changes
+        changes = {}
+        if existing.currency != asset_data.currency.value:
+            changes["currency"] = {
+                "before": existing.currency,
+                "after": asset_data.currency.value,
+            }
+        if existing.value != asset_data.value:
+            changes["value"] = {
+                "before": str(existing.value),
+                "after": str(asset_data.value),
+            }
+
         existing.currency = asset_data.currency.value
         existing.value = asset_data.value
         # updated_at will auto-update via onupdate in model
         db.commit()
         db.refresh(existing)
+
+        # AUDIT LOG - UPDATE
+        log_with_context(
+            logger,
+            logging.INFO,
+            "Other asset updated",
+            operation="UPSERT_UPDATE",
+            asset_type=asset_data.asset_type.value,
+            asset_detail=asset_data.asset_detail,
+            changes=changes,
+        )
+
         return existing
     else:
         # Create new record
@@ -56,6 +85,19 @@ def upsert_other_asset(
         db.add(other_asset)
         db.commit()
         db.refresh(other_asset)
+
+        # AUDIT LOG - CREATE
+        log_with_context(
+            logger,
+            logging.INFO,
+            "Other asset created",
+            operation="UPSERT_CREATE",
+            asset_type=asset_data.asset_type.value,
+            asset_detail=asset_data.asset_detail,
+            currency=asset_data.currency.value,
+            value=str(asset_data.value),
+        )
+
         return other_asset
 
 
@@ -162,5 +204,23 @@ def delete_other_asset(db: Session, asset_type: str, asset_detail: str | None = 
         OtherAssetNotFoundError: If asset not found
     """
     other_asset = get_other_asset(db, asset_type, asset_detail)
+
+    # Store for audit log
+    deleted_data = {
+        "asset_type": other_asset.asset_type,
+        "asset_detail": other_asset.asset_detail,
+        "currency": other_asset.currency,
+        "value": str(other_asset.value),
+    }
+
     db.delete(other_asset)
     db.commit()
+
+    # AUDIT LOG
+    log_with_context(
+        logger,
+        logging.INFO,
+        "Other asset deleted",
+        operation="DELETE",
+        **deleted_data,
+    )

@@ -1,4 +1,8 @@
+import logging
+
 from fastapi import HTTPException, status
+
+logger = logging.getLogger(__name__)
 
 
 class TransactionNotFoundError(HTTPException):
@@ -8,6 +12,11 @@ class TransactionNotFoundError(HTTPException):
         super().__init__(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Transaction with id {transaction_id} not found",
+        )
+        # Log when exception is raised
+        logger.warning(
+            "Transaction not found",
+            extra={"transaction_id": transaction_id}
         )
 
 
@@ -19,6 +28,10 @@ class PositionValueNotFoundError(HTTPException):
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Position value for ISIN {isin} not found",
         )
+        logger.warning(
+            "Position value not found",
+            extra={"isin": isin}
+        )
 
 
 class ISINMetadataNotFoundError(HTTPException):
@@ -29,6 +42,10 @@ class ISINMetadataNotFoundError(HTTPException):
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"ISIN metadata for {isin} not found",
         )
+        logger.warning(
+            "ISIN metadata not found",
+            extra={"isin": isin}
+        )
 
 
 class ISINMetadataAlreadyExistsError(HTTPException):
@@ -38,6 +55,10 @@ class ISINMetadataAlreadyExistsError(HTTPException):
         super().__init__(
             status_code=status.HTTP_409_CONFLICT,
             detail=f"ISIN metadata for {isin} already exists",
+        )
+        logger.warning(
+            "ISIN metadata already exists",
+            extra={"isin": isin}
         )
 
 
@@ -53,4 +74,8 @@ class OtherAssetNotFoundError(HTTPException):
         super().__init__(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=detail,
+        )
+        logger.warning(
+            "Other asset not found",
+            extra={"asset_type": asset_type, "asset_detail": asset_detail}
         )

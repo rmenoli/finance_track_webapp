@@ -1,3 +1,5 @@
+import logging
+import time
 from datetime import date
 from decimal import Decimal
 from typing import Optional
@@ -5,12 +7,15 @@ from typing import Optional
 from sqlalchemy.orm import Session
 
 from app.constants import TransactionType
+from app.logging_config import log_with_context
 from app.models.transaction import Transaction
 from app.schemas.analytics import (
     CostBasisResponse,
     PortfolioSummaryResponse,
 )
 from app.services import position_value_service
+
+logger = logging.getLogger(__name__)
 
 
 def calculate_cost_basis(
@@ -27,6 +32,8 @@ def calculate_cost_basis(
     Returns:
         Cost basis response or None if no transactions found
     """
+    start_time = time.time()
+
     query = db.query(Transaction).filter(Transaction.isin == isin.upper())
 
     if as_of_date:
@@ -64,6 +71,19 @@ def calculate_cost_basis(
             total_units -= txn.units
 
             transaction_count += 1
+
+    duration_ms = (time.time() - start_time) * 1000
+
+    # PERFORMANCE LOG (only if slow)
+    if duration_ms > 100:  # Log if > 100ms
+        log_with_context(
+            logger,
+            logging.WARNING,
+            "Slow cost basis calculation",
+            isin=isin.upper(),
+            transaction_count=len(transactions),
+            duration_ms=round(duration_ms, 2),
+        )
 
     return CostBasisResponse(
         isin=isin.upper(),
@@ -180,6 +200,8 @@ def get_portfolio_summary(db: Session) -> PortfolioSummaryResponse:
     Returns:
         Portfolio summary with calculated P/L for each holding
     """
+    start_time = time.time()
+
     # Fetch all position values and create a map for efficient lookup
     position_values = position_value_service.get_all_position_values(db)
     position_values_map = {pv.isin.upper(): pv.current_value for pv in position_values}
@@ -213,6 +235,18 @@ def get_portfolio_summary(db: Session) -> PortfolioSummaryResponse:
     # Calculate total profit/loss
     total_profit_loss = (
         total_current_portfolio_invested_value + total_withdrawn - total_fees - total_invested
+    )
+
+    duration_ms = (time.time() - start_time) * 1000
+
+    # PERFORMANCE LOG
+    log_with_context(
+        logger,
+        logging.INFO,
+        "Portfolio summary calculated",
+        holdings_count=len(holdings),
+        closed_positions_count=len(closed_positions),
+        duration_ms=round(duration_ms, 2),
     )
 
     return PortfolioSummaryResponse(

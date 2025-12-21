@@ -1,3 +1,4 @@
+import logging
 from datetime import date
 from decimal import Decimal
 from typing import Optional
@@ -6,9 +7,12 @@ from sqlalchemy.orm import Session
 
 from app.constants import DEFAULT_PAGE_SIZE, TransactionType
 from app.exceptions import PositionValueNotFoundError, TransactionNotFoundError
+from app.logging_config import log_with_context
 from app.models.transaction import Transaction
 from app.schemas.transaction import TransactionCreate, TransactionUpdate
 from app.services import cost_basis_service, position_value_service
+
+logger = logging.getLogger(__name__)
 
 
 def create_transaction(db: Session, transaction_data: TransactionCreate) -> Transaction:
@@ -26,6 +30,23 @@ def create_transaction(db: Session, transaction_data: TransactionCreate) -> Tran
     db.add(transaction)
     db.commit()
     db.refresh(transaction)
+
+    # AUDIT LOG
+    log_with_context(
+        logger,
+        logging.INFO,
+        "Transaction created",
+        operation="CREATE",
+        transaction_id=transaction.id,
+        isin=transaction.isin,
+        transaction_type=transaction.transaction_type.value,
+        units=str(transaction.units),
+        price_per_unit=str(transaction.price_per_unit),
+        fee=str(transaction.fee),
+        broker=transaction.broker,
+        date=str(transaction.date),
+    )
+
     return transaction
 
 
@@ -131,6 +152,17 @@ def update_transaction(
     transaction = get_transaction(db, transaction_id)
     original_isin = transaction.isin
 
+    # Store before values for audit log
+    before_values = {
+        "isin": transaction.isin,
+        "transaction_type": transaction.transaction_type.value,
+        "units": str(transaction.units),
+        "price_per_unit": str(transaction.price_per_unit),
+        "fee": str(transaction.fee),
+        "broker": transaction.broker,
+        "date": str(transaction.date),
+    }
+
     # Calculate units before update to detect reopening
     cost_basis_before = cost_basis_service.calculate_cost_basis(db, original_isin)
     units_before = cost_basis_before.total_units if cost_basis_before else Decimal("0")
@@ -142,6 +174,32 @@ def update_transaction(
 
     db.commit()
     db.refresh(transaction)
+
+    # AUDIT LOG
+    after_values = {
+        "isin": transaction.isin,
+        "transaction_type": transaction.transaction_type.value,
+        "units": str(transaction.units),
+        "price_per_unit": str(transaction.price_per_unit),
+        "fee": str(transaction.fee),
+        "broker": transaction.broker,
+        "date": str(transaction.date),
+    }
+
+    changed_fields = {
+        k: {"before": before_values[k], "after": after_values[k]}
+        for k in before_values
+        if before_values[k] != after_values[k]
+    }
+
+    log_with_context(
+        logger,
+        logging.INFO,
+        "Transaction updated",
+        operation="UPDATE",
+        transaction_id=transaction.id,
+        changed_fields=changed_fields,
+    )
 
     # Track if ISIN changed
     isin_changed = transaction.isin != original_isin
@@ -180,12 +238,33 @@ def delete_transaction(db: Session, transaction_id: int) -> None:
     transaction = get_transaction(db, transaction_id)
     isin_to_check = transaction.isin
 
+    # Store values for audit log before deletion
+    deleted_values = {
+        "transaction_id": transaction.id,
+        "isin": transaction.isin,
+        "transaction_type": transaction.transaction_type.value,
+        "units": str(transaction.units),
+        "price_per_unit": str(transaction.price_per_unit),
+        "fee": str(transaction.fee),
+        "broker": transaction.broker,
+        "date": str(transaction.date),
+    }
+
     # Calculate units before deletion to detect reopening
     cost_basis_before = cost_basis_service.calculate_cost_basis(db, isin_to_check)
     units_before = cost_basis_before.total_units if cost_basis_before else Decimal("0")
 
     db.delete(transaction)
     db.commit()
+
+    # AUDIT LOG
+    log_with_context(
+        logger,
+        logging.INFO,
+        "Transaction deleted",
+        operation="DELETE",
+        **deleted_values,
+    )
 
     # Cleanup if position closed
     _cleanup_position_value_for_closed_position(db, isin_to_check)
@@ -223,6 +302,15 @@ def _cleanup_position_value_for_closed_position(db: Session, isin: str) -> None:
             except PositionValueNotFoundError:
                 # Expected - position value doesn't exist
                 pass
-    except Exception:
-        # Silent failure - don't block transaction operations
+    except Exception as e:
+        # LOG ERROR - previously silent
+        log_with_context(
+            logger,
+            logging.ERROR,
+            "Error during position value cleanup",
+            isin=isin,
+            error_type=type(e).__name__,
+            error_message=str(e),
+        )
+        # Still don't block transaction operations
         pass

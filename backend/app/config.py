@@ -13,6 +13,10 @@ class Settings(BaseSettings):
     debug: bool = False
     cors_origins: str = '["http://localhost:3000", "http://localhost:8000"]'
 
+    # Logging configuration
+    log_level: str = "INFO"
+    log_format: str = "json"  # json or text
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",

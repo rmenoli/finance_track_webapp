@@ -1,11 +1,16 @@
 """Position value service for business logic."""
 
+import logging
+
 from sqlalchemy.orm import Session
 
 from app.exceptions import PositionValueNotFoundError
+from app.logging_config import log_with_context
 from app.models.position_value import PositionValue
 from app.schemas.position_value import PositionValueCreate
 from app.services import cost_basis_service
+
+logger = logging.getLogger(__name__)
 
 
 def upsert_position_value(
@@ -35,10 +40,23 @@ def upsert_position_value(
 
     if existing:
         # Update existing record
+        old_value = str(existing.current_value)
         existing.current_value = position_value_data.current_value
         # updated_at will auto-update via onupdate in model
         db.commit()
         db.refresh(existing)
+
+        # AUDIT LOG - UPDATE
+        log_with_context(
+            logger,
+            logging.INFO,
+            "Position value updated",
+            operation="UPDATE",
+            isin=isin_normalized,
+            old_value=old_value,
+            new_value=str(position_value_data.current_value),
+        )
+
         return existing
     else:
         # Create new record
@@ -49,6 +67,17 @@ def upsert_position_value(
         db.add(position_value)
         db.commit()
         db.refresh(position_value)
+
+        # AUDIT LOG - CREATE
+        log_with_context(
+            logger,
+            logging.INFO,
+            "Position value created",
+            operation="CREATE",
+            isin=isin_normalized,
+            current_value=str(position_value_data.current_value),
+        )
+
         return position_value
 
 
@@ -103,8 +132,22 @@ def delete_position_value(db: Session, isin: str) -> None:
         PositionValueNotFoundError: If position value not found
     """
     position_value = get_position_value(db, isin)
+
+    # Store for audit log
+    deleted_value = str(position_value.current_value)
+
     db.delete(position_value)
     db.commit()
+
+    # AUDIT LOG
+    log_with_context(
+        logger,
+        logging.INFO,
+        "Position value deleted",
+        operation="DELETE",
+        isin=position_value.isin,
+        deleted_value=deleted_value,
+    )
 
 
 def cleanup_orphaned_position_values(db: Session) -> dict:
@@ -136,6 +179,13 @@ def cleanup_orphaned_position_values(db: Session) -> dict:
         "errors": []
     }
 
+    log_with_context(
+        logger,
+        logging.INFO,
+        "Starting position value cleanup",
+        total_position_values=len(position_values),
+    )
+
     for pv in position_values:
         try:
             # Calculate current position state
@@ -153,9 +203,29 @@ def cleanup_orphaned_position_values(db: Session) -> dict:
                 stats["deleted_isins"].append(pv.isin)
 
         except Exception as e:
-            stats["errors"].append({
+            # LOG ERROR - previously not logged
+            error_info = {
                 "isin": pv.isin,
                 "error": str(e)
-            })
+            }
+            stats["errors"].append(error_info)
+
+            log_with_context(
+                logger,
+                logging.ERROR,
+                "Error during position value cleanup",
+                isin=pv.isin,
+                error_type=type(e).__name__,
+                error_message=str(e),
+            )
+
+    log_with_context(
+        logger,
+        logging.INFO,
+        "Position value cleanup completed",
+        checked=stats["checked"],
+        deleted=stats["deleted"],
+        errors_count=len(stats["errors"]),
+    )
 
     return stats

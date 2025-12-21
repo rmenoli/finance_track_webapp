@@ -130,6 +130,30 @@ uv run ruff check --fix .
 uv run ruff format .
 ```
 
+### Logging
+
+**Enable different log levels:**
+```bash
+cd backend
+
+# Default INFO level (recommended)
+uv run uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+
+# Debug level for troubleshooting
+LOG_LEVEL=DEBUG uv run uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+
+# Human-readable text format for local development
+LOG_FORMAT=text uv run uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+```
+
+**Log output includes:**
+- HTTP requests/responses with timing and request IDs
+- Audit trail for all CREATE/UPDATE/DELETE operations
+- Exception tracking with full context
+- Performance metrics for slow operations (>100ms)
+
+All logs are structured JSON for easy parsing and filtering.
+
 ### Testing
 ```bash
 cd backend
@@ -174,6 +198,7 @@ finance_track_webapp/
 │   │   ├── main.py            # Application entry point
 │   │   ├── config.py          # Settings (Pydantic Settings)
 │   │   ├── database.py        # Database connection and session
+│   │   ├── logging_config.py  # Logging configuration and setup
 │   │   ├── constants.py       # Constants and enums
 │   │   ├── exceptions.py      # Custom exceptions
 │   │   ├── models/            # SQLAlchemy models (database layer)
@@ -553,6 +578,10 @@ API_V1_PREFIX=/api/v1
 PROJECT_NAME=ETF Portfolio Tracker
 DEBUG=True
 CORS_ORIGINS=["http://localhost:3000", "http://localhost:8000"]
+
+# Logging Configuration
+LOG_LEVEL=INFO
+LOG_FORMAT=json
 ```
 
 **Frontend Environment Variables**:
@@ -677,6 +706,7 @@ For detailed information, see:
 **Visualization**: Portfolio distribution pie chart with Chart.js, other assets distribution chart, asset name display in holdings tables
 **Multi-Currency**: EUR/CZK support with client-side conversion for other assets
 **Architecture**: Backend-first calculations - all financial math performed on backend using Decimal, frontend is pure presentation layer
+**Logging**: Structured JSON logging with audit trail for all operations, request tracing, and performance monitoring
 
 ---
 
