@@ -25,7 +25,7 @@ FastAPI backend service for tracking ETF transactions with automatic cost basis 
 - **Validation**: Pydantic 2.12.5 (data validation and settings)
 - **Package Manager**: UV (fast Python package manager)
 - **Server**: Uvicorn 0.38.0 (ASGI server)
-- **Testing**: Pytest 9.0.2 with 95% coverage (206 tests)
+- **Testing**: Pytest 9.0.2 with 95% coverage (216 tests)
 - **Code Quality**: Ruff 0.14.9 (linting and formatting)
 - **Logging**: Structured JSON logging with python-json-logger (audit trail + observability)
 
@@ -668,7 +668,7 @@ Every HTTP request gets a unique request ID that appears in all logs during that
 ### Run All Tests
 
 ```bash
-# Run all 206 tests
+# Run all 216 tests
 uv run pytest
 
 # Run with verbose output
@@ -709,7 +709,7 @@ uv run pytest tests/test_other_asset_service.py tests/test_api_other_assets.py t
 
 ### Test Coverage
 
-Current coverage: **95%** (206 tests)
+Current coverage: **95%** (216 tests)
 
 To view detailed coverage:
 ```bash
@@ -824,7 +824,7 @@ backend/
 │   ├── versions/              # Migration files
 │   ├── env.py                 # Alembic environment
 │   └── script.py.mako         # Migration template
-├── tests/                     # Test suite (95% coverage, 206 tests)
+├── tests/                     # Test suite (95% coverage, 216 tests)
 │   ├── conftest.py           # Test fixtures
 │   ├── test_transaction_service.py
 │   ├── test_cost_basis_service.py

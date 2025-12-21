@@ -11,7 +11,7 @@ from app.schemas.other_asset import (
     OtherAssetListResponse,
     OtherAssetResponse,
 )
-from app.services import other_asset_service
+from app.services import other_asset_service, user_setting_service
 
 router = APIRouter(prefix="/other-assets", tags=["other-assets"])
 
@@ -28,8 +28,21 @@ def upsert_other_asset(
     db: Session = Depends(get_db),
 ) -> OtherAssetResponse:
     """Create or update an other asset."""
+    from decimal import Decimal
+
     result = other_asset_service.upsert_other_asset(db, asset)
-    return OtherAssetResponse.model_validate(result)
+    exchange_rate = user_setting_service.get_exchange_rate_setting(db) or Decimal("25.00")
+
+    return OtherAssetResponse(
+        id=result.id,
+        asset_type=result.asset_type,
+        asset_detail=result.asset_detail,
+        currency=result.currency,
+        value=result.value,
+        created_at=result.created_at,
+        updated_at=result.updated_at,
+        exchange_rate_=exchange_rate,
+    )
 
 
 @router.get(
@@ -46,16 +59,33 @@ def list_other_assets(
     db: Session = Depends(get_db),
 ) -> OtherAssetListResponse:
     """List all other assets."""
+    from decimal import Decimal
+
     if include_investments:
-        other_assets = other_asset_service.get_all_other_assets_with_investments(db)
+        other_assets, exchange_rate = other_asset_service.get_all_other_assets_with_investments(db)
     else:
         other_assets = other_asset_service.get_all_other_assets(db)
+        exchange_rate = user_setting_service.get_exchange_rate_setting(db) or Decimal("25.00")
+
+    # Create response objects with exchange_rate_ set
+    response_assets = []
+    for asset in other_assets:
+        asset_dict = {
+            "id": asset.id,
+            "asset_type": asset.asset_type,
+            "asset_detail": asset.asset_detail,
+            "currency": asset.currency,
+            "value": asset.value,
+            "created_at": asset.created_at,
+            "updated_at": asset.updated_at,
+            "exchange_rate_": exchange_rate,
+        }
+        response_assets.append(OtherAssetResponse(**asset_dict))
 
     return OtherAssetListResponse(
-        other_assets=[
-            OtherAssetResponse.model_validate(asset) for asset in other_assets
-        ],
-        total=len(other_assets),
+        other_assets=response_assets,
+        total=len(response_assets),
+        exchange_rate_used=exchange_rate,
     )
 
 
@@ -71,8 +101,21 @@ def get_other_asset(
     db: Session = Depends(get_db),
 ) -> OtherAssetResponse:
     """Get an other asset by type and detail."""
+    from decimal import Decimal
+
     other_asset = other_asset_service.get_other_asset(db, asset_type, asset_detail)
-    return OtherAssetResponse.model_validate(other_asset)
+    exchange_rate = user_setting_service.get_exchange_rate_setting(db) or Decimal("25.00")
+
+    return OtherAssetResponse(
+        id=other_asset.id,
+        asset_type=other_asset.asset_type,
+        asset_detail=other_asset.asset_detail,
+        currency=other_asset.currency,
+        value=other_asset.value,
+        created_at=other_asset.created_at,
+        updated_at=other_asset.updated_at,
+        exchange_rate_=exchange_rate,
+    )
 
 
 @router.delete(

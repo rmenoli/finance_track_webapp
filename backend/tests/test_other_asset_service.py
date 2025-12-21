@@ -231,11 +231,14 @@ class TestOtherAssetService:
         )
         other_asset_service.upsert_other_asset(db_session, crypto_data)
 
-        # Get all with investments
-        all_assets = other_asset_service.get_all_other_assets_with_investments(db_session)
+        # Get all with investments (now returns tuple)
+        all_assets, exchange_rate = other_asset_service.get_all_other_assets_with_investments(db_session)
 
         # Should have investments row + 1 crypto = 2 total
         assert len(all_assets) >= 1
+
+        # Exchange rate should be returned (default 25.00)
+        assert exchange_rate == Decimal("25.00")
 
         # First item should be investments (synthetic)
         investments = all_assets[0]
@@ -243,6 +246,10 @@ class TestOtherAssetService:
         assert investments.asset_detail is None
         assert investments.currency == Currency.EUR.value
         assert investments.id == 0  # Marker for synthetic
+
+        # Check that exchange_rate_ is attached
+        assert hasattr(investments, 'exchange_rate_')
+        assert investments.exchange_rate_ == Decimal("25.00")
 
     def test_get_all_other_assets_empty(self, db_session):
         """Test getting all assets when none exist."""

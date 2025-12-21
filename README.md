@@ -32,8 +32,9 @@ A full-stack web application for tracking ETF portfolio transactions with automa
 - ✅ Asset names displayed in holdings tables
 - ✅ Portfolio distribution pie chart with interactive visualization
 - ✅ Other assets tracking (crypto, cash accounts, CD, pension funds)
-- ✅ Multi-currency support with client-side conversion (EUR/CZK)
+- ✅ Multi-currency support with backend Decimal precision (EUR/CZK)
 - ✅ Other assets distribution visualization with pie chart
+- ✅ User-friendly exchange rate input with onBlur/Enter save pattern
 
 **User Experience**
 - ✅ Clean, responsive React UI
@@ -47,7 +48,7 @@ A full-stack web application for tracking ETF portfolio transactions with automa
 |-------|-----------|
 | **Backend** | FastAPI, SQLAlchemy 2.0, SQLite, Alembic, Pydantic |
 | **Frontend** | React 18, Vite, React Router v6, CSS, Chart.js |
-| **Testing** | Pytest (206 tests, 95% coverage) |
+| **Testing** | Pytest (216 tests, 95% coverage) |
 | **Tools** | UV (Python), npm (Node.js), Ruff (linting) |
 
 ---
@@ -110,7 +111,7 @@ finance_track_webapp/
 │   │   └── schemas/                  # Pydantic schemas
 │   ├── alembic/                      # Database migrations
 │   │   └── versions/                 # Migration files
-│   ├── tests/                        # Backend tests (158 tests, 95% coverage)
+│   ├── tests/                        # Backend tests (216 tests, 95% coverage)
 │   ├── pyproject.toml                # Python dependencies
 │   ├── uv.lock                       # Dependency lock file
 │   ├── alembic.ini                   # Alembic configuration
@@ -202,7 +203,7 @@ npm run build              # Verify build works
 
 ### Backend Tests
 
-95% coverage across 158 tests:
+95% coverage across 216 tests:
 
 ```bash
 cd backend
@@ -312,6 +313,12 @@ All endpoints are prefixed with `/api/v1`
 | GET | `/other-assets/{type}?asset_detail={detail}` | Get specific other asset by type and optional detail |
 | DELETE | `/other-assets/{type}?asset_detail={detail}` | Delete other asset |
 
+#### Settings Endpoints
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/settings/exchange-rate` | Get current exchange rate (EUR/CZK) |
+| POST | `/settings/exchange-rate` | Update exchange rate (UPSERT) |
+
 **Full interactive API documentation:** http://localhost:8000/docs (Swagger UI)
 
 ---
@@ -406,9 +413,9 @@ realized_gain = (sell_price × units - fee) - cost_removed
 ## Project Status
 
 **Current Version**: Development
-**Test Coverage**: 95% (206 tests)
+**Test Coverage**: 95% (216 tests)
 **Frontend Pages**: 5 pages (Investment Dashboard, Transactions, Add/Edit Transaction, ISIN Metadata Management, Other Assets)
-**Backend Endpoints**: 20 endpoints (5 transaction, 1 analytics, 4 position values, 6 ISIN metadata, 4 other assets)
+**Backend Endpoints**: 22 endpoints (5 transaction, 1 analytics, 4 position values, 6 ISIN metadata, 4 other assets, 2 settings)
 
 ---
 

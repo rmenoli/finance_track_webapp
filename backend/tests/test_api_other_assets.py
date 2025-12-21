@@ -242,3 +242,51 @@ class TestOtherAssetsAPI:
         response = client.delete("/api/v1/other-assets/nonexistent")
 
         assert response.status_code == 404
+
+    def test_exchange_rate_affects_value_eur(self, client):
+        """Test that changing exchange rate updates EUR conversion for CZK assets."""
+        # Create a CZK asset worth 2500 CZK
+        czk_asset_data = {
+            "asset_type": "cd_account",
+            "asset_detail": None,
+            "currency": "CZK",
+            "value": "2500.00"
+        }
+        client.post("/api/v1/other-assets", json=czk_asset_data)
+
+        # Get with default exchange rate (25.00)
+        response = client.get("/api/v1/other-assets")
+        assets = response.json()["other_assets"]
+        cd_account = next(a for a in assets if a["asset_type"] == "cd_account")
+
+        # 2500 CZK / 25.00 = 100.00 EUR
+        assert Decimal(cd_account["value_eur"]) == Decimal("100.00")
+        assert Decimal(response.json()["exchange_rate_used"]) == Decimal("25.00")
+
+        # Update exchange rate to 24.00
+        client.post("/api/v1/settings/exchange-rate", json={"exchange_rate": 24.00})
+
+        # Get again with new exchange rate
+        response = client.get("/api/v1/other-assets")
+        assets = response.json()["other_assets"]
+        cd_account = next(a for a in assets if a["asset_type"] == "cd_account")
+
+        # 2500 CZK / 24.00 = 104.17 EUR (rounded)
+        assert abs(Decimal(cd_account["value_eur"]) - Decimal("104.166667")) < Decimal("0.01")
+        assert Decimal(response.json()["exchange_rate_used"]) == Decimal("24.00")
+
+        # EUR assets should not be affected by exchange rate
+        eur_asset_data = {
+            "asset_type": "crypto",
+            "asset_detail": None,
+            "currency": "EUR",
+            "value": "500.00"
+        }
+        client.post("/api/v1/other-assets", json=eur_asset_data)
+
+        response = client.get("/api/v1/other-assets")
+        assets = response.json()["other_assets"]
+        crypto = next(a for a in assets if a["asset_type"] == "crypto")
+
+        # EUR assets should have value_eur == value
+        assert Decimal(crypto["value_eur"]) == Decimal("500.00")

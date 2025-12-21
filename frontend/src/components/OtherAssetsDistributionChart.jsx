@@ -42,7 +42,7 @@ const ASSET_TYPES = {
 const ACCOUNTS = ['CSOB', 'RAIF', 'Revolut', 'Wise', 'Degiro'];
 
 function OtherAssetsDistributionChart({ assets, exchangeRate }) {
-  // Transform assets array to map: { assetType: { account: { value, currency } } }
+  // Transform assets array to map: { assetType: { account: { value, currency, value_eur } } }
   const assetsMap = {};
   assets.forEach((asset) => {
     if (!assetsMap[asset.asset_type]) {
@@ -53,27 +53,23 @@ function OtherAssetsDistributionChart({ assets, exchangeRate }) {
     assetsMap[asset.asset_type][key] = {
       value: parseFloat(asset.value) || 0,
       currency: asset.currency,
+      value_eur: parseFloat(asset.value_eur) || 0, // EUR value from backend
     };
   });
 
-  // Calculate EUR value for each asset type
+  // Calculate EUR value for each asset type (using backend-calculated EUR values)
   const calculateRowTotalEur = (assetType, config) => {
-    let totalInNative = 0;
+    let totalInEur = 0;
 
     if (config.hasAccounts) {
       // Sum all accounts
       ACCOUNTS.forEach((account) => {
-        const value = assetsMap[assetType]?.[account]?.value || 0;
-        totalInNative += value;
+        totalInEur += assetsMap[assetType]?.[account]?.value_eur || 0;
       });
     } else {
       // Single value
-      totalInNative = assetsMap[assetType]?.default?.value || 0;
+      totalInEur = assetsMap[assetType]?.default?.value_eur || 0;
     }
-
-    // Convert to EUR if CZK
-    const totalInEur =
-      config.currency === 'CZK' ? totalInNative / exchangeRate : totalInNative;
 
     return totalInEur;
   };

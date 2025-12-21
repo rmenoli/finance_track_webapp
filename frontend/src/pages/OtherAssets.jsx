@@ -1,18 +1,15 @@
 import { useState, useEffect } from 'react';
-import { otherAssetsAPI } from '../services/api';
+import { otherAssetsAPI, settingsAPI } from '../services/api';
 import OtherAssetsTable from '../components/OtherAssetsTable';
 import OtherAssetsDistributionChart from '../components/OtherAssetsDistributionChart';
 import './OtherAssets.css';
 
 function OtherAssets() {
   const [assets, setAssets] = useState([]);
-  const [exchangeRate, setExchangeRate] = useState(() => {
-    // Load exchange rate from localStorage or default to 25.00
-    const saved = localStorage.getItem('czkEurExchangeRate');
-    return saved ? parseFloat(saved) : 25.00;
-  });
+  const [exchangeRate, setExchangeRate] = useState(25.00);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [isSavingExchangeRate, setIsSavingExchangeRate] = useState(false);
 
   const loadAssets = async () => {
     try {
@@ -29,18 +26,69 @@ function OtherAssets() {
   };
 
   useEffect(() => {
+    // Load exchange rate from backend on mount
+    const loadExchangeRate = async () => {
+      try {
+        const data = await settingsAPI.getExchangeRate();
+        setExchangeRate(parseFloat(data.exchange_rate));
+      } catch (err) {
+        console.error('Failed to load exchange rate:', err);
+        // Use default if backend fails
+        setExchangeRate(25.00);
+      }
+    };
+
+    loadExchangeRate();
     loadAssets();
   }, []);
 
-  const handleExchangeRateChange = (e) => {
+  // Called on every keystroke - updates local state only
+  const handleExchangeRateInputChange = (e) => {
     const value = e.target.value;
-    const numValue = parseFloat(value);
 
-    if (!isNaN(numValue) && numValue > 0) {
-      setExchangeRate(numValue);
-      localStorage.setItem('czkEurExchangeRate', numValue.toString());
-    } else if (value === '') {
+    // Allow empty string (user is clearing the field)
+    if (value === '') {
       setExchangeRate('');
+      return;
+    }
+
+    // Update local state immediately for responsive UI
+    const numValue = parseFloat(value);
+    if (!isNaN(numValue)) {
+      setExchangeRate(numValue);
+    }
+  };
+
+  // Called on blur or Enter - saves to backend
+  const saveExchangeRate = async () => {
+    const numValue = parseFloat(exchangeRate);
+
+    // Validate before saving
+    if (isNaN(numValue) || numValue <= 0) {
+      setError('Please enter a valid exchange rate (must be > 0)');
+      return;
+    }
+
+    try {
+      setIsSavingExchangeRate(true);
+      setError(null);
+
+      await settingsAPI.updateExchangeRate(numValue);
+
+      // Reload assets to get new EUR conversions
+      await loadAssets();
+    } catch (err) {
+      console.error('Failed to update exchange rate:', err);
+      setError('Failed to save exchange rate. Please try again.');
+    } finally {
+      setIsSavingExchangeRate(false);
+    }
+  };
+
+  // Handle Enter key press
+  const handleExchangeRateKeyDown = (e) => {
+    if (e.key === 'Enter') {
+      e.target.blur(); // Trigger onBlur to save
     }
   };
 
@@ -81,13 +129,18 @@ function OtherAssets() {
             step="0.01"
             min="0.01"
             value={exchangeRate}
-            onChange={handleExchangeRateChange}
+            onChange={handleExchangeRateInputChange}
+            onBlur={saveExchangeRate}
+            onKeyDown={handleExchangeRateKeyDown}
+            disabled={isSavingExchangeRate}
             className="exchange-rate-input"
           />
           CZK)
+          {isSavingExchangeRate && <span className="saving-indicator">💾 Saving...</span>}
         </label>
         <p className="helper-text">
           Current rate: 1 EUR = {exchangeRate || '0.00'} CZK
+          {!isSavingExchangeRate && exchangeRate && ' (Press Enter or click outside to save)'}
         </p>
       </div>
 

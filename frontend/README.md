@@ -123,11 +123,12 @@ src/
    - Track non-ETF holdings (crypto, cash, CD, pension funds)
    - Multi-currency support (EUR/CZK) with exchange rate input
    - Editable table with click-to-edit cells
-   - Client-side currency conversion
+   - Backend Decimal-precision currency conversion
+   - User-friendly exchange rate input (saves on blur/Enter, prevents UI blocking)
    - Multiple cash accounts support (CSOB, RAIF, Revolut, Wise, Degiro)
    - Read-only Investimenti row (computed from portfolio)
    - Distribution pie chart showing asset allocation in EUR
-   - Persistent exchange rate in localStorage
+   - Persistent exchange rate stored in backend database
 
 ### Components
 
@@ -163,12 +164,11 @@ src/
 
 - **Other Assets Distribution Chart**:
   - Interactive pie chart for non-ETF holdings (crypto, cash, CD, pension funds)
-  - Shows EUR-converted values for all assets
-  - Auto-converts CZK assets to EUR using user-defined exchange rate
+  - Shows EUR-converted values for all assets (backend-calculated with Decimal precision)
   - Displays asset type labels (Investimenti, Crypto, Cash EUR, etc.) with percentages
   - Interactive tooltips showing EUR value and percentage share
   - Color-coded segments matching portfolio distribution chart style
-  - Auto-updates when asset values or exchange rate changes
+  - Auto-updates when asset values or exchange rate changes (single API call on save)
 
 ### Architecture & Design Principles
 

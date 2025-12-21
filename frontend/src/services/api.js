@@ -203,10 +203,32 @@ export const otherAssetsAPI = {
   },
 };
 
+// Settings API methods
+export const settingsAPI = {
+  // Get exchange rate setting
+  getExchangeRate: async () => {
+    const response = await fetch(`${API_BASE_URL}/settings/exchange-rate`);
+    return handleResponse(response);
+  },
+
+  // Update exchange rate setting
+  updateExchangeRate: async (rate) => {
+    const response = await fetch(`${API_BASE_URL}/settings/exchange-rate`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ exchange_rate: rate }),
+    });
+    return handleResponse(response);
+  },
+};
+
 export default {
   transactions: transactionsAPI,
   analytics: analyticsAPI,
   positionValues: positionValuesAPI,
   isinMetadata: isinMetadataAPI,
   otherAssets: otherAssetsAPI,
+  settings: settingsAPI,
 };

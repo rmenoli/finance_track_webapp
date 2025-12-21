@@ -4,7 +4,7 @@ from datetime import datetime
 from decimal import Decimal
 from typing import Optional
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, Field, computed_field, field_validator, model_validator
 
 from app.constants import AssetType, Currency, VALID_ACCOUNT_NAMES
 
@@ -77,6 +77,24 @@ class OtherAssetResponse(OtherAssetBase):
     created_at: datetime = Field(..., description="Creation timestamp")
     updated_at: datetime = Field(..., description="Last update timestamp")
 
+    # Exchange rate for EUR conversion (attached by service layer, excluded from API response)
+    exchange_rate_: Decimal = Field(default=Decimal("25.00"), exclude=True, description="Exchange rate (CZK per 1 EUR)")
+
+    @computed_field
+    @property
+    def value_eur(self) -> Decimal:
+        """
+        Value converted to EUR using exchange rate.
+
+        For EUR assets, returns the value as-is.
+        For CZK assets, converts using the exchange rate attached by service layer.
+        """
+        if self.currency == Currency.EUR:
+            return self.value
+        else:  # CZK
+            # Use the exchange rate field (will be set by service layer)
+            return self.value / self.exchange_rate_
+
     model_config = ConfigDict(from_attributes=True)
 
 
@@ -85,5 +103,6 @@ class OtherAssetListResponse(BaseModel):
 
     other_assets: list[OtherAssetResponse]
     total: int
+    exchange_rate_used: Decimal = Field(..., description="Exchange rate used for EUR conversion (CZK per 1 EUR)")
 
     model_config = ConfigDict(from_attributes=True)

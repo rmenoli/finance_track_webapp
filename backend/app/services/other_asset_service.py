@@ -11,15 +11,12 @@ from app.exceptions import OtherAssetNotFoundError
 from app.logging_config import log_with_context
 from app.models.other_asset import OtherAsset
 from app.schemas.other_asset import OtherAssetCreate
-from app.services import cost_basis_service
+from app.services import cost_basis_service, user_setting_service
 
 logger = logging.getLogger(__name__)
 
 
-def upsert_other_asset(
-    db: Session,
-    asset_data: OtherAssetCreate
-) -> OtherAsset:
+def upsert_other_asset(db: Session, asset_data: OtherAssetCreate) -> OtherAsset:
     """
     Create or update an other asset (UPSERT operation).
 
@@ -36,10 +33,14 @@ def upsert_other_asset(
         Created or updated other asset
     """
     # Check if asset exists with this (asset_type, asset_detail) combination
-    existing = db.query(OtherAsset).filter(
-        OtherAsset.asset_type == asset_data.asset_type.value,
-        OtherAsset.asset_detail == asset_data.asset_detail
-    ).first()
+    existing = (
+        db.query(OtherAsset)
+        .filter(
+            OtherAsset.asset_type == asset_data.asset_type.value,
+            OtherAsset.asset_detail == asset_data.asset_detail,
+        )
+        .first()
+    )
 
     if existing:
         # Update existing record
@@ -80,7 +81,7 @@ def upsert_other_asset(
             asset_type=asset_data.asset_type.value,
             asset_detail=asset_data.asset_detail,
             currency=asset_data.currency.value,
-            value=asset_data.value
+            value=asset_data.value,
         )
         db.add(other_asset)
         db.commit()
@@ -116,10 +117,11 @@ def get_other_asset(db: Session, asset_type: str, asset_detail: str | None = Non
     Raises:
         OtherAssetNotFoundError: If asset not found
     """
-    other_asset = db.query(OtherAsset).filter(
-        OtherAsset.asset_type == asset_type,
-        OtherAsset.asset_detail == asset_detail
-    ).first()
+    other_asset = (
+        db.query(OtherAsset)
+        .filter(OtherAsset.asset_type == asset_type, OtherAsset.asset_detail == asset_detail)
+        .first()
+    )
 
     if not other_asset:
         raise OtherAssetNotFoundError(asset_type, asset_detail)
@@ -140,28 +142,33 @@ def get_all_other_assets(db: Session) -> list[OtherAsset]:
     Returns:
         List of all other assets
     """
-    return db.query(OtherAsset).order_by(
-        OtherAsset.asset_type.asc(),
-        OtherAsset.asset_detail.asc()
-    ).all()
+    return (
+        db.query(OtherAsset)
+        .order_by(OtherAsset.asset_type.asc(), OtherAsset.asset_detail.asc())
+        .all()
+    )
 
 
-def get_all_other_assets_with_investments(db: Session) -> list[OtherAsset]:
+def get_all_other_assets_with_investments(db: Session) -> tuple[list[OtherAsset], Decimal]:
     """
-    Get all other assets including synthetic 'investments' row.
+    Get all other assets including synthetic 'investments' row with EUR conversion metadata.
 
     The investments row is computed from portfolio summary and represents
     the total current value of the ETF portfolio. It is NOT stored in the
     database but generated on-the-fly.
 
     Returns assets in order: investments first, then others sorted by type/detail.
+    Each asset has the exchange_rate attached as _exchange_rate for computed field access.
 
     Args:
         db: Database session
 
     Returns:
-        List of all other assets with synthetic investments row first
+        Tuple of (assets list with synthetic investments row first, exchange_rate_used)
     """
+    # Get exchange rate from settings (default 25.00)
+    exchange_rate = user_setting_service.get_exchange_rate_setting(db) or Decimal("25.00")
+
     # Get portfolio summary to extract total current invested value
     portfolio_summary = cost_basis_service.get_portfolio_summary(db)
 
@@ -181,14 +188,19 @@ def get_all_other_assets_with_investments(db: Session) -> list[OtherAsset]:
         currency=Currency.EUR.value,
         value=investments_value,
         created_at=datetime.utcnow(),
-        updated_at=datetime.utcnow()
+        updated_at=datetime.utcnow(),
     )
 
     # Get all real assets from database
     real_assets = get_all_other_assets(db)
 
-    # Return investments first, then real assets
-    return [investments_asset] + real_assets
+    # Attach exchange rate to all assets for computed_field access
+    all_assets = [investments_asset] + real_assets
+    for asset in all_assets:
+        asset.exchange_rate_ = exchange_rate
+
+    # Return assets and exchange rate used
+    return all_assets, exchange_rate
 
 
 def delete_other_asset(db: Session, asset_type: str, asset_detail: str | None = None) -> None:

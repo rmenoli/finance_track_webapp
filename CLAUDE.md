@@ -158,7 +158,7 @@ All logs are structured JSON for easy parsing and filtering.
 ```bash
 cd backend
 
-# Run all tests (206 tests, 95% coverage)
+# Run all tests (216 tests, 95% coverage)
 uv run pytest
 
 # Run with verbose output
@@ -224,7 +224,7 @@ finance_track_webapp/
 │   │   ├── versions/          # Migration files
 │   │   ├── env.py             # Alembic environment
 │   │   └── script.py.mako     # Migration template
-│   ├── tests/                 # Test suite (95% coverage, 206 tests)
+│   ├── tests/                 # Test suite (95% coverage, 216 tests)
 │   │   ├── conftest.py       # Test fixtures
 │   │   ├── test_transaction_service.py
 │   │   ├── test_cost_basis_service.py
@@ -590,7 +590,7 @@ LOG_FORMAT=json
 
 ## Testing
 
-**Test Suite**: 206 tests, 95% coverage
+**Test Suite**: 216 tests, 95% coverage
 
 **Test Structure**:
 - `tests/conftest.py`: Fixtures for database and test client
@@ -699,12 +699,13 @@ For detailed information, see:
 ## Project Status Summary
 
 **Current Version**: Development
-**Test Coverage**: 95% (206 backend tests)
-**Backend Endpoints**: 20 total (5 transaction, 1 analytics, 4 position values, 6 ISIN metadata, 4 other assets)
+**Test Coverage**: 95% (216 backend tests)
+**Backend Endpoints**: 22 total (5 transaction, 1 analytics, 4 position values, 6 ISIN metadata, 4 other assets, 2 settings)
 **Frontend Pages**: 6 (Investment Dashboard, Transactions, Add/Edit Transaction, ISIN Metadata, Add/Edit ISIN Metadata, Other Assets)
 **Frontend Components**: 12 main components (Layout, Navigation, TransactionForm, TransactionList, ISINMetadataForm, ISINMetadataList, DashboardHoldingsTable, HoldingsDistributionChart, ClosedPositionsTable, PortfolioSummary, OtherAssetsTable, OtherAssetsDistributionChart)
 **Visualization**: Portfolio distribution pie chart with Chart.js, other assets distribution chart, asset name display in holdings tables
-**Multi-Currency**: EUR/CZK support with client-side conversion for other assets
+**Multi-Currency**: EUR/CZK support with backend Decimal precision for other assets
+**Exchange Rate**: User-friendly input with onBlur/Enter save pattern (prevents UI blocking)
 **Architecture**: Backend-first calculations - all financial math performed on backend using Decimal, frontend is pure presentation layer
 **Logging**: Structured JSON logging with audit trail for all operations, request tracing, and performance monitoring
 
