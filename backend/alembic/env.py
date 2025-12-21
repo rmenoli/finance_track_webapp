@@ -15,6 +15,7 @@ from app.models.position_value import PositionValue  # noqa: F401
 from app.models.isin_metadata import ISINMetadata  # noqa: F401
 from app.models.other_asset import OtherAsset  # noqa: F401
 from app.models.user_setting import UserSetting  # noqa: F401
+from app.models.asset_snapshot import AssetSnapshot  # noqa: F401
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.

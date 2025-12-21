@@ -446,6 +446,13 @@ All routes prefixed with `/api/v1`:
 - `GET /other-assets/{type}?asset_detail={detail}` - Get by type and optional detail
 - `DELETE /other-assets/{type}?asset_detail={detail}` - Delete by type and optional detail
 
+**Asset Snapshots**:
+- `POST /snapshots` - Create snapshot of current asset state (investments + other assets)
+- `GET /snapshots` - List all snapshots with optional filters (date range, asset type)
+- `GET /snapshots/{snapshot_date}` - Get all assets for specific snapshot date
+- `DELETE /snapshots/{snapshot_date}` - Delete all snapshots for specific date
+- **Note**: Each asset stored separately (no aggregation). Captures exchange rate for historical accuracy.
+
 Interactive docs: http://localhost:8000/docs (Swagger UI)
 
 ## Common Development Scenarios

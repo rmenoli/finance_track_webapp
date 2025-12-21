@@ -35,12 +35,13 @@ A full-stack web application for tracking ETF portfolio transactions with automa
 - ✅ Multi-currency support with backend Decimal precision (EUR/CZK)
 - ✅ Other assets distribution visualization with pie chart
 - ✅ User-friendly exchange rate input with onBlur/Enter save pattern
+- ✅ **Historical snapshots** - Capture point-in-time portfolio state with preserved exchange rates
 
 **User Experience**
 - ✅ Clean, responsive React UI
 - ✅ Interactive API documentation (Swagger UI)
 - ✅ Fast development with hot reload
-- ✅ Comprehensive test coverage (95%)
+- ✅ Comprehensive test coverage (95%, 235 tests)
 
 ### Tech Stack
 
@@ -48,7 +49,7 @@ A full-stack web application for tracking ETF portfolio transactions with automa
 |-------|-----------|
 | **Backend** | FastAPI, SQLAlchemy 2.0, SQLite, Alembic, Pydantic |
 | **Frontend** | React 18, Vite, React Router v6, CSS, Chart.js |
-| **Testing** | Pytest (216 tests, 95% coverage) |
+| **Testing** | Pytest (235 tests, 95% coverage) |
 | **Tools** | UV (Python), npm (Node.js), Ruff (linting) |
 
 ---
@@ -111,7 +112,7 @@ finance_track_webapp/
 │   │   └── schemas/                  # Pydantic schemas
 │   ├── alembic/                      # Database migrations
 │   │   └── versions/                 # Migration files
-│   ├── tests/                        # Backend tests (216 tests, 95% coverage)
+│   ├── tests/                        # Backend tests (235 tests, 95% coverage)
 │   ├── pyproject.toml                # Python dependencies
 │   ├── uv.lock                       # Dependency lock file
 │   ├── alembic.ini                   # Alembic configuration
@@ -203,7 +204,7 @@ npm run build              # Verify build works
 
 ### Backend Tests
 
-95% coverage across 216 tests:
+95% coverage across 235 tests:
 
 ```bash
 cd backend
@@ -215,9 +216,10 @@ uv run pytest -v
 uv run pytest --cov=app --cov-report=html
 
 # Run specific test categories
-uv run pytest tests/test_api_transactions.py      # API tests
-uv run pytest tests/test_cost_basis_service.py    # Business logic tests
-uv run pytest tests/test_schemas.py               # Validation tests
+uv run pytest tests/test_api_transactions.py          # API tests
+uv run pytest tests/test_cost_basis_service.py        # Business logic tests
+uv run pytest tests/test_asset_snapshot_service.py    # Snapshot tests (19 tests)
+uv run pytest tests/test_schemas.py                   # Validation tests
 ```
 
 ### Manual Testing
@@ -319,6 +321,16 @@ All endpoints are prefixed with `/api/v1`
 | GET | `/settings/exchange-rate` | Get current exchange rate (EUR/CZK) |
 | POST | `/settings/exchange-rate` | Update exchange rate (UPSERT) |
 
+#### Asset Snapshot Endpoints
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/snapshots` | Create snapshot of current asset state (investments + other assets) |
+| GET | `/snapshots` | List all snapshots (with optional date range and asset type filters) |
+| GET | `/snapshots/{snapshot_date}` | Get all assets for specific snapshot date |
+| DELETE | `/snapshots/{snapshot_date}` | Delete all snapshots for specific date |
+
+**Note**: Snapshots capture point-in-time portfolio state with preserved exchange rates. Each asset is stored separately (no aggregation).
+
 **Full interactive API documentation:** http://localhost:8000/docs (Swagger UI)
 
 ---
@@ -413,9 +425,9 @@ realized_gain = (sell_price × units - fee) - cost_removed
 ## Project Status
 
 **Current Version**: Development
-**Test Coverage**: 95% (216 tests)
+**Test Coverage**: 95% (235 tests)
 **Frontend Pages**: 5 pages (Investment Dashboard, Transactions, Add/Edit Transaction, ISIN Metadata Management, Other Assets)
-**Backend Endpoints**: 22 endpoints (5 transaction, 1 analytics, 4 position values, 6 ISIN metadata, 4 other assets, 2 settings)
+**Backend Endpoints**: 26 endpoints (5 transaction, 1 analytics, 4 position values, 6 ISIN metadata, 4 other assets, 2 settings, 4 snapshots)
 
 ---
 

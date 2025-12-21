@@ -79,3 +79,17 @@ class OtherAssetNotFoundError(HTTPException):
             "Other asset not found",
             extra={"asset_type": asset_type, "asset_detail": asset_detail}
         )
+
+
+class SnapshotNotFoundError(HTTPException):
+    """Exception raised when no snapshots found for given criteria."""
+
+    def __init__(self, snapshot_date: str):
+        super().__init__(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"No snapshots found for date {snapshot_date}",
+        )
+        logger.warning(
+            "Snapshot not found",
+            extra={"snapshot_date": snapshot_date}
+        )

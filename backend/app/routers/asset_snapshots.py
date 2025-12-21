@@ -1,0 +1,120 @@
+"""Asset snapshots API router."""
+
+from datetime import datetime
+from decimal import Decimal
+
+from fastapi import APIRouter, Depends, Path, Query, status
+from sqlalchemy.orm import Session
+
+from app.database import get_db
+from app.schemas.asset_snapshot import (
+    AssetSnapshotListResponse,
+    AssetSnapshotResponse,
+    SnapshotCreateResponse,
+    SnapshotMetadata,
+)
+from app.services import asset_snapshot_service
+
+router = APIRouter(prefix="/snapshots", tags=["snapshots"])
+
+
+@router.post(
+    "",
+    response_model=SnapshotCreateResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Create asset snapshot",
+    description="Capture current state of all assets (investments + other assets) as a snapshot. Each asset is stored separately with no aggregation.",
+)
+def create_snapshot(
+    snapshot_datetime: datetime | None = Query(
+        None, description="Optional timestamp for snapshot (defaults to now)"
+    ),
+    db: Session = Depends(get_db),
+) -> SnapshotCreateResponse:
+    """Create a snapshot of current asset state."""
+    snapshots, metadata = asset_snapshot_service.create_snapshot(db, snapshot_datetime)
+
+    return SnapshotCreateResponse(
+        message="Snapshot created successfully",
+        metadata=metadata,
+        snapshots=[AssetSnapshotResponse.model_validate(s) for s in snapshots],
+    )
+
+
+@router.get(
+    "",
+    response_model=AssetSnapshotListResponse,
+    summary="List asset snapshots",
+    description="Get asset snapshots with optional date range and asset type filtering",
+)
+def list_snapshots(
+    start_date: datetime | None = Query(
+        None, description="Filter snapshots from this date (inclusive)"
+    ),
+    end_date: datetime | None = Query(
+        None, description="Filter snapshots until this date (inclusive)"
+    ),
+    asset_type: str | None = Query(None, description="Filter by asset type"),
+    db: Session = Depends(get_db),
+) -> AssetSnapshotListResponse:
+    """List asset snapshots with optional filters."""
+    snapshots = asset_snapshot_service.get_snapshots(
+        db, start_date, end_date, asset_type
+    )
+
+    return AssetSnapshotListResponse(
+        snapshots=[AssetSnapshotResponse.model_validate(s) for s in snapshots],
+        total=len(snapshots),
+        metadata=None,
+    )
+
+
+@router.get(
+    "/{snapshot_date}",
+    response_model=AssetSnapshotListResponse,
+    summary="Get snapshots by date",
+    description="Retrieve all asset snapshots for a specific date",
+)
+def get_snapshot_by_date(
+    snapshot_date: datetime = Path(..., description="Snapshot date to retrieve"),
+    db: Session = Depends(get_db),
+) -> AssetSnapshotListResponse:
+    """Get all snapshots for a specific date."""
+    snapshots = asset_snapshot_service.get_snapshots_by_date(db, snapshot_date)
+
+    # Calculate metadata
+    total_value_eur = sum(s.value_eur for s in snapshots)
+    exchange_rate = snapshots[0].exchange_rate if snapshots else Decimal("25.00")
+
+    metadata = SnapshotMetadata(
+        snapshot_date=snapshot_date,
+        exchange_rate_used=exchange_rate,
+        total_assets_captured=len(snapshots),
+        total_value_eur=total_value_eur,
+    )
+
+    return AssetSnapshotListResponse(
+        snapshots=[AssetSnapshotResponse.model_validate(s) for s in snapshots],
+        total=len(snapshots),
+        metadata=metadata,
+    )
+
+
+@router.delete(
+    "/{snapshot_date}",
+    status_code=status.HTTP_200_OK,
+    summary="Delete snapshots by date",
+    description="Delete all asset snapshots for a specific date",
+)
+def delete_snapshot_by_date(
+    snapshot_date: datetime = Path(..., description="Snapshot date to delete"),
+    db: Session = Depends(get_db),
+) -> dict:
+    """Delete all snapshots for a specific date."""
+    deleted_count = asset_snapshot_service.delete_snapshots_by_date(db, snapshot_date)
+
+    return {
+        "message": f"Successfully deleted {deleted_count} snapshot(s) for {snapshot_date.isoformat()}",
+        "deleted_count": deleted_count,
+        "snapshot_date": snapshot_date.isoformat(),
+    }

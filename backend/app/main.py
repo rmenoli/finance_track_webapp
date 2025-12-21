@@ -10,7 +10,7 @@ from fastapi.responses import JSONResponse
 
 from app.config import settings
 from app.logging_config import log_with_context, request_id_context, setup_logging
-from app.routers import analytics, isin_metadata, other_assets, position_values, transactions
+from app.routers import analytics, asset_snapshots, isin_metadata, other_assets, position_values, transactions
 from app.routers import settings as settings_router
 
 # Initialize logging on module import
@@ -170,6 +170,7 @@ app.include_router(analytics.router, prefix=settings.api_v1_prefix)
 app.include_router(isin_metadata.router, prefix=settings.api_v1_prefix)
 app.include_router(position_values.router, prefix=settings.api_v1_prefix)
 app.include_router(other_assets.router, prefix=settings.api_v1_prefix)
+app.include_router(asset_snapshots.router, prefix=settings.api_v1_prefix)
 app.include_router(settings_router.router, prefix=settings.api_v1_prefix)
 
 

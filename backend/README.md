@@ -25,7 +25,7 @@ FastAPI backend service for tracking ETF transactions with automatic cost basis 
 - **Validation**: Pydantic 2.12.5 (data validation and settings)
 - **Package Manager**: UV (fast Python package manager)
 - **Server**: Uvicorn 0.38.0 (ASGI server)
-- **Testing**: Pytest 9.0.2 with 95% coverage (216 tests)
+- **Testing**: Pytest 9.0.2 with 95% coverage (235 tests)
 - **Code Quality**: Ruff 0.14.9 (linting and formatting)
 - **Logging**: Structured JSON logging with python-json-logger (audit trail + observability)
 
@@ -267,6 +267,28 @@ All endpoints are prefixed with `/api/v1`
 - **UPSERT Logic**: Composite key on (asset_type, asset_detail) ensures one value per asset/account combination
 - **Synthetic Investments Row**: The investments asset type is auto-generated from portfolio current value and cannot be manually created
 
+#### Asset Snapshot Endpoints
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/snapshots` | Create snapshot of current asset state (investments + other assets) |
+| GET | `/snapshots` | List all snapshots with optional filters (date range, asset type) |
+| GET | `/snapshots/{snapshot_date}` | Get all assets for specific snapshot date |
+| DELETE | `/snapshots/{snapshot_date}` | Delete all snapshots for specific date |
+
+**Asset Snapshots** capture point-in-time portfolio state for historical tracking and analysis. The system:
+- **No Aggregation**: Each asset is stored separately (e.g., CSOB and RAIF cash accounts stored as separate rows)
+- **Exchange Rate Preservation**: Snapshots store the exchange rate used at creation time for historical accuracy
+- **Includes Investments**: Synthetic investments row (portfolio value) is captured in each snapshot
+- **Manual Creation**: Snapshots are created via API call, not automatically
+- **Historical Integrity**: Stored values cannot be modified; only creation and deletion are supported
+- **Multi-Currency**: Stores both native currency values and EUR-converted values
+
+**Query Parameters for GET /snapshots:**
+- `start_date`: Filter snapshots from this date (inclusive)
+- `end_date`: Filter snapshots until this date (inclusive)
+- `asset_type`: Filter by specific asset type (investments, crypto, cash_eur, etc.)
+
 ### Example Requests
 
 #### Create a Transaction
@@ -331,6 +353,39 @@ curl "http://localhost:8000/api/v1/isin-metadata?type=BOND"
 
 # Get all real assets
 curl "http://localhost:8000/api/v1/isin-metadata?type=REAL_ASSET"
+```
+
+#### Create Asset Snapshot
+
+```bash
+# Create snapshot of current portfolio state
+curl -X POST http://localhost:8000/api/v1/snapshots
+
+# Create snapshot with custom datetime
+curl -X POST "http://localhost:8000/api/v1/snapshots?snapshot_datetime=2025-01-15T10:00:00"
+```
+
+#### Query Snapshots
+
+```bash
+# List all snapshots
+curl http://localhost:8000/api/v1/snapshots
+
+# Filter snapshots by date range
+curl "http://localhost:8000/api/v1/snapshots?start_date=2025-01-01&end_date=2025-12-31"
+
+# Filter snapshots by asset type
+curl "http://localhost:8000/api/v1/snapshots?asset_type=investments"
+
+# Get specific snapshot by date
+curl http://localhost:8000/api/v1/snapshots/2025-01-15T10:00:00
+```
+
+#### Delete Snapshot
+
+```bash
+# Delete all snapshots for a specific date
+curl -X DELETE http://localhost:8000/api/v1/snapshots/2025-01-15T10:00:00
 ```
 
 ### Validation Rules
@@ -668,7 +723,7 @@ Every HTTP request gets a unique request ID that appears in all logs during that
 ### Run All Tests
 
 ```bash
-# Run all 216 tests
+# Run all 235 tests
 uv run pytest
 
 # Run with verbose output
@@ -709,7 +764,7 @@ uv run pytest tests/test_other_asset_service.py tests/test_api_other_assets.py t
 
 ### Test Coverage
 
-Current coverage: **95%** (216 tests)
+Current coverage: **95%** (235 tests)
 
 To view detailed coverage:
 ```bash
@@ -824,7 +879,7 @@ backend/
 │   ├── versions/              # Migration files
 │   ├── env.py                 # Alembic environment
 │   └── script.py.mako         # Migration template
-├── tests/                     # Test suite (95% coverage, 216 tests)
+├── tests/                     # Test suite (95% coverage, 235 tests)
 │   ├── conftest.py           # Test fixtures
 │   ├── test_transaction_service.py
 │   ├── test_cost_basis_service.py
