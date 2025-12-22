@@ -1,49 +1,8 @@
 import { useState } from 'react';
 import { otherAssetsAPI } from '../services/api';
 import FormattedNumber from './FormattedNumber';
+import { ASSET_TYPES, ACCOUNTS } from '../constants/otherAssets';
 import './OtherAssetsTable.css';
-
-// Asset type configurations
-const ASSET_TYPES = {
-  investments: {
-    label: 'Investimenti',
-    hasAccounts: false,
-    readOnly: true,
-    currency: 'EUR',
-  },
-  crypto: {
-    label: 'Crypto',
-    hasAccounts: false,
-    readOnly: false,
-    currency: 'EUR',
-  },
-  cash_eur: {
-    label: 'Cash EUR',
-    hasAccounts: true,
-    readOnly: false,
-    currency: 'EUR',
-  },
-  cash_czk: {
-    label: 'Cash CZK',
-    hasAccounts: true,
-    readOnly: false,
-    currency: 'CZK',
-  },
-  cd_account: {
-    label: 'CD svincolabile',
-    hasAccounts: false,
-    readOnly: false,
-    currency: 'CZK',
-  },
-  pension_fund: {
-    label: 'Fondo Pensione',
-    hasAccounts: false,
-    readOnly: false,
-    currency: 'CZK',
-  },
-};
-
-const ACCOUNTS = ['CSOB', 'RAIF', 'Revolut', 'Wise', 'Degiro'];
 
 function OtherAssetsTable({ assets, exchangeRate, onDataChange }) {
   const [editingCell, setEditingCell] = useState(null); // { assetType, account }

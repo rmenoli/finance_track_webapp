@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { otherAssetsAPI, settingsAPI } from '../services/api';
+import { otherAssetsAPI, settingsAPI, snapshotsAPI } from '../services/api';
 import OtherAssetsTable from '../components/OtherAssetsTable';
 import OtherAssetsDistributionChart from '../components/OtherAssetsDistributionChart';
 import './OtherAssets.css';
@@ -10,6 +10,8 @@ function OtherAssets() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [isSavingExchangeRate, setIsSavingExchangeRate] = useState(false);
+  const [isCreatingSnapshot, setIsCreatingSnapshot] = useState(false);
+  const [snapshotSuccess, setSnapshotSuccess] = useState(false);
 
   const loadAssets = async () => {
     try {
@@ -97,6 +99,26 @@ function OtherAssets() {
     loadAssets();
   };
 
+  const handleCreateSnapshot = async () => {
+    try {
+      setIsCreatingSnapshot(true);
+      setError(null);
+      setSnapshotSuccess(false);
+
+      await snapshotsAPI.create();
+
+      // Show success message
+      setSnapshotSuccess(true);
+      // Hide success message after 3 seconds
+      setTimeout(() => setSnapshotSuccess(false), 3000);
+    } catch (err) {
+      console.error('Failed to create snapshot:', err);
+      setError('Failed to create snapshot. Please try again.');
+    } finally {
+      setIsCreatingSnapshot(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="other-assets-page">
@@ -118,7 +140,20 @@ function OtherAssets() {
 
   return (
     <div className="other-assets-page">
-      <h1>Other Assets</h1>
+      <div className="page-header">
+        <h1>Other Assets</h1>
+        <button
+          onClick={handleCreateSnapshot}
+          disabled={isCreatingSnapshot}
+          className="snapshot-button"
+        >
+          {isCreatingSnapshot ? 'Creating Snapshot...' : 'Create Snapshot'}
+        </button>
+      </div>
+
+      {snapshotSuccess && (
+        <div className="success-message">Snapshot created successfully!</div>
+      )}
 
       <div className="exchange-rate-section">
         <label htmlFor="exchangeRate">

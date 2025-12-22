@@ -185,22 +185,6 @@ export const otherAssetsAPI = {
     const response = await fetch(url);
     return handleResponse(response);
   },
-
-  // Get single other asset by type and optional detail
-  get: async (assetType, assetDetail = null) => {
-    const query = assetDetail ? `?asset_detail=${encodeURIComponent(assetDetail)}` : '';
-    const response = await fetch(`${API_BASE_URL}/other-assets/${assetType}${query}`);
-    return handleResponse(response);
-  },
-
-  // Delete other asset
-  delete: async (assetType, assetDetail = null) => {
-    const query = assetDetail ? `?asset_detail=${encodeURIComponent(assetDetail)}` : '';
-    const response = await fetch(`${API_BASE_URL}/other-assets/${assetType}${query}`, {
-      method: 'DELETE',
-    });
-    return handleResponse(response);
-  },
 };
 
 // Settings API methods
@@ -224,6 +208,21 @@ export const settingsAPI = {
   },
 };
 
+// Snapshots API methods
+export const snapshotsAPI = {
+  // Create snapshot of current asset state
+  create: async () => {
+    const response = await fetch(`${API_BASE_URL}/snapshots`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({}), // Empty body, uses default snapshot_datetime (now)
+    });
+    return handleResponse(response);
+  },
+};
+
 export default {
   transactions: transactionsAPI,
   analytics: analyticsAPI,
@@ -231,4 +230,5 @@ export default {
   isinMetadata: isinMetadataAPI,
   otherAssets: otherAssetsAPI,
   settings: settingsAPI,
+  snapshots: snapshotsAPI,
 };

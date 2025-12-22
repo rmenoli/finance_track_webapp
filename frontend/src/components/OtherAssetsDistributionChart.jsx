@@ -1,45 +1,10 @@
 import { Pie } from 'react-chartjs-2';
 import { Chart as ChartJS, ArcElement, Tooltip, Legend } from 'chart.js';
+import { ASSET_TYPES, ACCOUNTS } from '../constants/otherAssets';
 import './HoldingsDistributionChart.css'; // Reuse the same CSS
 
 // Register Chart.js components
 ChartJS.register(ArcElement, Tooltip, Legend);
-
-// Asset type configurations (same as in OtherAssetsTable)
-const ASSET_TYPES = {
-  investments: {
-    label: 'Investimenti',
-    hasAccounts: false,
-    currency: 'EUR',
-  },
-  crypto: {
-    label: 'Crypto',
-    hasAccounts: false,
-    currency: 'EUR',
-  },
-  cash_eur: {
-    label: 'Cash EUR',
-    hasAccounts: true,
-    currency: 'EUR',
-  },
-  cash_czk: {
-    label: 'Cash CZK',
-    hasAccounts: true,
-    currency: 'CZK',
-  },
-  cd_account: {
-    label: 'CD svincolabile',
-    hasAccounts: false,
-    currency: 'CZK',
-  },
-  pension_fund: {
-    label: 'Fondo Pensione',
-    hasAccounts: false,
-    currency: 'CZK',
-  },
-};
-
-const ACCOUNTS = ['CSOB', 'RAIF', 'Revolut', 'Wise', 'Degiro'];
 
 function OtherAssetsDistributionChart({ assets, exchangeRate }) {
   // Transform assets array to map: { assetType: { account: { value, currency, value_eur } } }

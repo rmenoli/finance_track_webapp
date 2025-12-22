@@ -64,8 +64,8 @@ def calculate_cost_basis(
             transaction_count += 1
         elif txn.transaction_type == TransactionType.SELL:
             # Calculate proportion of cost basis to remove
-            gaining_wihtout_fees = txn.price_per_unit * txn.units
-            sum_gains_without_fees = sum_gains_without_fees + gaining_wihtout_fees
+            gaining_without_fees = txn.price_per_unit * txn.units
+            sum_gains_without_fees = sum_gains_without_fees + gaining_without_fees
 
             total_fees += txn.fee
             total_units -= txn.units

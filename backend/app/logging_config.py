@@ -89,19 +89,6 @@ def setup_logging() -> None:
     logging.getLogger("sqlalchemy.engine").setLevel(logging.WARNING)
 
 
-def get_logger(name: str) -> logging.Logger:
-    """
-    Get a logger instance for a module.
-
-    Args:
-        name: Logger name (typically __name__)
-
-    Returns:
-        Configured logger instance
-    """
-    return logging.getLogger(name)
-
-
 def log_with_context(
     logger: logging.Logger, level: int, message: str, **extra_fields: Any
 ) -> None:
