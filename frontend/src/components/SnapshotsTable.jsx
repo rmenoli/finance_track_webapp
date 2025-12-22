@@ -1,4 +1,5 @@
 import SnapshotAssetTypeChart from './SnapshotAssetTypeChart';
+import FormattedNumber from './FormattedNumber';
 import './SnapshotsTable.css';
 
 function SnapshotsTable({ snapshots }) {
@@ -20,13 +21,6 @@ function SnapshotsTable({ snapshots }) {
     });
   };
 
-  const formatCurrency = (value, decimals = 2) => {
-    return new Intl.NumberFormat('en-US', {
-      minimumFractionDigits: decimals,
-      maximumFractionDigits: decimals,
-    }).format(value);
-  };
-
   return (
     <div className="table-container">
       <table className="table snapshots-table">
@@ -43,14 +37,20 @@ function SnapshotsTable({ snapshots }) {
           {snapshots.map((snapshot, index) => (
             <tr key={`${snapshot.snapshot_date}-${index}`}>
               <td>{formatDate(snapshot.snapshot_date)}</td>
-              <td className="currency-value">€{formatCurrency(snapshot.total_value_eur)}</td>
+              <td className="currency-value">
+                <FormattedNumber value={snapshot.total_value_eur} currency decimals={2} />
+              </td>
               <td>
                 <div className="breakdown-list">
                   {snapshot.by_currency.map((item, idx) => (
                     <div key={`currency-${idx}`} className="breakdown-item">
                       <span className="breakdown-label">{item.currency}:</span>
                       <span className="breakdown-value">
-                        {item.currency === 'EUR' ? '€' : ''}{formatCurrency(item.total_value)}
+                        {item.currency === 'EUR' ? (
+                          <FormattedNumber value={item.total_value} currency decimals={2} />
+                        ) : (
+                          <FormattedNumber value={item.total_value} decimals={2} />
+                        )}
                       </span>
                     </div>
                   ))}
@@ -61,7 +61,9 @@ function SnapshotsTable({ snapshots }) {
                   {snapshot.by_asset_type.map((item, idx) => (
                     <div key={`asset-${idx}`} className="breakdown-item">
                       <span className="breakdown-label">{item.asset_type}:</span>
-                      <span className="breakdown-value">€{formatCurrency(item.total_value_eur)}</span>
+                      <span className="breakdown-value">
+                        <FormattedNumber value={item.total_value_eur} currency decimals={2} />
+                      </span>
                     </div>
                   ))}
                 </div>

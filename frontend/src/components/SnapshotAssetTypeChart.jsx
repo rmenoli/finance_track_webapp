@@ -1,5 +1,6 @@
 import { Pie } from 'react-chartjs-2';
 import { Chart as ChartJS, ArcElement, Tooltip, Legend } from 'chart.js';
+import { formatCurrency } from '../utils/numberFormat';
 
 // Register Chart.js components
 ChartJS.register(ArcElement, Tooltip, Legend);
@@ -72,9 +73,10 @@ function SnapshotAssetTypeChart({ assetTypeBreakdown }) {
         callbacks: {
           label: (context) => {
             const item = chartData[context.dataIndex];
+            const formatted = formatCurrency(item.value);
             return [
               `${item.assetType}`,
-              `€${item.value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+              `${formatted.integer}.${formatted.decimal}`,
               `${item.percentage.toFixed(1)}%`
             ];
           },

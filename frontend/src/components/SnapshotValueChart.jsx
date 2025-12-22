@@ -11,6 +11,8 @@ import {
   Filler
 } from 'chart.js';
 import 'chartjs-adapter-date-fns';
+import FormattedNumber from './FormattedNumber';
+import { formatCurrency } from '../utils/numberFormat';
 import './SnapshotValueChart.css';
 
 // Register Chart.js components
@@ -99,10 +101,8 @@ function SnapshotValueChart({ snapshots, avgMonthlyIncrement, onFilterChange, ac
           },
           label: (context) => {
             const value = parseFloat(context.parsed.y);
-            return `Total Value: €${value.toLocaleString('en-US', {
-              minimumFractionDigits: 2,
-              maximumFractionDigits: 2,
-            })}`;
+            const formatted = formatCurrency(value);
+            return `Total Value: ${formatted.integer}.${formatted.decimal}`;
           },
         },
       },
@@ -111,7 +111,10 @@ function SnapshotValueChart({ snapshots, avgMonthlyIncrement, onFilterChange, ac
       y: {
         beginAtZero: false,
         ticks: {
-          callback: (value) => `€${value.toLocaleString('en-US')}`,
+          callback: (value) => {
+            const formatted = formatCurrency(value);
+            return `${formatted.integer}.${formatted.decimal}`;
+          },
         },
         grid: {
           color: 'rgba(0, 0, 0, 0.05)',
@@ -154,15 +157,12 @@ function SnapshotValueChart({ snapshots, avgMonthlyIncrement, onFilterChange, ac
         <div className="chart-title-section">
           <h3>NW Over Time</h3>
           <div className="current-value">
-            <span className="value">€{parseFloat(currentValue).toLocaleString('en-US', {
-              minimumFractionDigits: 2,
-              maximumFractionDigits: 2,
-            })}</span>
+            <span className="value">
+              <FormattedNumber value={parseFloat(currentValue)} currency decimals={2} />
+            </span>
             <span className={`change ${change >= 0 ? 'positive' : 'negative'}`}>
-              {change >= 0 ? '+' : ''}€{Math.abs(change).toLocaleString('en-US', {
-                minimumFractionDigits: 2,
-                maximumFractionDigits: 2,
-              })}
+              {change >= 0 ? '+' : ''}
+              <FormattedNumber value={Math.abs(change)} currency decimals={2} />
               {' '}({change >= 0 ? '+' : ''}{changePercent.toFixed(2)}%)
             </span>
           </div>
@@ -170,10 +170,8 @@ function SnapshotValueChart({ snapshots, avgMonthlyIncrement, onFilterChange, ac
             <div className="monthly-average">
               <span className="label">Monthly Avg Value Increase: </span>
               <span className={`value ${parseFloat(avgMonthlyIncrement) >= 0 ? 'positive' : 'negative'}`}>
-                {parseFloat(avgMonthlyIncrement) >= 0 ? '+' : ''}€{Math.abs(parseFloat(avgMonthlyIncrement)).toLocaleString('en-US', {
-                  minimumFractionDigits: 2,
-                  maximumFractionDigits: 2,
-                })}
+                {parseFloat(avgMonthlyIncrement) >= 0 ? '+' : ''}
+                <FormattedNumber value={Math.abs(parseFloat(avgMonthlyIncrement))} currency decimals={2} />
               </span>
             </div>
           )}
