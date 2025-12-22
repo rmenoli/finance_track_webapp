@@ -13,6 +13,7 @@ import {
 import 'chartjs-adapter-date-fns';
 import FormattedNumber from './FormattedNumber';
 import { formatCurrency } from '../utils/numberFormat';
+import { ASSET_TYPES } from '../constants/otherAssets';
 import './SnapshotValueChart.css';
 
 // Register Chart.js components
@@ -27,7 +28,124 @@ ChartJS.register(
   Filler
 );
 
+// Color scheme for asset types
+const ASSET_TYPE_COLORS = {
+  investments: { border: 'rgba(54, 162, 235, 1)', background: 'rgba(54, 162, 235, 0.1)' },
+  crypto: { border: 'rgba(255, 159, 64, 1)', background: 'rgba(255, 159, 64, 0.1)' },
+  cash_eur: { border: 'rgba(75, 192, 192, 1)', background: 'rgba(75, 192, 192, 0.1)' },
+  cash_czk: { border: 'rgba(153, 102, 255, 1)', background: 'rgba(153, 102, 255, 0.1)' },
+  cd_account: { border: 'rgba(255, 206, 86, 1)', background: 'rgba(255, 206, 86, 0.1)' },
+  pension_fund: { border: 'rgba(255, 99, 132, 1)', background: 'rgba(255, 99, 132, 0.1)' },
+};
+
+const FALLBACK_COLORS = [
+  'rgba(199, 199, 199, 1)',
+  'rgba(83, 102, 255, 1)',
+  'rgba(255, 99, 255, 1)',
+  'rgba(99, 255, 132, 1)',
+];
+
 function SnapshotValueChart({ snapshots, avgMonthlyIncrement, onFilterChange, activeFilter }) {
+  // Helper function: Extract unique asset types from snapshots
+  const extractUniqueAssetTypes = (snapshots) => {
+    const assetTypesSet = new Set();
+    snapshots.forEach(snapshot => {
+      if (snapshot.by_asset_type && Array.isArray(snapshot.by_asset_type)) {
+        snapshot.by_asset_type.forEach(assetData => {
+          assetTypesSet.add(assetData.asset_type);
+        });
+      }
+    });
+    return Array.from(assetTypesSet).sort();
+  };
+
+  // Helper function: Build dataset for specific asset type
+  const buildAssetTypeDataset = (sortedSnapshots, assetType) => {
+    return sortedSnapshots.map(snapshot => {
+      const assetData = snapshot.by_asset_type?.find(
+        item => item.asset_type === assetType
+      );
+      return {
+        x: new Date(snapshot.snapshot_date),
+        y: assetData ? parseFloat(assetData.total_value_eur) : 0
+      };
+    });
+  };
+
+  // Helper function: Format asset type labels
+  const formatAssetTypeLabel = (assetType) => {
+    if (ASSET_TYPES[assetType]?.label) {
+      return ASSET_TYPES[assetType].label;
+    }
+    return assetType
+      .split('_')
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(' ');
+  };
+
+  // Helper function: Get color for asset type
+  const getAssetTypeColor = (assetType, index) => {
+    if (ASSET_TYPE_COLORS[assetType]) {
+      return ASSET_TYPE_COLORS[assetType];
+    }
+    const fallbackIndex = index % FALLBACK_COLORS.length;
+    const borderColor = FALLBACK_COLORS[fallbackIndex];
+    return {
+      border: borderColor,
+      background: borderColor.replace('1)', '0.1)'),
+    };
+  };
+
+  // Helper function: Transform snapshots to chart datasets
+  const transformToChartDatasets = (sortedSnapshots) => {
+    const datasets = [];
+    const assetTypes = extractUniqueAssetTypes(sortedSnapshots);
+
+    // Create dataset for each asset type
+    assetTypes.forEach((assetType, index) => {
+      const data = buildAssetTypeDataset(sortedSnapshots, assetType);
+      const color = getAssetTypeColor(assetType, index);
+      const label = formatAssetTypeLabel(assetType);
+
+      datasets.push({
+        label: label,
+        data: data,
+        borderColor: color.border,
+        backgroundColor: color.background,
+        borderWidth: 2,
+        tension: 0.3,
+        fill: false,
+        pointRadius: 2,
+        pointHoverRadius: 5,
+        pointBackgroundColor: color.border,
+        pointBorderColor: '#fff',
+        pointBorderWidth: 1,
+      });
+    });
+
+    // Add prominent total line (last = renders on top)
+    datasets.push({
+      label: 'Total Portfolio',
+      data: sortedSnapshots.map(s => ({
+        x: new Date(s.snapshot_date),
+        y: parseFloat(s.total_value_eur)
+      })),
+      borderColor: 'rgba(44, 62, 80, 1)',
+      backgroundColor: 'rgba(44, 62, 80, 0.1)',
+      borderWidth: 3,
+      borderDash: [5, 5],
+      tension: 0.3,
+      fill: true,
+      pointRadius: 4,
+      pointHoverRadius: 7,
+      pointBackgroundColor: 'rgba(44, 62, 80, 1)',
+      pointBorderColor: '#fff',
+      pointBorderWidth: 2,
+    });
+
+    return datasets;
+  };
+
   // Handle empty state
   if (!snapshots || snapshots.length === 0) {
     return (
@@ -44,27 +162,9 @@ function SnapshotValueChart({ snapshots, avgMonthlyIncrement, onFilterChange, ac
     new Date(a.snapshot_date) - new Date(b.snapshot_date)
   );
 
-  // Prepare chart data with time-based x-axis
+  // Prepare chart data with multiple lines
   const chartData = {
-    datasets: [
-      {
-        label: 'Total Portfolio Value',
-        data: sortedSnapshots.map(s => ({
-          x: new Date(s.snapshot_date),
-          y: parseFloat(s.total_value_eur)
-        })),
-        borderColor: 'rgba(54, 162, 235, 1)',
-        backgroundColor: 'rgba(54, 162, 235, 0.2)',
-        borderWidth: 2,
-        tension: 0.3,
-        fill: true,
-        pointRadius: 3,
-        pointHoverRadius: 6,
-        pointBackgroundColor: 'rgba(54, 162, 235, 1)',
-        pointBorderColor: '#fff',
-        pointBorderWidth: 2,
-      },
-    ],
+    datasets: transformToChartDatasets(sortedSnapshots)
   };
 
   // Chart options
@@ -75,9 +175,23 @@ function SnapshotValueChart({ snapshots, avgMonthlyIncrement, onFilterChange, ac
       mode: 'index',
       intersect: false,
     },
+    layout: {
+      padding: {
+        bottom: 5,
+      },
+    },
     plugins: {
       legend: {
-        display: false,
+        display: true,
+        position: 'bottom',
+        align: 'start',
+        labels: {
+          padding: 15,
+          font: {
+            size: 12,
+          },
+          usePointStyle: true,
+        },
       },
       tooltip: {
         backgroundColor: 'rgba(0, 0, 0, 0.8)',
@@ -102,14 +216,17 @@ function SnapshotValueChart({ snapshots, avgMonthlyIncrement, onFilterChange, ac
           label: (context) => {
             const value = parseFloat(context.parsed.y);
             const formatted = formatCurrency(value);
-            return `Total Value: ${formatted.integer}.${formatted.decimal}`;
+            const label = context.dataset.label;
+
+            const prefix = label === 'Total Portfolio' ? '  ' : '';
+            return `${prefix}${label}: ${formatted.integer}.${formatted.decimal}`;
           },
         },
       },
     },
     scales: {
       y: {
-        beginAtZero: false,
+        beginAtZero: true,
         ticks: {
           callback: (value) => {
             const formatted = formatCurrency(value);
