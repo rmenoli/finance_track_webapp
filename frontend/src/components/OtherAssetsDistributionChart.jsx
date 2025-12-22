@@ -1,10 +1,12 @@
 import { Pie } from 'react-chartjs-2';
 import { Chart as ChartJS, ArcElement, Tooltip, Legend } from 'chart.js';
+import ChartDataLabels from 'chartjs-plugin-datalabels';
 import { ASSET_TYPES, ACCOUNTS } from '../constants/otherAssets';
+import { generateChartColors } from '../constants/chartColors';
 import './HoldingsDistributionChart.css'; // Reuse the same CSS
 
 // Register Chart.js components
-ChartJS.register(ArcElement, Tooltip, Legend);
+ChartJS.register(ArcElement, Tooltip, Legend, ChartDataLabels);
 
 function OtherAssetsDistributionChart({ assets, exchangeRate }) {
   // Transform assets array to map: { assetType: { account: { value, currency, value_eur } } }
@@ -72,34 +74,8 @@ function OtherAssetsDistributionChart({ assets, exchangeRate }) {
     );
   }
 
-  // Generate colors for the pie chart
-  const generateColors = (count) => {
-    const colors = [
-      'rgba(54, 162, 235, 0.8)',   // Blue
-      'rgba(255, 99, 132, 0.8)',   // Red
-      'rgba(255, 206, 86, 0.8)',   // Yellow
-      'rgba(75, 192, 192, 0.8)',   // Teal
-      'rgba(153, 102, 255, 0.8)',  // Purple
-      'rgba(255, 159, 64, 0.8)',   // Orange
-      'rgba(199, 199, 199, 0.8)',  // Gray
-      'rgba(83, 102, 255, 0.8)',   // Indigo
-      'rgba(255, 99, 255, 0.8)',   // Pink
-      'rgba(99, 255, 132, 0.8)',   // Green
-    ];
-
-    // If we have more assets than colors, generate additional colors
-    if (count > colors.length) {
-      for (let i = colors.length; i < count; i++) {
-        const hue = (i * 137.5) % 360; // Golden angle
-        colors.push(`hsla(${hue}, 70%, 60%, 0.8)`);
-      }
-    }
-
-    return colors.slice(0, count);
-  };
-
-  const colors = generateColors(chartDataWithPercentages.length);
-  const borderColors = colors.map(color => color.replace('0.8', '1'));
+  // Generate colors using centralized color configuration
+  const { colors, borderColors } = generateChartColors(chartDataWithPercentages, 'assetType');
 
   const data = {
     labels: chartDataWithPercentages.map(item => item.label),
@@ -154,6 +130,21 @@ function OtherAssetsDistributionChart({ assets, exchangeRate }) {
               `Share: ${item.percentage.toFixed(2)}%`
             ];
           },
+        },
+      },
+      datalabels: {
+        color: '#fff',
+        font: {
+          weight: 'bold',
+          size: 14,
+        },
+        formatter: (value, context) => {
+          const percentage = chartDataWithPercentages[context.dataIndex].percentage;
+          // Only show label if percentage is >= 4%
+          if (percentage >= 4) {
+            return `${percentage.toFixed(0)}%`;
+          }
+          return null; // Don't show label for very small slices
         },
       },
     },

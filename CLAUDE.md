@@ -257,15 +257,27 @@ finance_track_webapp/
 │   │   │   ├── DashboardHoldingsTable.jsx  # Holdings table for dashboard
 │   │   │   ├── HoldingsDistributionChart.jsx # Portfolio distribution pie chart (Chart.js)
 │   │   │   ├── ClosedPositionsTable.jsx    # Closed positions table
+│   │   │   ├── SnapshotValueChart.jsx      # Time-series area chart with growth tracking
+│   │   │   ├── SnapshotsTable.jsx          # Snapshots table
+│   │   │   ├── SnapshotAssetTypeChart.jsx  # Compact pie chart for asset distribution
+│   │   │   ├── OtherAssetsTable.jsx        # Other assets editable table
+│   │   │   ├── OtherAssetsDistributionChart.jsx # Other assets pie chart
 │   │   │   └── PortfolioSummary.jsx   # Dashboard summary cards
 │   │   ├── pages/             # Page-level components
 │   │   │   ├── InvestmentDashboard.jsx  # Portfolio overview page
 │   │   │   ├── Transactions.jsx         # Transaction management
 │   │   │   ├── AddTransaction.jsx       # Add/edit transaction page
 │   │   │   ├── ISINMetadata.jsx         # ISIN metadata management
-│   │   │   └── AddISINMetadata.jsx      # Add/edit ISIN metadata page
+│   │   │   ├── AddISINMetadata.jsx      # Add/edit ISIN metadata page
+│   │   │   ├── OtherAssets.jsx          # Other assets tracking page
+│   │   │   └── Snapshots.jsx            # Snapshots with growth tracking
+│   │   ├── constants/         # Application constants
+│   │   │   ├── otherAssets.js # Other asset types and accounts
+│   │   │   └── chartColors.js # Centralized chart color configuration
 │   │   ├── services/          # API client
 │   │   │   └── api.js         # Fetch-based API client (transactions, analytics, positionValues, isinMetadata)
+│   │   ├── utils/             # Utility functions
+│   │   │   └── numberFormat.js # Number formatting utilities
 │   │   ├── App.jsx            # Main app with routing
 │   │   └── main.jsx           # Entry point
 │   ├── .env.development       # Development environment
@@ -539,6 +551,15 @@ When modifying, maintain chronological transaction processing (ORDER BY date).
 - **Asset Name Display**: ISIN names from metadata displayed above ISIN codes in holdings tables (bold names, italic ISINs)
 - **Interactive Tooltips**: Chart tooltips show asset name, current value, and percentage share
 - **Auto-updates**: Chart refreshes when position values change
+- **Consistent Colors**: Centralized color configuration ensures same asset type has same color across all charts
+
+**Chart Color System** (`frontend/src/constants/chartColors.js`):
+- **Centralized Configuration**: Single source of truth for all chart colors
+- **Asset Type Mapping**: Pre-defined colors for known asset types (investments=blue, crypto=orange, etc.)
+- **Fallback Colors**: Dynamic color generation for unmapped items using golden angle algorithm
+- **Benefits**: Consistency (same asset = same color), maintainability (one place to update), predictability (users learn associations)
+- **Usage**: `import { generateChartColors } from '../constants/chartColors'` then call `generateChartColors(data, 'assetType')`
+- **Components**: Used by SnapshotValueChart, SnapshotAssetTypeChart, OtherAssetsDistributionChart
 
 **Routing**: React Router v6 with nested routes
 - Layout component wraps all pages

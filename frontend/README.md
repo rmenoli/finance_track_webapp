@@ -80,8 +80,13 @@ src/
 │   ├── AddISINMetadata.jsx/css       # Add/edit ISIN metadata page
 │   ├── OtherAssets.jsx/css           # Other assets tracking page
 │   └── Snapshots.jsx/css             # Snapshot history with growth tracking
+├── constants/                         # Application constants
+│   ├── otherAssets.js                # Other asset types and accounts
+│   └── chartColors.js                # Centralized chart color configuration
 ├── services/                          # API client
 │   └── api.js                        # Backend API client
+├── utils/                             # Utility functions
+│   └── numberFormat.js               # Number formatting utilities
 ├── App.jsx                            # Main app with routing
 ├── main.jsx                           # Application entry point
 ├── App.css                            # App-level styles
@@ -187,6 +192,50 @@ src/
   - Interactive tooltips showing EUR value and percentage share
   - Color-coded segments matching portfolio distribution chart style
   - Auto-updates when asset values or exchange rate changes (single API call on save)
+
+### Chart Color Configuration
+
+The application uses a centralized color configuration system (`src/constants/chartColors.js`) to ensure consistent colors across all chart components. This means the same asset type always appears in the same color, regardless of which chart displays it.
+
+**Centralized Colors** (`src/constants/chartColors.js`):
+
+```javascript
+import { ASSET_TYPE_COLORS, generateChartColors } from '../constants/chartColors';
+
+// Pre-defined colors for known asset types
+const colors = {
+  investments: blue,
+  crypto: orange,
+  cash_eur: teal,
+  cash_czk: purple,
+  cd_account: yellow,
+  pension_fund: red
+};
+```
+
+**Benefits**:
+- **Consistency**: Same asset type = same color in all charts (e.g., crypto is always orange)
+- **Maintainability**: Update colors in one place for all charts
+- **Predictability**: Users can learn color associations across the application
+- **Extensibility**: Easy to add new asset type colors
+
+**Using Chart Colors**:
+
+```javascript
+// For asset type-based coloring (recommended for asset charts)
+import { generateChartColors } from '../constants/chartColors';
+const { colors, borderColors } = generateChartColors(chartData, 'assetType');
+
+// For generic items without asset type mapping
+import { generateChartColors } from '../constants/chartColors';
+const { colors, borderColors } = generateChartColors(holdings, null);
+```
+
+**Components Using Centralized Colors**:
+- `SnapshotValueChart.jsx` - Line chart with asset type coloring
+- `SnapshotAssetTypeChart.jsx` - Pie chart with consistent asset colors
+- `OtherAssetsDistributionChart.jsx` - Pie chart with asset type coloring
+- `HoldingsDistributionChart.jsx` - Uses fallback colors for ISIN-level holdings
 
 ### Architecture & Design Principles
 

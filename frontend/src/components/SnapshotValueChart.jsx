@@ -14,6 +14,7 @@ import 'chartjs-adapter-date-fns';
 import FormattedNumber from './FormattedNumber';
 import { formatCurrency } from '../utils/numberFormat';
 import { ASSET_TYPES } from '../constants/otherAssets';
+import { ASSET_TYPE_COLORS, FALLBACK_CHART_COLORS } from '../constants/chartColors';
 import './SnapshotValueChart.css';
 
 // Register Chart.js components
@@ -28,22 +29,7 @@ ChartJS.register(
   Filler
 );
 
-// Color scheme for asset types
-const ASSET_TYPE_COLORS = {
-  investments: { border: 'rgba(54, 162, 235, 1)', background: 'rgba(54, 162, 235, 0.1)' },
-  crypto: { border: 'rgba(255, 159, 64, 1)', background: 'rgba(255, 159, 64, 0.1)' },
-  cash_eur: { border: 'rgba(75, 192, 192, 1)', background: 'rgba(75, 192, 192, 0.1)' },
-  cash_czk: { border: 'rgba(153, 102, 255, 1)', background: 'rgba(153, 102, 255, 0.1)' },
-  cd_account: { border: 'rgba(255, 206, 86, 1)', background: 'rgba(255, 206, 86, 0.1)' },
-  pension_fund: { border: 'rgba(255, 99, 132, 1)', background: 'rgba(255, 99, 132, 0.1)' },
-};
-
-const FALLBACK_COLORS = [
-  'rgba(199, 199, 199, 1)',
-  'rgba(83, 102, 255, 1)',
-  'rgba(255, 99, 255, 1)',
-  'rgba(99, 255, 132, 1)',
-];
+// Color scheme imported from centralized configuration
 
 function SnapshotValueChart({ snapshots, avgMonthlyIncrement, onFilterChange, activeFilter }) {
   // Helper function: Extract unique asset types from snapshots
@@ -88,8 +74,8 @@ function SnapshotValueChart({ snapshots, avgMonthlyIncrement, onFilterChange, ac
     if (ASSET_TYPE_COLORS[assetType]) {
       return ASSET_TYPE_COLORS[assetType];
     }
-    const fallbackIndex = index % FALLBACK_COLORS.length;
-    const borderColor = FALLBACK_COLORS[fallbackIndex];
+    const fallbackIndex = index % FALLBACK_CHART_COLORS.length;
+    const borderColor = FALLBACK_CHART_COLORS[fallbackIndex].replace('0.8', '1');
     return {
       border: borderColor,
       background: borderColor.replace('1)', '0.1)'),
@@ -181,6 +167,9 @@ function SnapshotValueChart({ snapshots, avgMonthlyIncrement, onFilterChange, ac
       },
     },
     plugins: {
+      datalabels: {
+        display: false, // Disable datalabels for line chart
+      },
       legend: {
         display: true,
         position: 'bottom',

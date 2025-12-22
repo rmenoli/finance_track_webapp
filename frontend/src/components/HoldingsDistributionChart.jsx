@@ -85,6 +85,9 @@ function HoldingsDistributionChart({ holdings, currentValues, isinNames }) {
     responsive: true,
     maintainAspectRatio: false,
     plugins: {
+      datalabels: {
+        display: false, // Disable datalabels for this chart
+      },
       legend: {
         position: 'right',
         labels: {
