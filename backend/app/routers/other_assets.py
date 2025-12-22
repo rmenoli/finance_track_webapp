@@ -1,5 +1,6 @@
 """Other assets API router."""
 
+from decimal import Decimal
 from typing import Optional
 
 from fastapi import APIRouter, Depends, Path, Query, status
@@ -28,10 +29,9 @@ def upsert_other_asset(
     db: Session = Depends(get_db),
 ) -> OtherAssetResponse:
     """Create or update an other asset."""
-    from decimal import Decimal
-
     result = other_asset_service.upsert_other_asset(db, asset)
-    exchange_rate = user_setting_service.get_exchange_rate_setting(db) or Decimal("25.00")
+    setting = user_setting_service.get_exchange_rate_setting(db)
+    exchange_rate = Decimal(setting.setting_value) if setting else Decimal("25.00")
 
     return OtherAssetResponse(
         id=result.id,
@@ -59,13 +59,12 @@ def list_other_assets(
     db: Session = Depends(get_db),
 ) -> OtherAssetListResponse:
     """List all other assets."""
-    from decimal import Decimal
-
     if include_investments:
         other_assets, exchange_rate = other_asset_service.get_all_other_assets_with_investments(db)
     else:
         other_assets = other_asset_service.get_all_other_assets(db)
-        exchange_rate = user_setting_service.get_exchange_rate_setting(db) or Decimal("25.00")
+        setting = user_setting_service.get_exchange_rate_setting(db)
+        exchange_rate = Decimal(setting.setting_value) if setting else Decimal("25.00")
 
     # Create response objects with exchange_rate_ set
     response_assets = []
@@ -86,35 +85,6 @@ def list_other_assets(
         other_assets=response_assets,
         total=len(response_assets),
         exchange_rate_used=exchange_rate,
-    )
-
-
-@router.get(
-    "/{asset_type}",
-    response_model=OtherAssetResponse,
-    summary="Get other asset by type and detail",
-    description="Retrieve a specific other asset by asset_type and optional asset_detail",
-)
-def get_other_asset(
-    asset_type: str = Path(..., min_length=1, max_length=50, description="Asset type"),
-    asset_detail: Optional[str] = Query(None, max_length=100, description="Asset detail (account name for cash)"),
-    db: Session = Depends(get_db),
-) -> OtherAssetResponse:
-    """Get an other asset by type and detail."""
-    from decimal import Decimal
-
-    other_asset = other_asset_service.get_other_asset(db, asset_type, asset_detail)
-    exchange_rate = user_setting_service.get_exchange_rate_setting(db) or Decimal("25.00")
-
-    return OtherAssetResponse(
-        id=other_asset.id,
-        asset_type=other_asset.asset_type,
-        asset_detail=other_asset.asset_detail,
-        currency=other_asset.currency,
-        value=other_asset.value,
-        created_at=other_asset.created_at,
-        updated_at=other_asset.updated_at,
-        exchange_rate_=exchange_rate,
     )
 
 

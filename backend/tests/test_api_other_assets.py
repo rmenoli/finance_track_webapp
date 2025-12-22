@@ -173,50 +173,6 @@ class TestOtherAssetsAPI:
         types = [asset["asset_type"] for asset in json_data["other_assets"]]
         assert "investments" not in types
 
-    def test_get_other_asset_by_type(self, client):
-        """Test getting a specific asset by type."""
-        # Create crypto asset
-        data = {
-            "asset_type": "crypto",
-            "asset_detail": None,
-            "currency": "EUR",
-            "value": "700.00"
-        }
-        client.post("/api/v1/other-assets", json=data)
-
-        # Get by type
-        response = client.get("/api/v1/other-assets/crypto")
-
-        assert response.status_code == 200
-        json_data = response.json()
-        assert json_data["asset_type"] == "crypto"
-        assert Decimal(json_data["value"]) == Decimal("700.00")
-
-    def test_get_other_asset_by_type_and_account(self, client):
-        """Test getting a specific cash asset by type and account."""
-        # Create cash asset
-        data = {
-            "asset_type": "cash_eur",
-            "asset_detail": "CSOB",
-            "currency": "EUR",
-            "value": "1500.00"
-        }
-        client.post("/api/v1/other-assets", json=data)
-
-        # Get by type and account
-        response = client.get("/api/v1/other-assets/cash_eur?asset_detail=CSOB")
-
-        assert response.status_code == 200
-        json_data = response.json()
-        assert json_data["asset_type"] == "cash_eur"
-        assert json_data["asset_detail"] == "CSOB"
-
-    def test_get_other_asset_not_found(self, client):
-        """Test getting non-existent asset returns 404."""
-        response = client.get("/api/v1/other-assets/nonexistent")
-
-        assert response.status_code == 404
-
     def test_delete_other_asset(self, client):
         """Test deleting an asset."""
         # Create asset
@@ -233,9 +189,11 @@ class TestOtherAssetsAPI:
 
         assert response.status_code == 204
 
-        # Verify deleted
-        response = client.get("/api/v1/other-assets/crypto")
-        assert response.status_code == 404
+        # Verify deleted by listing all assets
+        response = client.get("/api/v1/other-assets?include_investments=false")
+        assert response.status_code == 200
+        types = [asset["asset_type"] for asset in response.json()["other_assets"]]
+        assert "crypto" not in types
 
     def test_delete_other_asset_not_found(self, client):
         """Test deleting non-existent asset returns 404."""

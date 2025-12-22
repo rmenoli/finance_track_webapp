@@ -74,35 +74,6 @@ class TestISINMetadataAPI:
         assert response.status_code == 201
         assert response.json()["isin"] == "IE00B4L5Y983"
 
-    def test_upsert_isin_metadata_create(self, client):
-        """Test upserting new ISIN metadata (create) via API."""
-        data = {"isin": "IE00B4L5Y983", "name": "Test ETF", "type": "STOCK"}
-        response = client.post("/api/v1/isin-metadata/upsert", json=data)
-
-        assert response.status_code == 200
-        json_data = response.json()
-        assert json_data["isin"] == "IE00B4L5Y983"
-        assert json_data["name"] == "Test ETF"
-        assert json_data["type"] == "STOCK"
-
-    def test_upsert_isin_metadata_update(self, client):
-        """Test upserting existing ISIN metadata (update) via API."""
-        # Create initial metadata
-        data1 = {"isin": "IE00B4L5Y983", "name": "Original Name", "type": "STOCK"}
-        response1 = client.post("/api/v1/isin-metadata/upsert", json=data1)
-        assert response1.status_code == 200
-        id1 = response1.json()["id"]
-
-        # Upsert with new data
-        data2 = {"isin": "IE00B4L5Y983", "name": "Updated Name", "type": "BOND"}
-        response2 = client.post("/api/v1/isin-metadata/upsert", json=data2)
-
-        assert response2.status_code == 200
-        json_data = response2.json()
-        assert json_data["id"] == id1  # Same ID
-        assert json_data["name"] == "Updated Name"
-        assert json_data["type"] == "BOND"
-
     def test_list_isin_metadata(self, client):
         """Test listing all ISIN metadata."""
         # Create multiple metadata entries

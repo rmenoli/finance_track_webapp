@@ -36,11 +36,13 @@ class TestUserSettingService:
 
         # Verify only one record exists
         retrieved = user_setting_service.get_exchange_rate_setting(db_session)
-        assert retrieved == Decimal("26.00")
+        assert retrieved is not None
+        assert Decimal(retrieved.setting_value) == Decimal("26.00")
 
     def test_get_exchange_rate_after_create(self, db_session):
         """Test getting exchange rate after creating."""
         user_setting_service.update_exchange_rate_setting(db_session, Decimal("25.75"))
 
-        rate = user_setting_service.get_exchange_rate_setting(db_session)
-        assert rate == Decimal("25.75")
+        setting = user_setting_service.get_exchange_rate_setting(db_session)
+        assert setting is not None
+        assert Decimal(setting.setting_value) == Decimal("25.75")

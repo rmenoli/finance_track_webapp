@@ -34,22 +34,6 @@ def create_isin_metadata(
     return ISINMetadataResponse.model_validate(result)
 
 
-@router.post(
-    "/upsert",
-    response_model=ISINMetadataResponse,
-    status_code=status.HTTP_200_OK,
-    summary="Create or update ISIN metadata",
-    description="Create new ISIN metadata or update existing one (UPSERT by ISIN)",
-)
-def upsert_isin_metadata(
-    isin_metadata: ISINMetadataCreate,
-    db: Session = Depends(get_db),
-) -> ISINMetadataResponse:
-    """Create or update ISIN metadata."""
-    result = isin_metadata_service.upsert_isin_metadata(db, isin_metadata)
-    return ISINMetadataResponse.model_validate(result)
-
-
 @router.get(
     "",
     response_model=ISINMetadataListResponse,

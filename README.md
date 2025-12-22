@@ -43,7 +43,7 @@ A full-stack web application for tracking ETF portfolio transactions with automa
 - ✅ Clean, responsive React UI
 - ✅ Interactive API documentation (Swagger UI)
 - ✅ Fast development with hot reload
-- ✅ Comprehensive test coverage (95%, 254 tests)
+- ✅ Comprehensive test coverage (95%, 245 tests)
 
 ### Tech Stack
 
@@ -51,7 +51,7 @@ A full-stack web application for tracking ETF portfolio transactions with automa
 |-------|-----------|
 | **Backend** | FastAPI, SQLAlchemy 2.0, SQLite, Alembic, Pydantic |
 | **Frontend** | React 18, Vite, React Router v6, CSS, Chart.js |
-| **Testing** | Pytest (254 tests, 95% coverage) |
+| **Testing** | Pytest (245 tests, 95% coverage) |
 | **Tools** | UV (Python), npm (Node.js), Ruff (linting) |
 
 ---
@@ -114,7 +114,7 @@ finance_track_webapp/
 │   │   └── schemas/                  # Pydantic schemas
 │   ├── alembic/                      # Database migrations
 │   │   └── versions/                 # Migration files
-│   ├── tests/                        # Backend tests (235 tests, 95% coverage)
+│   ├── tests/                        # Backend tests (245 tests, 95% coverage)
 │   ├── pyproject.toml                # Python dependencies
 │   ├── uv.lock                       # Dependency lock file
 │   ├── alembic.ini                   # Alembic configuration
@@ -206,7 +206,7 @@ npm run build              # Verify build works
 
 ### Backend Tests
 
-95% coverage across 254 tests:
+95% coverage across 245 tests:
 
 ```bash
 cd backend
@@ -297,14 +297,11 @@ All endpoints are prefixed with `/api/v1`
 |--------|----------|-------------|
 | POST | `/position-values` | Create or update position value (UPSERT) |
 | GET | `/position-values` | List all position values |
-| GET | `/position-values/{isin}` | Get position value by ISIN |
-| DELETE | `/position-values/{isin}` | Delete position value |
 
 #### ISIN Metadata Endpoints
 | Method | Endpoint | Description |
 |--------|----------|-------------|
 | POST | `/isin-metadata` | Create ISIN metadata (name, type) |
-| POST | `/isin-metadata/upsert` | Create or update ISIN metadata |
 | GET | `/isin-metadata?type={type}` | List all ISIN metadata (with optional type filter) |
 | GET | `/isin-metadata/{isin}` | Get ISIN metadata by ISIN |
 | PUT | `/isin-metadata/{isin}` | Update ISIN metadata |
@@ -315,7 +312,6 @@ All endpoints are prefixed with `/api/v1`
 |--------|----------|-------------|
 | POST | `/other-assets` | Create or update other asset (UPSERT) |
 | GET | `/other-assets?include_investments={bool}` | List all other assets (optionally include synthetic investments row) |
-| GET | `/other-assets/{type}?asset_detail={detail}` | Get specific other asset by type and optional detail |
 | DELETE | `/other-assets/{type}?asset_detail={detail}` | Delete other asset |
 
 #### Settings Endpoints
@@ -330,7 +326,6 @@ All endpoints are prefixed with `/api/v1`
 | POST | `/snapshots` | Create snapshot of current asset state (investments + other assets) |
 | GET | `/snapshots` | List all snapshots (with optional date range and asset type filters) |
 | GET | `/snapshots/summary` | Get aggregated summary with growth tracking (absolute and % changes from oldest) and average monthly increment |
-| GET | `/snapshots/{snapshot_date}` | Get all assets for specific snapshot date |
 | DELETE | `/snapshots/{snapshot_date}` | Delete all snapshots for specific date |
 
 **Note**: Snapshots capture point-in-time portfolio state with preserved exchange rates. The summary endpoint includes automatic calculation of portfolio growth from the oldest snapshot in the filtered dataset, including `avg_monthly_increment` (normalized 30-day growth rate in EUR).
@@ -429,9 +424,9 @@ realized_gain = (sell_price × units - fee) - cost_removed
 ## Project Status
 
 **Current Version**: Development
-**Test Coverage**: 95% (254 tests)
+**Test Coverage**: 95% (245 tests)
 **Frontend Pages**: 6 pages (Investment Dashboard, Transactions, Add/Edit Transaction, ISIN Metadata Management, Other Assets, Snapshots with Growth Tracking)
-**Backend Endpoints**: 27 endpoints (5 transaction, 1 analytics, 4 position values, 6 ISIN metadata, 4 other assets, 2 settings, 5 snapshots)
+**Backend Endpoints**: 21 endpoints (5 transaction, 1 analytics, 2 position values, 5 ISIN metadata, 3 other assets, 2 settings, 4 snapshots) - optimized from 27 endpoints
 
 ---
 

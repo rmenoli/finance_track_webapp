@@ -167,7 +167,8 @@ def get_all_other_assets_with_investments(db: Session) -> tuple[list[OtherAsset]
         Tuple of (assets list with synthetic investments row first, exchange_rate_used)
     """
     # Get exchange rate from settings (default 25.00)
-    exchange_rate = user_setting_service.get_exchange_rate_setting(db) or Decimal("25.00")
+    setting = user_setting_service.get_exchange_rate_setting(db)
+    exchange_rate = Decimal(setting.setting_value) if setting else Decimal("25.00")
 
     # Get portfolio summary to extract total current invested value
     portfolio_summary = cost_basis_service.get_portfolio_summary(db)

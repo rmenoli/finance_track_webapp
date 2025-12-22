@@ -25,7 +25,7 @@ FastAPI backend service for tracking ETF transactions with automatic cost basis 
 - **Validation**: Pydantic 2.12.5 (data validation and settings)
 - **Package Manager**: UV (fast Python package manager)
 - **Server**: Uvicorn 0.38.0 (ASGI server)
-- **Testing**: Pytest 9.0.2 with 95% coverage (254 tests)
+- **Testing**: Pytest 9.0.2 with 95% coverage (245 tests)
 - **Code Quality**: Ruff 0.14.9 (linting and formatting)
 - **Logging**: Structured JSON logging with python-json-logger (audit trail + observability)
 
@@ -233,8 +233,6 @@ All endpoints are prefixed with `/api/v1`
 |--------|----------|-------------|
 | POST | `/position-values` | Create or update position value (UPSERT by ISIN) |
 | GET | `/position-values` | List all position values |
-| GET | `/position-values/{isin}` | Get position value for specific ISIN |
-| DELETE | `/position-values/{isin}` | Delete position value by ISIN |
 
 **Position Values** allow users to manually track the current market value of their positions. Values are stored per ISIN with automatic timestamp tracking. When creating/updating, the system uses UPSERT logic - one row per ISIN that updates if it exists or creates if new.
 
@@ -243,7 +241,6 @@ All endpoints are prefixed with `/api/v1`
 | Method | Endpoint | Description |
 |--------|----------|-------------|
 | POST | `/isin-metadata` | Create new ISIN metadata (name and type) |
-| POST | `/isin-metadata/upsert` | Create or update ISIN metadata (UPSERT by ISIN) |
 | GET | `/isin-metadata?type={type}` | List all ISIN metadata with optional type filter |
 | GET | `/isin-metadata/{isin}` | Get ISIN metadata for specific ISIN |
 | PUT | `/isin-metadata/{isin}` | Update ISIN metadata (name and/or type) |
@@ -257,7 +254,6 @@ All endpoints are prefixed with `/api/v1`
 |--------|----------|-------------|
 | POST | `/other-assets` | Create or update other asset (UPSERT by asset_type and asset_detail) |
 | GET | `/other-assets?include_investments={bool}` | List all other assets with optional synthetic investments row |
-| GET | `/other-assets/{type}?asset_detail={detail}` | Get specific other asset by type and optional detail |
 | DELETE | `/other-assets/{type}?asset_detail={detail}` | Delete other asset by type and optional detail |
 
 **Other Assets** track non-ETF holdings such as crypto, cash in multiple accounts (EUR/CZK), CD accounts, and pension funds. The system supports:
@@ -274,7 +270,6 @@ All endpoints are prefixed with `/api/v1`
 | POST | `/snapshots` | Create snapshot of current asset state (investments + other assets) |
 | GET | `/snapshots` | List all snapshots with optional filters (date range, asset type) |
 | GET | `/snapshots/summary` | Get aggregated summary statistics per snapshot date |
-| GET | `/snapshots/{snapshot_date}` | Get all assets for specific snapshot date |
 | DELETE | `/snapshots/{snapshot_date}` | Delete all snapshots for specific date |
 
 **Asset Snapshots** capture point-in-time portfolio state for historical tracking and analysis. The system:

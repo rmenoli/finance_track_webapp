@@ -11,7 +11,6 @@ from app.schemas.asset_snapshot import (
     AssetSnapshotListResponse,
     AssetSnapshotResponse,
     SnapshotCreateResponse,
-    SnapshotMetadata,
     SnapshotSummaryListResponse,
 )
 from app.services import asset_snapshot_service
@@ -99,37 +98,6 @@ def get_snapshot_summary(
         summaries=summaries,
         total=len(summaries),
         avg_monthly_increment=avg_monthly_increment
-    )
-
-
-@router.get(
-    "/{snapshot_date}",
-    response_model=AssetSnapshotListResponse,
-    summary="Get snapshots by date",
-    description="Retrieve all asset snapshots for a specific date",
-)
-def get_snapshot_by_date(
-    snapshot_date: datetime = Path(..., description="Snapshot date to retrieve"),
-    db: Session = Depends(get_db),
-) -> AssetSnapshotListResponse:
-    """Get all snapshots for a specific date."""
-    snapshots = asset_snapshot_service.get_snapshots_by_date(db, snapshot_date)
-
-    # Calculate metadata
-    total_value_eur = sum(s.value_eur for s in snapshots)
-    exchange_rate = snapshots[0].exchange_rate if snapshots else Decimal("25.00")
-
-    metadata = SnapshotMetadata(
-        snapshot_date=snapshot_date,
-        exchange_rate_used=exchange_rate,
-        total_assets_captured=len(snapshots),
-        total_value_eur=total_value_eur,
-    )
-
-    return AssetSnapshotListResponse(
-        snapshots=[AssetSnapshotResponse.model_validate(s) for s in snapshots],
-        total=len(snapshots),
-        metadata=metadata,
     )
 
 

@@ -15,23 +15,20 @@ logger = logging.getLogger(__name__)
 EXCHANGE_RATE_KEY = "czk_eur_exchange_rate"
 
 
-def get_exchange_rate_setting(db: Session) -> Optional[Decimal]:
+def get_exchange_rate_setting(db: Session) -> Optional[UserSetting]:
     """
-    Get the stored exchange rate setting.
+    Get the stored exchange rate setting object.
 
     Args:
         db: Database session
 
     Returns:
-        Exchange rate as Decimal, or None if not set
+        UserSetting object if exists, None otherwise.
+        To get the Decimal value: Decimal(result.setting_value)
     """
-    setting = db.query(UserSetting).filter(
+    return db.query(UserSetting).filter(
         UserSetting.setting_key == EXCHANGE_RATE_KEY
     ).first()
-
-    if setting:
-        return Decimal(setting.setting_value)
-    return None
 
 
 def update_exchange_rate_setting(db: Session, exchange_rate: Decimal) -> UserSetting:

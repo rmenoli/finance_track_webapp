@@ -158,7 +158,7 @@ All logs are structured JSON for easy parsing and filtering.
 ```bash
 cd backend
 
-# Run all tests (254 tests, 95% coverage)
+# Run all tests (245 tests, 95% coverage)
 uv run pytest
 
 # Run with verbose output
@@ -442,12 +442,9 @@ All routes prefixed with `/api/v1`:
 **Position Values**:
 - `POST /position-values` - Create or update (UPSERT by ISIN)
 - `GET /position-values` - List all position values
-- `GET /position-values/{isin}` - Get by ISIN
-- `DELETE /position-values/{isin}` - Delete by ISIN
 
 **ISIN Metadata**:
 - `POST /isin-metadata` - Create ISIN metadata (name and type)
-- `POST /isin-metadata/upsert` - Create or update (UPSERT by ISIN)
 - `GET /isin-metadata?type={type}` - List all with optional type filter
 - `GET /isin-metadata/{isin}` - Get by ISIN
 - `PUT /isin-metadata/{isin}` - Update metadata
@@ -456,14 +453,12 @@ All routes prefixed with `/api/v1`:
 **Other Assets**:
 - `POST /other-assets` - Create or update (UPSERT by asset_type and asset_detail)
 - `GET /other-assets?include_investments={bool}` - List all with optional synthetic investments row
-- `GET /other-assets/{type}?asset_detail={detail}` - Get by type and optional detail
 - `DELETE /other-assets/{type}?asset_detail={detail}` - Delete by type and optional detail
 
 **Asset Snapshots**:
 - `POST /snapshots` - Create snapshot of current asset state (investments + other assets)
 - `GET /snapshots` - List all snapshots with optional filters (date range, asset type)
 - `GET /snapshots/summary` - Get aggregated summary statistics per snapshot date with growth tracking
-- `GET /snapshots/{snapshot_date}` - Get all assets for specific snapshot date
 - `DELETE /snapshots/{snapshot_date}` - Delete all snapshots for specific date
 - **Note**: Each asset stored separately (no aggregation). Captures exchange rate for historical accuracy.
 - **Summary endpoint** returns:
@@ -736,13 +731,13 @@ For detailed information, see:
 ## Project Status Summary
 
 **Current Version**: Development
-**Test Coverage**: 95% (254 tests)
-**Backend Endpoints**: 27 total (5 transaction, 1 analytics, 4 position values, 6 ISIN metadata, 4 other assets, 5 snapshots, 2 settings)
+**Test Coverage**: 95% (245 tests)
+**Backend Endpoints**: 21 total (5 transaction, 1 analytics, 2 position values, 5 ISIN metadata, 3 other assets, 4 snapshots, 2 settings) - optimized from 27 endpoints
 **Frontend Pages**: 7 (Investment Dashboard, Transactions, Add/Edit Transaction, ISIN Metadata, Add/Edit ISIN Metadata, Other Assets, Snapshots with Growth Tracking)
 **Frontend Components**: 15 main components (Layout, Navigation, TransactionForm, TransactionList, ISINMetadataForm, ISINMetadataList, DashboardHoldingsTable, HoldingsDistributionChart, ClosedPositionsTable, PortfolioSummary, OtherAssetsTable, OtherAssetsDistributionChart, SnapshotValueChart, SnapshotsTable, SnapshotAssetTypeChart)
-**Visualization**: Portfolio distribution pie charts with Chart.js, time-series area chart with growth tracking, inline asset distribution charts, asset name display in holdings tables
+**Visualization**: Portfolio distribution pie charts with Chart.js (centralized color system), time-series area chart with growth tracking, inline asset distribution charts, asset name display in holdings tables
 **Multi-Currency**: EUR/CZK support with backend Decimal precision for other assets
-**Exchange Rate**: User-friendly input with onBlur/Enter save pattern (prevents UI blocking)
+**Exchange Rate**: User-friendly input with onBlur/Enter save pattern (prevents UI blocking), optimized settings router with 66% fewer database queries
 **Architecture**: Backend-first calculations - all financial math performed on backend using Decimal, frontend is pure presentation layer
 **Logging**: Structured JSON logging with audit trail for all operations, request tracing, and performance monitoring
 

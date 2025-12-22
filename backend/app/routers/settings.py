@@ -22,32 +22,20 @@ def get_exchange_rate(
     db: Session = Depends(get_db),
 ) -> ExchangeRateResponse:
     """Get the exchange rate setting."""
-    exchange_rate = user_setting_service.get_exchange_rate_setting(db)
-
-    # Default to 25.00 if not set
-    if exchange_rate is None:
-        exchange_rate = Decimal("25.00")
-
-    # Return a response-like object
-    # Since we don't have a model instance when using default, we need to create the response directly
     setting = user_setting_service.get_exchange_rate_setting(db)
+
     if setting is None:
-        # Return default without updated_at (will use current time)
+        # Return default when not set
         from datetime import datetime
         return ExchangeRateResponse(
-            exchange_rate=exchange_rate,
+            exchange_rate=Decimal("25.00"),
             updated_at=datetime.utcnow()
         )
 
-    # Get the actual UserSetting object to access updated_at
-    from app.models.user_setting import UserSetting
-    user_setting = db.query(UserSetting).filter(
-        UserSetting.setting_key == user_setting_service.EXCHANGE_RATE_KEY
-    ).first()
-
+    # Extract value and timestamp from single object
     return ExchangeRateResponse(
-        exchange_rate=exchange_rate,
-        updated_at=user_setting.updated_at
+        exchange_rate=Decimal(setting.setting_value),
+        updated_at=setting.updated_at
     )
 
 
