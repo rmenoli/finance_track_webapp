@@ -315,8 +315,34 @@ def get_snapshot_summaries(
             exchange_rate_used=summary_data["exchange_rate_used"],
             by_currency=by_currency,
             by_asset_type=by_asset_type,
+            absolute_change_from_oldest=Decimal("0"),  # Placeholder, calculated below
+            percentage_change_from_oldest=Decimal("0"),  # Placeholder, calculated below
         )
         summaries.append(summary)
+
+    # Calculate absolute and percentage change from oldest snapshot (baseline)
+    if summaries:
+        # Oldest snapshot is last element (DESC order)
+        oldest_value = summaries[-1].total_value_eur
+
+        for summary in summaries:
+            # Calculate absolute change: current - oldest
+            absolute_change = summary.total_value_eur - oldest_value
+
+            if oldest_value > 0:
+                # Calculate percentage: ((current - oldest) / oldest) × 100
+                percentage_change = (
+                    absolute_change
+                    / oldest_value
+                    * Decimal("100")
+                )
+            else:
+                # Avoid division by zero - set to 0%
+                percentage_change = Decimal("0")
+
+            # Update changes in summary
+            summary.absolute_change_from_oldest = absolute_change
+            summary.percentage_change_from_oldest = percentage_change
 
     # AUDIT LOG
     log_with_context(

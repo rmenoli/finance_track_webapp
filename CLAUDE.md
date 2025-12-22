@@ -450,11 +450,16 @@ All routes prefixed with `/api/v1`:
 **Asset Snapshots**:
 - `POST /snapshots` - Create snapshot of current asset state (investments + other assets)
 - `GET /snapshots` - List all snapshots with optional filters (date range, asset type)
-- `GET /snapshots/summary` - Get aggregated summary statistics per snapshot date (NEW)
+- `GET /snapshots/summary` - Get aggregated summary statistics per snapshot date with growth tracking
 - `GET /snapshots/{snapshot_date}` - Get all assets for specific snapshot date
 - `DELETE /snapshots/{snapshot_date}` - Delete all snapshots for specific date
 - **Note**: Each asset stored separately (no aggregation). Captures exchange rate for historical accuracy.
-- **Summary endpoint** returns total portfolio value, currency breakdown, and asset type breakdown for each snapshot date
+- **Summary endpoint** returns:
+  - Total portfolio value in EUR for each snapshot date
+  - Currency breakdown (EUR/CZK native values)
+  - Asset type breakdown (EUR-converted values)
+  - **Growth tracking**: `absolute_change_from_oldest` and `percentage_change_from_oldest` calculated from oldest snapshot in filtered dataset
+  - Ordered by date DESC (most recent first)
 
 Interactive docs: http://localhost:8000/docs (Swagger UI)
 
@@ -710,11 +715,11 @@ For detailed information, see:
 ## Project Status Summary
 
 **Current Version**: Development
-**Test Coverage**: 95% (245 backend tests)
-**Backend Endpoints**: 23 total (5 transaction, 1 analytics, 4 position values, 6 ISIN metadata, 4 other assets, 1 snapshot summary, 2 settings)
-**Frontend Pages**: 6 (Investment Dashboard, Transactions, Add/Edit Transaction, ISIN Metadata, Add/Edit ISIN Metadata, Other Assets)
-**Frontend Components**: 12 main components (Layout, Navigation, TransactionForm, TransactionList, ISINMetadataForm, ISINMetadataList, DashboardHoldingsTable, HoldingsDistributionChart, ClosedPositionsTable, PortfolioSummary, OtherAssetsTable, OtherAssetsDistributionChart)
-**Visualization**: Portfolio distribution pie chart with Chart.js, other assets distribution chart, asset name display in holdings tables
+**Test Coverage**: 95% (249 backend tests)
+**Backend Endpoints**: 27 total (5 transaction, 1 analytics, 4 position values, 6 ISIN metadata, 4 other assets, 5 snapshots, 2 settings)
+**Frontend Pages**: 7 (Investment Dashboard, Transactions, Add/Edit Transaction, ISIN Metadata, Add/Edit ISIN Metadata, Other Assets, Snapshots with Growth Tracking)
+**Frontend Components**: 15 main components (Layout, Navigation, TransactionForm, TransactionList, ISINMetadataForm, ISINMetadataList, DashboardHoldingsTable, HoldingsDistributionChart, ClosedPositionsTable, PortfolioSummary, OtherAssetsTable, OtherAssetsDistributionChart, SnapshotValueChart, SnapshotsTable, SnapshotAssetTypeChart)
+**Visualization**: Portfolio distribution pie charts with Chart.js, time-series area chart with growth tracking, inline asset distribution charts, asset name display in holdings tables
 **Multi-Currency**: EUR/CZK support with backend Decimal precision for other assets
 **Exchange Rate**: User-friendly input with onBlur/Enter save pattern (prevents UI blocking)
 **Architecture**: Backend-first calculations - all financial math performed on backend using Decimal, frontend is pure presentation layer

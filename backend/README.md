@@ -25,7 +25,7 @@ FastAPI backend service for tracking ETF transactions with automatic cost basis 
 - **Validation**: Pydantic 2.12.5 (data validation and settings)
 - **Package Manager**: UV (fast Python package manager)
 - **Server**: Uvicorn 0.38.0 (ASGI server)
-- **Testing**: Pytest 9.0.2 with 95% coverage (235 tests)
+- **Testing**: Pytest 9.0.2 with 95% coverage (249 tests)
 - **Code Quality**: Ruff 0.14.9 (linting and formatting)
 - **Logging**: Structured JSON logging with python-json-logger (audit trail + observability)
 
@@ -299,8 +299,13 @@ The `/snapshots/summary` endpoint returns aggregated statistics for each snapsho
 - **Total Portfolio Value (EUR)**: Sum of all value_eur fields
 - **Currency Breakdown**: Native currency values grouped by EUR/CZK
 - **Asset Type Breakdown**: EUR-converted values grouped by asset type (investments, crypto, cash_eur, etc.)
+- **Growth Tracking**: Automatic calculation of changes from oldest snapshot in filtered dataset
+  - `absolute_change_from_oldest`: Absolute value change in EUR from baseline
+  - `percentage_change_from_oldest`: Percentage change from baseline
 - Includes exchange rate used for each snapshot date
 - Ordered by date DESC (most recent first)
+
+**Note**: The oldest snapshot in the filtered result set serves as the baseline (0% change). When date filters are applied, the baseline adjusts to the oldest snapshot within the filtered range.
 
 ### Example Requests
 
@@ -742,7 +747,7 @@ Every HTTP request gets a unique request ID that appears in all logs during that
 ### Run All Tests
 
 ```bash
-# Run all 235 tests
+# Run all 249 tests
 uv run pytest
 
 # Run with verbose output
@@ -783,7 +788,7 @@ uv run pytest tests/test_other_asset_service.py tests/test_api_other_assets.py t
 
 ### Test Coverage
 
-Current coverage: **95%** (235 tests)
+Current coverage: **95%** (249 tests)
 
 To view detailed coverage:
 ```bash
@@ -898,7 +903,7 @@ backend/
 │   ├── versions/              # Migration files
 │   ├── env.py                 # Alembic environment
 │   └── script.py.mako         # Migration template
-├── tests/                     # Test suite (95% coverage, 235 tests)
+├── tests/                     # Test suite (95% coverage, 249 tests)
 │   ├── conftest.py           # Test fixtures
 │   ├── test_transaction_service.py
 │   ├── test_cost_basis_service.py

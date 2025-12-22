@@ -68,14 +68,18 @@ src/
 │   ├── ISINMetadataList.jsx/css      # ISIN metadata list
 │   ├── OtherAssetsTable.jsx/css      # Editable other assets table
 │   ├── OtherAssetsDistributionChart.jsx # Other assets pie chart
-│   └── PortfolioSummary.jsx/css      # Dashboard summary cards
+│   ├── PortfolioSummary.jsx/css      # Dashboard summary cards
+│   ├── SnapshotValueChart.jsx/css    # Time-series area chart with growth tracking
+│   ├── SnapshotsTable.jsx/css        # Snapshots table with data breakdowns
+│   └── SnapshotAssetTypeChart.jsx    # Compact pie chart for table cells
 ├── pages/                             # Page-level components
 │   ├── InvestmentDashboard.jsx/css   # Portfolio overview page
 │   ├── Transactions.jsx/css          # Transaction management
 │   ├── AddTransaction.jsx/css        # Add/edit transaction page
 │   ├── ISINMetadata.jsx/css          # ISIN metadata management
 │   ├── AddISINMetadata.jsx/css       # Add/edit ISIN metadata page
-│   └── OtherAssets.jsx/css           # Other assets tracking page
+│   ├── OtherAssets.jsx/css           # Other assets tracking page
+│   └── Snapshots.jsx/css             # Snapshot history with growth tracking
 ├── services/                          # API client
 │   └── api.js                        # Backend API client
 ├── App.jsx                            # Main app with routing
@@ -130,6 +134,17 @@ src/
    - Distribution pie chart showing asset allocation in EUR
    - Persistent exchange rate stored in backend database
 
+7. **Snapshots** (`/snapshots`)
+   - Historical portfolio tracking with point-in-time snapshots
+   - **Time-series area chart** displaying portfolio value over time
+   - **Growth indicators**: Shows absolute change (EUR) and percentage change from oldest snapshot
+   - **Quick date filters**: YTD, 1Y, 2Y, 3Y, ALL with dynamic baseline adjustment
+   - **Custom date range filters**: Start and end date pickers for precise filtering
+   - **Detailed table view**: Shows total value, currency breakdown, and asset type breakdown per snapshot
+   - **Asset distribution charts**: Inline pie charts showing asset allocation for each snapshot
+   - **Responsive design**: Optimized layout for mobile, tablet, and desktop
+   - Backend-calculated growth metrics (single source of truth)
+
 ### Components
 
 - **Layout**: Main wrapper with navigation
@@ -144,6 +159,9 @@ src/
 - **OtherAssetsTable**: Editable table for non-ETF holdings with multi-currency support and click-to-edit cells
 - **OtherAssetsDistributionChart**: Pie chart showing other assets distribution in EUR with percentages (uses Chart.js)
 - **PortfolioSummary**: Dashboard summary cards showing portfolio metrics
+- **SnapshotValueChart**: Time-series area chart with growth tracking displaying portfolio value over time with quick date filters
+- **SnapshotsTable**: Detailed table showing snapshot summaries with currency and asset type breakdowns
+- **SnapshotAssetTypeChart**: Compact pie chart for displaying asset distribution within table cells
 
 ### Visualization Features
 

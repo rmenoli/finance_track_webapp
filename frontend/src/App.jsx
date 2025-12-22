@@ -6,6 +6,7 @@ import AddTransaction from './pages/AddTransaction';
 import ISINMetadata from './pages/ISINMetadata';
 import AddISINMetadata from './pages/AddISINMetadata';
 import OtherAssets from './pages/OtherAssets';
+import Snapshots from './pages/Snapshots';
 import './App.css';
 
 function App() {
@@ -21,6 +22,7 @@ function App() {
           <Route path="isin-metadata/add" element={<AddISINMetadata />} />
           <Route path="isin-metadata/edit/:isin" element={<AddISINMetadata />} />
           <Route path="other-assets" element={<OtherAssets />} />
+          <Route path="snapshots" element={<Snapshots />} />
         </Route>
       </Routes>
     </BrowserRouter>

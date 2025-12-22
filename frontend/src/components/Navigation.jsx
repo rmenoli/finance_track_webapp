@@ -29,6 +29,11 @@ function Navigation() {
               Other Assets
             </NavLink>
           </li>
+          <li>
+            <NavLink to="/snapshots" className={({ isActive }) => isActive ? 'active' : ''}>
+              Snapshots
+            </NavLink>
+          </li>
         </ul>
       </div>
     </nav>

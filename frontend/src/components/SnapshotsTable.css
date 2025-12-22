@@ -1,0 +1,112 @@
+.snapshots-table {
+  width: 100%;
+  background: white;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.snapshots-table thead th {
+  background: #34495e;
+  color: white;
+  font-weight: 600;
+  text-align: left;
+  padding: 1rem;
+}
+
+.snapshots-table tbody td {
+  padding: 1rem;
+  border-top: 1px solid #ecf0f1;
+  vertical-align: top;
+}
+
+.snapshots-table tbody tr:hover {
+  background: #f8f9fa;
+}
+
+.currency-value {
+  font-weight: 600;
+  color: #27ae60;
+  font-size: 1.1rem;
+}
+
+.breakdown-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.breakdown-item {
+  display: flex;
+  justify-content: space-between;
+  padding: 0.25rem 0;
+}
+
+.breakdown-label {
+  font-weight: 500;
+  color: #34495e;
+  margin-right: 1rem;
+  text-transform: capitalize;
+}
+
+.breakdown-value {
+  font-weight: 600;
+  color: #2c3e50;
+}
+
+.chart-cell {
+  width: 200px;
+  text-align: center;
+  padding: 0.5rem !important;
+}
+
+.snapshot-chart-wrapper {
+  width: 180px;
+  height: 180px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.snapshot-chart-empty {
+  color: #7f8c8d;
+  font-style: italic;
+  font-size: 0.9rem;
+}
+
+@media (max-width: 768px) {
+  .snapshots-table {
+    font-size: 0.9rem;
+  }
+
+  .snapshots-table thead th,
+  .snapshots-table tbody td {
+    padding: 0.75rem 0.5rem;
+  }
+
+  .breakdown-item {
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+
+  .chart-cell {
+    width: 150px;
+  }
+
+  .snapshot-chart-wrapper {
+    width: 130px;
+    height: 130px;
+  }
+}
+
+@media (max-width: 480px) {
+  /* Hide chart column on very small screens */
+  .chart-cell {
+    display: none;
+  }
+
+  .snapshots-table thead th:last-child {
+    display: none;
+  }
+}

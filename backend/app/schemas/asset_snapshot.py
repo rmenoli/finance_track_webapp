@@ -74,6 +74,14 @@ class SnapshotSummary(BaseModel):
     exchange_rate_used: Decimal = Field(..., description="Exchange rate for that snapshot")
     by_currency: list[CurrencyBreakdown] = Field(..., description="Currency breakdown")
     by_asset_type: list[AssetTypeBreakdown] = Field(..., description="Asset type breakdown")
+    absolute_change_from_oldest: Decimal = Field(
+        ...,
+        description="Absolute value change from oldest snapshot in filtered result set in EUR (0 for oldest snapshot)"
+    )
+    percentage_change_from_oldest: Decimal = Field(
+        ...,
+        description="Percentage change from oldest snapshot in filtered result set (0 for oldest snapshot)"
+    )
 
 
 class SnapshotSummaryListResponse(BaseModel):
