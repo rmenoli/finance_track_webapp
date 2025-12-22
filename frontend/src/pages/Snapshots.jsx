@@ -7,6 +7,7 @@ import './Snapshots.css';
 function Snapshots() {
   // State management
   const [snapshots, setSnapshots] = useState([]);
+  const [avgMonthlyIncrement, setAvgMonthlyIncrement] = useState(null);
   const [filters, setFilters] = useState({
     start_date: '',
     end_date: '',
@@ -29,6 +30,7 @@ function Snapshots() {
         filters.end_date || null
       );
       setSnapshots(data.summaries || []);
+      setAvgMonthlyIncrement(data.avg_monthly_increment || null);
     } catch (err) {
       console.error('Failed to load snapshots:', err);
       setError(err.message);
@@ -128,6 +130,7 @@ function Snapshots() {
         <>
           <SnapshotValueChart
             snapshots={snapshots}
+            avgMonthlyIncrement={avgMonthlyIncrement}
             onFilterChange={handleQuickFilterChange}
             activeFilter={activeQuickFilter}
           />

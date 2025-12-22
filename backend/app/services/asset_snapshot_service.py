@@ -207,7 +207,7 @@ def get_snapshot_summaries(
     db: Session,
     start_date: datetime | None = None,
     end_date: datetime | None = None,
-) -> list[SnapshotSummary]:
+) -> tuple[list[SnapshotSummary], Decimal]:
     """
     Get summary statistics for snapshots grouped by date.
 
@@ -252,9 +252,9 @@ def get_snapshot_summaries(
         .all()
     )
 
-    # If no results, return empty list
+    # If no results, return empty list and 0 avg_monthly_increment
     if not results:
-        return []
+        return [], Decimal("0")
 
     # Group results by snapshot_date using Python
     summaries_dict: dict[datetime, dict] = {}
@@ -324,6 +324,23 @@ def get_snapshot_summaries(
     if summaries:
         # Oldest snapshot is last element (DESC order)
         oldest_value = summaries[-1].total_value_eur
+        oldest_date = summaries[-1].snapshot_date
+
+        # Latest snapshot is first element (DESC order)
+        latest_value = summaries[0].total_value_eur
+        latest_date = summaries[0].snapshot_date
+
+        # Calculate days between oldest and latest
+        days_between = (latest_date - oldest_date).days
+
+        # Calculate average monthly increment
+        # If 0 or 1 summaries, or days_between is 0, avg_monthly_increment = 0
+        if len(summaries) <= 1 or days_between == 0:
+            avg_monthly_increment = Decimal("0.00")
+        else:
+            # Formula: ((latest - oldest) / days) * 30
+            value_change = latest_value - oldest_value
+            avg_monthly_increment = ((value_change / Decimal(str(days_between))) * Decimal("30")).quantize(Decimal("0.01"))
 
         for summary in summaries:
             # Calculate absolute change: current - oldest
@@ -343,6 +360,9 @@ def get_snapshot_summaries(
             # Update changes in summary
             summary.absolute_change_from_oldest = absolute_change
             summary.percentage_change_from_oldest = percentage_change
+    else:
+        # Empty summaries, set avg_monthly_increment to 0
+        avg_monthly_increment = Decimal("0")
 
     # AUDIT LOG
     log_with_context(
@@ -355,4 +375,4 @@ def get_snapshot_summaries(
         end_date=end_date.isoformat() if end_date else None,
     )
 
-    return summaries
+    return summaries, avg_monthly_increment

@@ -135,6 +135,7 @@ class TestSnapshotsAPI:
         json_data = response.json()
         assert json_data["summaries"] == []
         assert json_data["total"] == 0
+        assert Decimal(json_data["avg_monthly_increment"]) == Decimal("0.00")
 
     def test_snapshot_summary_percentage_change_multiple_snapshots(self, client, db_session):
         """Test percentage change calculation from oldest snapshot with multiple snapshots."""
@@ -348,3 +349,181 @@ class TestSnapshotsAPI:
         assert Decimal(summaries[0]["percentage_change_from_oldest"]) == Decimal("-25.00")
         # Oldest: 0%
         assert Decimal(summaries[1]["percentage_change_from_oldest"]) == Decimal("0.00")
+    def test_snapshot_summary_avg_monthly_increment_multiple_snapshots(self, client, db_session):
+        """Test avg_monthly_increment calculation with multiple snapshots."""
+        # Set exchange rate
+        update_exchange_rate_setting(db_session, Decimal("25.00"))
+
+        # Create assets with known values
+        # Day 0: €1000
+        other_asset_service.upsert_other_asset(
+            db_session,
+            OtherAssetCreate(
+                asset_type=AssetType.CASH_EUR,
+                asset_detail="CSOB",
+                currency=Currency.EUR,
+                value=Decimal("1000.00")
+            )
+        )
+
+        date1 = datetime(2024, 1, 1, 10, 0, 0)
+        asset_snapshot_service.create_snapshot(db_session, date1)
+
+        # Day 60: €1600 (600 increase over 60 days)
+        other_asset_service.upsert_other_asset(
+            db_session,
+            OtherAssetCreate(
+                asset_type=AssetType.CASH_EUR,
+                asset_detail="CSOB",
+                currency=Currency.EUR,
+                value=Decimal("1600.00")
+            )
+        )
+
+        date2 = datetime(2024, 3, 1, 10, 0, 0)  # 60 days later
+        asset_snapshot_service.create_snapshot(db_session, date2)
+
+        # Test API endpoint
+        response = client.get("/api/v1/snapshots/summary")
+
+        assert response.status_code == 200
+        json_data = response.json()
+
+        # Verify avg_monthly_increment is at response level
+        assert "avg_monthly_increment" in json_data
+        assert "summaries" in json_data
+        assert "total" in json_data
+
+        # Verify calculation: (1600-1000) / 60 * 30 = 300
+        assert Decimal(json_data["avg_monthly_increment"]) == Decimal("300.00")
+
+        # Verify it's NOT inside summaries
+        for summary in json_data["summaries"]:
+            assert "avg_monthly_increment" not in summary
+
+    def test_snapshot_summary_avg_monthly_increment_single_snapshot(self, client, db_session):
+        """Test avg_monthly_increment returns 0 for single snapshot."""
+        # Set exchange rate
+        update_exchange_rate_setting(db_session, Decimal("25.00"))
+
+        # Create asset
+        other_asset_service.upsert_other_asset(
+            db_session,
+            OtherAssetCreate(
+                asset_type=AssetType.CASH_EUR,
+                asset_detail="CSOB",
+                currency=Currency.EUR,
+                value=Decimal("1000.00")
+            )
+        )
+
+        date1 = datetime(2024, 1, 1, 10, 0, 0)
+        asset_snapshot_service.create_snapshot(db_session, date1)
+
+        # Test API endpoint
+        response = client.get("/api/v1/snapshots/summary")
+
+        assert response.status_code == 200
+        json_data = response.json()
+
+        # Single snapshot should have 0 avg_monthly_increment
+        assert Decimal(json_data["avg_monthly_increment"]) == Decimal("0.00")
+        assert json_data["total"] == 1
+
+    def test_snapshot_summary_avg_monthly_increment_empty(self, client):
+        """Test avg_monthly_increment with no snapshots."""
+        response = client.get("/api/v1/snapshots/summary")
+
+        assert response.status_code == 200
+        json_data = response.json()
+
+        # Empty summaries should have 0 avg_monthly_increment
+        assert json_data["summaries"] == []
+        assert json_data["total"] == 0
+        assert Decimal(json_data["avg_monthly_increment"]) == Decimal("0.00")
+
+    def test_snapshot_summary_avg_monthly_increment_same_day(self, client, db_session):
+        """Test avg_monthly_increment returns 0 when snapshots on same day."""
+        # Set exchange rate
+        update_exchange_rate_setting(db_session, Decimal("25.00"))
+
+        # Create first snapshot
+        other_asset_service.upsert_other_asset(
+            db_session,
+            OtherAssetCreate(
+                asset_type=AssetType.CASH_EUR,
+                asset_detail="CSOB",
+                currency=Currency.EUR,
+                value=Decimal("1000.00")
+            )
+        )
+
+        date1 = datetime(2024, 1, 1, 10, 0, 0)
+        asset_snapshot_service.create_snapshot(db_session, date1)
+
+        # Create second snapshot on same day (different time)
+        other_asset_service.upsert_other_asset(
+            db_session,
+            OtherAssetCreate(
+                asset_type=AssetType.CASH_EUR,
+                asset_detail="CSOB",
+                currency=Currency.EUR,
+                value=Decimal("1500.00")
+            )
+        )
+
+        date2 = datetime(2024, 1, 1, 15, 0, 0)  # Same day, different hour
+        asset_snapshot_service.create_snapshot(db_session, date2)
+
+        # Test API endpoint
+        response = client.get("/api/v1/snapshots/summary")
+
+        assert response.status_code == 200
+        json_data = response.json()
+
+        # Same day snapshots should have 0 avg_monthly_increment (avoid division by zero)
+        assert Decimal(json_data["avg_monthly_increment"]) == Decimal("0.00")
+        assert json_data["total"] == 2
+
+    def test_snapshot_summary_avg_monthly_increment_negative_growth(self, client, db_session):
+        """Test avg_monthly_increment correctly handles negative growth."""
+        # Set exchange rate
+        update_exchange_rate_setting(db_session, Decimal("25.00"))
+
+        # Day 0: €2000
+        other_asset_service.upsert_other_asset(
+            db_session,
+            OtherAssetCreate(
+                asset_type=AssetType.CASH_EUR,
+                asset_detail="CSOB",
+                currency=Currency.EUR,
+                value=Decimal("2000.00")
+            )
+        )
+
+        date1 = datetime(2024, 1, 1, 10, 0, 0)
+        asset_snapshot_service.create_snapshot(db_session, date1)
+
+        # Day 30: €1500 (€-500 decrease)
+        other_asset_service.upsert_other_asset(
+            db_session,
+            OtherAssetCreate(
+                asset_type=AssetType.CASH_EUR,
+                asset_detail="CSOB",
+                currency=Currency.EUR,
+                value=Decimal("1500.00")
+            )
+        )
+
+        date2 = datetime(2024, 1, 31, 10, 0, 0)  # 30 days later
+        asset_snapshot_service.create_snapshot(db_session, date2)
+
+        # Test API endpoint
+        response = client.get("/api/v1/snapshots/summary")
+
+        assert response.status_code == 200
+        json_data = response.json()
+
+        # Verify calculation: (1500-2000) / 30 * 30 = -500
+        assert Decimal(json_data["avg_monthly_increment"]) == Decimal("-500.00")
+        assert json_data["total"] == 2

@@ -44,6 +44,31 @@
   color: #e74c3c;
 }
 
+.monthly-average {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+  font-size: 0.9rem;
+}
+
+.monthly-average .label {
+  color: #7f8c8d;
+  font-weight: 500;
+}
+
+.monthly-average .value {
+  font-weight: 600;
+}
+
+.monthly-average .value.positive {
+  color: #27ae60;
+}
+
+.monthly-average .value.negative {
+  color: #e74c3c;
+}
+
 .quick-filters {
   display: flex;
   gap: 0.5rem;
@@ -115,6 +140,10 @@
 
   .current-value .value {
     font-size: 1.5rem;
+  }
+
+  .monthly-average {
+    font-size: 0.85rem;
   }
 
   .chart-wrapper {

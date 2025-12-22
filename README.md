@@ -43,7 +43,7 @@ A full-stack web application for tracking ETF portfolio transactions with automa
 - ✅ Clean, responsive React UI
 - ✅ Interactive API documentation (Swagger UI)
 - ✅ Fast development with hot reload
-- ✅ Comprehensive test coverage (95%, 249 tests)
+- ✅ Comprehensive test coverage (95%, 254 tests)
 
 ### Tech Stack
 
@@ -51,7 +51,7 @@ A full-stack web application for tracking ETF portfolio transactions with automa
 |-------|-----------|
 | **Backend** | FastAPI, SQLAlchemy 2.0, SQLite, Alembic, Pydantic |
 | **Frontend** | React 18, Vite, React Router v6, CSS, Chart.js |
-| **Testing** | Pytest (249 tests, 95% coverage) |
+| **Testing** | Pytest (254 tests, 95% coverage) |
 | **Tools** | UV (Python), npm (Node.js), Ruff (linting) |
 
 ---
@@ -206,7 +206,7 @@ npm run build              # Verify build works
 
 ### Backend Tests
 
-95% coverage across 249 tests:
+95% coverage across 254 tests:
 
 ```bash
 cd backend
@@ -329,11 +329,11 @@ All endpoints are prefixed with `/api/v1`
 |--------|----------|-------------|
 | POST | `/snapshots` | Create snapshot of current asset state (investments + other assets) |
 | GET | `/snapshots` | List all snapshots (with optional date range and asset type filters) |
-| GET | `/snapshots/summary` | Get aggregated summary with growth tracking (absolute and % changes from oldest) |
+| GET | `/snapshots/summary` | Get aggregated summary with growth tracking (absolute and % changes from oldest) and average monthly increment |
 | GET | `/snapshots/{snapshot_date}` | Get all assets for specific snapshot date |
 | DELETE | `/snapshots/{snapshot_date}` | Delete all snapshots for specific date |
 
-**Note**: Snapshots capture point-in-time portfolio state with preserved exchange rates. The summary endpoint includes automatic calculation of portfolio growth from the oldest snapshot in the filtered dataset.
+**Note**: Snapshots capture point-in-time portfolio state with preserved exchange rates. The summary endpoint includes automatic calculation of portfolio growth from the oldest snapshot in the filtered dataset, including `avg_monthly_increment` (normalized 30-day growth rate in EUR).
 
 **Full interactive API documentation:** http://localhost:8000/docs (Swagger UI)
 
@@ -429,7 +429,7 @@ realized_gain = (sell_price × units - fee) - cost_removed
 ## Project Status
 
 **Current Version**: Development
-**Test Coverage**: 95% (249 tests)
+**Test Coverage**: 95% (254 tests)
 **Frontend Pages**: 6 pages (Investment Dashboard, Transactions, Add/Edit Transaction, ISIN Metadata Management, Other Assets, Snapshots with Growth Tracking)
 **Backend Endpoints**: 27 endpoints (5 transaction, 1 analytics, 4 position values, 6 ISIN metadata, 4 other assets, 2 settings, 5 snapshots)
 

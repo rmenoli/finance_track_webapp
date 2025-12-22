@@ -93,9 +93,13 @@ def get_snapshot_summary(
     - Breakdown by currency
     - Breakdown by asset type
     """
-    summaries = asset_snapshot_service.get_snapshot_summaries(db, start_date, end_date)
+    summaries, avg_monthly_increment = asset_snapshot_service.get_snapshot_summaries(db, start_date, end_date)
 
-    return SnapshotSummaryListResponse(summaries=summaries, total=len(summaries))
+    return SnapshotSummaryListResponse(
+        summaries=summaries,
+        total=len(summaries),
+        avg_monthly_increment=avg_monthly_increment
+    )
 
 
 @router.get(

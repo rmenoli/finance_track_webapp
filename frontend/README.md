@@ -159,7 +159,7 @@ src/
 - **OtherAssetsTable**: Editable table for non-ETF holdings with multi-currency support and click-to-edit cells
 - **OtherAssetsDistributionChart**: Pie chart showing other assets distribution in EUR with percentages (uses Chart.js)
 - **PortfolioSummary**: Dashboard summary cards showing portfolio metrics
-- **SnapshotValueChart**: Time-series area chart with growth tracking displaying portfolio value over time with quick date filters
+- **SnapshotValueChart**: Time-series area chart with growth tracking displaying portfolio value over time with quick date filters and average monthly increment
 - **SnapshotsTable**: Detailed table showing snapshot summaries with currency and asset type breakdowns
 - **SnapshotAssetTypeChart**: Compact pie chart for displaying asset distribution within table cells
 

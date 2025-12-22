@@ -158,7 +158,7 @@ All logs are structured JSON for easy parsing and filtering.
 ```bash
 cd backend
 
-# Run all tests (245 tests, 95% coverage)
+# Run all tests (254 tests, 95% coverage)
 uv run pytest
 
 # Run with verbose output
@@ -224,7 +224,7 @@ finance_track_webapp/
 │   │   ├── versions/          # Migration files
 │   │   ├── env.py             # Alembic environment
 │   │   └── script.py.mako     # Migration template
-│   ├── tests/                 # Test suite (95% coverage, 245 tests)
+│   ├── tests/                 # Test suite (95% coverage, 254 tests)
 │   │   ├── conftest.py       # Test fixtures
 │   │   ├── test_transaction_service.py
 │   │   ├── test_cost_basis_service.py
@@ -606,7 +606,7 @@ LOG_FORMAT=json
 
 ## Testing
 
-**Test Suite**: 245 tests, 95% coverage
+**Test Suite**: 254 tests, 95% coverage
 
 **Test Structure**:
 - `tests/conftest.py`: Fixtures for database and test client
@@ -715,7 +715,7 @@ For detailed information, see:
 ## Project Status Summary
 
 **Current Version**: Development
-**Test Coverage**: 95% (249 backend tests)
+**Test Coverage**: 95% (254 tests)
 **Backend Endpoints**: 27 total (5 transaction, 1 analytics, 4 position values, 6 ISIN metadata, 4 other assets, 5 snapshots, 2 settings)
 **Frontend Pages**: 7 (Investment Dashboard, Transactions, Add/Edit Transaction, ISIN Metadata, Add/Edit ISIN Metadata, Other Assets, Snapshots with Growth Tracking)
 **Frontend Components**: 15 main components (Layout, Navigation, TransactionForm, TransactionList, ISINMetadataForm, ISINMetadataList, DashboardHoldingsTable, HoldingsDistributionChart, ClosedPositionsTable, PortfolioSummary, OtherAssetsTable, OtherAssetsDistributionChart, SnapshotValueChart, SnapshotsTable, SnapshotAssetTypeChart)

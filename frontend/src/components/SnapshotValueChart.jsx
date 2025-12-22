@@ -25,7 +25,7 @@ ChartJS.register(
   Filler
 );
 
-function SnapshotValueChart({ snapshots, onFilterChange, activeFilter }) {
+function SnapshotValueChart({ snapshots, avgMonthlyIncrement, onFilterChange, activeFilter }) {
   // Handle empty state
   if (!snapshots || snapshots.length === 0) {
     return (
@@ -152,7 +152,7 @@ function SnapshotValueChart({ snapshots, onFilterChange, activeFilter }) {
     <div className="snapshot-value-chart-container">
       <div className="chart-header">
         <div className="chart-title-section">
-          <h3>Portfolio Value Over Time</h3>
+          <h3>NW Over Time</h3>
           <div className="current-value">
             <span className="value">€{parseFloat(currentValue).toLocaleString('en-US', {
               minimumFractionDigits: 2,
@@ -166,6 +166,17 @@ function SnapshotValueChart({ snapshots, onFilterChange, activeFilter }) {
               {' '}({change >= 0 ? '+' : ''}{changePercent.toFixed(2)}%)
             </span>
           </div>
+          {avgMonthlyIncrement !== null && avgMonthlyIncrement !== undefined && (
+            <div className="monthly-average">
+              <span className="label">Monthly Avg Value Increase: </span>
+              <span className={`value ${parseFloat(avgMonthlyIncrement) >= 0 ? 'positive' : 'negative'}`}>
+                {parseFloat(avgMonthlyIncrement) >= 0 ? '+' : ''}€{Math.abs(parseFloat(avgMonthlyIncrement)).toLocaleString('en-US', {
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 2,
+                })}
+              </span>
+            </div>
+          )}
         </div>
         <div className="quick-filters">
           {['YTD', '1Y', '2Y', '3Y', 'ALL'].map(filter => (

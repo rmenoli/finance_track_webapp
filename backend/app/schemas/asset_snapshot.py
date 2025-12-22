@@ -89,3 +89,7 @@ class SnapshotSummaryListResponse(BaseModel):
 
     summaries: list[SnapshotSummary] = Field(..., description="List of summaries per date")
     total: int = Field(..., description="Number of snapshot dates returned")
+    avg_monthly_increment: Decimal = Field(
+        ...,
+        description="Average monthly portfolio increment in EUR (calculated as total change divided by days, normalized to 30 days). Returns 0 if 0 or 1 snapshots."
+    )

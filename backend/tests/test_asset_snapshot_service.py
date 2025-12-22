@@ -474,7 +474,7 @@ class TestAssetSnapshotService:
         asset_snapshot_service.create_snapshot(db_session, snapshot_date)
 
         # Get summaries
-        summaries = asset_snapshot_service.get_snapshot_summaries(db_session)
+        summaries, _ = asset_snapshot_service.get_snapshot_summaries(db_session)
 
         # Verify
         assert len(summaries) == 1
@@ -495,7 +495,7 @@ class TestAssetSnapshotService:
         asset_snapshot_service.create_snapshot(db_session, date2)
 
         # Get summaries
-        summaries = asset_snapshot_service.get_snapshot_summaries(db_session)
+        summaries, _ = asset_snapshot_service.get_snapshot_summaries(db_session)
 
         # Verify
         assert len(summaries) == 2
@@ -533,7 +533,7 @@ class TestAssetSnapshotService:
         asset_snapshot_service.create_snapshot(db_session, snapshot_date)
 
         # Get summaries
-        summaries = asset_snapshot_service.get_snapshot_summaries(db_session)
+        summaries, _ = asset_snapshot_service.get_snapshot_summaries(db_session)
 
         # Verify
         assert len(summaries) == 1
@@ -584,7 +584,7 @@ class TestAssetSnapshotService:
         asset_snapshot_service.create_snapshot(db_session, snapshot_date)
 
         # Get summaries
-        summaries = asset_snapshot_service.get_snapshot_summaries(db_session)
+        summaries, _ = asset_snapshot_service.get_snapshot_summaries(db_session)
 
         # Verify
         by_asset_type = {a.asset_type: a.total_value_eur for a in summaries[0].by_asset_type}
@@ -604,7 +604,7 @@ class TestAssetSnapshotService:
         asset_snapshot_service.create_snapshot(db_session, date3)
 
         # Test start_date filter
-        summaries = asset_snapshot_service.get_snapshot_summaries(
+        summaries, _ = asset_snapshot_service.get_snapshot_summaries(
             db_session, start_date=date2
         )
         assert len(summaries) == 2  # date2 and date3
@@ -612,7 +612,7 @@ class TestAssetSnapshotService:
         assert summaries[1].snapshot_date == date2
 
         # Test end_date filter
-        summaries = asset_snapshot_service.get_snapshot_summaries(
+        summaries, _ = asset_snapshot_service.get_snapshot_summaries(
             db_session, end_date=date2
         )
         assert len(summaries) == 2  # date1 and date2
@@ -620,7 +620,7 @@ class TestAssetSnapshotService:
         assert summaries[1].snapshot_date == date1
 
         # Test both filters
-        summaries = asset_snapshot_service.get_snapshot_summaries(
+        summaries, _ = asset_snapshot_service.get_snapshot_summaries(
             db_session, start_date=date2, end_date=date2
         )
         assert len(summaries) == 1
@@ -628,7 +628,7 @@ class TestAssetSnapshotService:
 
     def test_get_snapshot_summaries_empty(self, db_session):
         """Test getting summaries when no snapshots exist."""
-        summaries = asset_snapshot_service.get_snapshot_summaries(db_session)
+        summaries, _ = asset_snapshot_service.get_snapshot_summaries(db_session)
         assert len(summaries) == 0
 
     def test_get_snapshot_summaries_multiple_cash_accounts(self, db_session):
@@ -651,7 +651,7 @@ class TestAssetSnapshotService:
         asset_snapshot_service.create_snapshot(db_session, snapshot_date)
 
         # Get summaries
-        summaries = asset_snapshot_service.get_snapshot_summaries(db_session)
+        summaries, _ = asset_snapshot_service.get_snapshot_summaries(db_session)
 
         # Verify - all cash accounts should be aggregated into one asset_type
         by_asset_type = {a.asset_type: a.total_value_eur for a in summaries[0].by_asset_type}
