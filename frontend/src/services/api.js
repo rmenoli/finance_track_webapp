@@ -221,6 +221,18 @@ export const snapshotsAPI = {
     });
     return handleResponse(response);
   },
+
+  // Get snapshot summary statistics
+  getSummary: async (startDate = null, endDate = null) => {
+    let url = `${API_BASE_URL}/snapshots/summary`;
+    const params = new URLSearchParams();
+    if (startDate) params.append('start_date', startDate);
+    if (endDate) params.append('end_date', endDate);
+    if (params.toString()) url += `?${params.toString()}`;
+
+    const response = await fetch(url);
+    return handleResponse(response);
+  },
 };
 
 export default {

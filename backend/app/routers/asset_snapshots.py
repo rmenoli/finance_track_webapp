@@ -12,6 +12,7 @@ from app.schemas.asset_snapshot import (
     AssetSnapshotResponse,
     SnapshotCreateResponse,
     SnapshotMetadata,
+    SnapshotSummaryListResponse,
 )
 from app.services import asset_snapshot_service
 
@@ -67,6 +68,34 @@ def list_snapshots(
         total=len(snapshots),
         metadata=None,
     )
+
+
+@router.get(
+    "/summary",
+    response_model=SnapshotSummaryListResponse,
+    summary="Get snapshot summary statistics",
+    description="Get aggregated summary statistics for snapshots. For each snapshot date, returns total portfolio value, breakdowns by currency and asset type.",
+)
+def get_snapshot_summary(
+    start_date: datetime | None = Query(
+        None, description="Filter summaries from this date (inclusive)"
+    ),
+    end_date: datetime | None = Query(
+        None, description="Filter summaries until this date (inclusive)"
+    ),
+    db: Session = Depends(get_db),
+) -> SnapshotSummaryListResponse:
+    """
+    Get summary statistics for snapshots.
+
+    For each snapshot date, returns:
+    - Total portfolio value in EUR
+    - Breakdown by currency
+    - Breakdown by asset type
+    """
+    summaries = asset_snapshot_service.get_snapshot_summaries(db, start_date, end_date)
+
+    return SnapshotSummaryListResponse(summaries=summaries, total=len(summaries))
 
 
 @router.get(

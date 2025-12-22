@@ -6,10 +6,17 @@ from decimal import Decimal
 
 from sqlalchemy.orm import Session
 
+from sqlalchemy import func
+
 from app.exceptions import SnapshotNotFoundError
 from app.logging_config import log_with_context
 from app.models.asset_snapshot import AssetSnapshot
-from app.schemas.asset_snapshot import SnapshotMetadata
+from app.schemas.asset_snapshot import (
+    AssetTypeBreakdown,
+    CurrencyBreakdown,
+    SnapshotMetadata,
+    SnapshotSummary,
+)
 from app.services import other_asset_service
 
 logger = logging.getLogger(__name__)
@@ -194,3 +201,132 @@ def delete_snapshots_by_date(db: Session, snapshot_date: datetime) -> int:
     )
 
     return deleted_count
+
+
+def get_snapshot_summaries(
+    db: Session,
+    start_date: datetime | None = None,
+    end_date: datetime | None = None,
+) -> list[SnapshotSummary]:
+    """
+    Get summary statistics for snapshots grouped by date.
+
+    For each snapshot date, calculates:
+    - Total portfolio value in EUR (sum of all value_eur)
+    - Breakdown by currency (sum of value grouped by currency)
+    - Breakdown by asset type (sum of value_eur grouped by asset_type)
+
+    Args:
+        db: Database session
+        start_date: Optional start date filter (inclusive)
+        end_date: Optional end date filter (inclusive)
+
+    Returns:
+        List of SnapshotSummary objects ordered by snapshot_date DESC
+    """
+    # Build query with date filters
+    query = db.query(
+        AssetSnapshot.snapshot_date,
+        AssetSnapshot.currency,
+        AssetSnapshot.asset_type,
+        AssetSnapshot.exchange_rate,
+        func.sum(AssetSnapshot.value).label("total_value"),
+        func.sum(AssetSnapshot.value_eur).label("total_value_eur"),
+    )
+
+    if start_date:
+        query = query.filter(AssetSnapshot.snapshot_date >= start_date)
+    if end_date:
+        query = query.filter(AssetSnapshot.snapshot_date <= end_date)
+
+    # Group by snapshot_date, currency, asset_type, exchange_rate
+    # Order by snapshot_date DESC
+    results = (
+        query.group_by(
+            AssetSnapshot.snapshot_date,
+            AssetSnapshot.currency,
+            AssetSnapshot.asset_type,
+            AssetSnapshot.exchange_rate,
+        )
+        .order_by(AssetSnapshot.snapshot_date.desc())
+        .all()
+    )
+
+    # If no results, return empty list
+    if not results:
+        return []
+
+    # Group results by snapshot_date using Python
+    summaries_dict: dict[datetime, dict] = {}
+
+    for row in results:
+        snapshot_date = row.snapshot_date
+        currency = row.currency
+        asset_type = row.asset_type
+        exchange_rate = row.exchange_rate
+        total_value = row.total_value
+        total_value_eur = row.total_value_eur
+
+        # Initialize summary for this date if not exists
+        if snapshot_date not in summaries_dict:
+            summaries_dict[snapshot_date] = {
+                "snapshot_date": snapshot_date,
+                "exchange_rate_used": exchange_rate,
+                "total_value_eur": Decimal("0"),
+                "by_currency": {},
+                "by_asset_type": {},
+            }
+
+        # Accumulate total EUR value
+        summaries_dict[snapshot_date]["total_value_eur"] += total_value_eur
+
+        # Accumulate currency breakdown
+        if currency in summaries_dict[snapshot_date]["by_currency"]:
+            summaries_dict[snapshot_date]["by_currency"][currency] += total_value
+        else:
+            summaries_dict[snapshot_date]["by_currency"][currency] = total_value
+
+        # Accumulate asset type breakdown
+        if asset_type in summaries_dict[snapshot_date]["by_asset_type"]:
+            summaries_dict[snapshot_date]["by_asset_type"][asset_type] += total_value_eur
+        else:
+            summaries_dict[snapshot_date]["by_asset_type"][asset_type] = total_value_eur
+
+    # Convert to list of SnapshotSummary objects
+    summaries = []
+    for snapshot_date in sorted(summaries_dict.keys(), reverse=True):  # DESC order
+        summary_data = summaries_dict[snapshot_date]
+
+        # Convert currency dict to list of CurrencyBreakdown
+        by_currency = [
+            CurrencyBreakdown(currency=curr, total_value=val)
+            for curr, val in sorted(summary_data["by_currency"].items())
+        ]
+
+        # Convert asset_type dict to list of AssetTypeBreakdown
+        by_asset_type = [
+            AssetTypeBreakdown(asset_type=asset_type, total_value_eur=val)
+            for asset_type, val in sorted(summary_data["by_asset_type"].items())
+        ]
+
+        summary = SnapshotSummary(
+            snapshot_date=snapshot_date,
+            total_value_eur=summary_data["total_value_eur"],
+            exchange_rate_used=summary_data["exchange_rate_used"],
+            by_currency=by_currency,
+            by_asset_type=by_asset_type,
+        )
+        summaries.append(summary)
+
+    # AUDIT LOG
+    log_with_context(
+        logger,
+        logging.INFO,
+        "Snapshot summaries retrieved",
+        operation="READ",
+        summary_count=len(summaries),
+        start_date=start_date.isoformat() if start_date else None,
+        end_date=end_date.isoformat() if end_date else None,
+    )
+
+    return summaries

@@ -273,6 +273,7 @@ All endpoints are prefixed with `/api/v1`
 |--------|----------|-------------|
 | POST | `/snapshots` | Create snapshot of current asset state (investments + other assets) |
 | GET | `/snapshots` | List all snapshots with optional filters (date range, asset type) |
+| GET | `/snapshots/summary` | Get aggregated summary statistics per snapshot date |
 | GET | `/snapshots/{snapshot_date}` | Get all assets for specific snapshot date |
 | DELETE | `/snapshots/{snapshot_date}` | Delete all snapshots for specific date |
 
@@ -288,6 +289,18 @@ All endpoints are prefixed with `/api/v1`
 - `start_date`: Filter snapshots from this date (inclusive)
 - `end_date`: Filter snapshots until this date (inclusive)
 - `asset_type`: Filter by specific asset type (investments, crypto, cash_eur, etc.)
+
+**Query Parameters for GET /snapshots/summary:**
+- `start_date`: Filter summaries from this date (inclusive)
+- `end_date`: Filter summaries until this date (inclusive)
+
+**Summary Response Structure:**
+The `/snapshots/summary` endpoint returns aggregated statistics for each snapshot date:
+- **Total Portfolio Value (EUR)**: Sum of all value_eur fields
+- **Currency Breakdown**: Native currency values grouped by EUR/CZK
+- **Asset Type Breakdown**: EUR-converted values grouped by asset type (investments, crypto, cash_eur, etc.)
+- Includes exchange rate used for each snapshot date
+- Ordered by date DESC (most recent first)
 
 ### Example Requests
 
@@ -379,6 +392,12 @@ curl "http://localhost:8000/api/v1/snapshots?asset_type=investments"
 
 # Get specific snapshot by date
 curl http://localhost:8000/api/v1/snapshots/2025-01-15T10:00:00
+
+# Get snapshot summary statistics
+curl http://localhost:8000/api/v1/snapshots/summary
+
+# Get summary with date range filter
+curl "http://localhost:8000/api/v1/snapshots/summary?start_date=2025-01-01&end_date=2025-12-31"
 ```
 
 #### Delete Snapshot

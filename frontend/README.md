@@ -337,6 +337,42 @@ await otherAssetsAPI.delete('crypto', null);
 await otherAssetsAPI.delete('cash_eur', 'CSOB');
 ```
 
+### Snapshots API
+
+```javascript
+import { snapshotsAPI } from './services/api';
+
+// Create snapshot of current asset state
+const response = await snapshotsAPI.create();
+// Returns: { message, metadata, snapshots }
+
+// Get snapshot summary statistics
+const summaries = await snapshotsAPI.getSummary();
+// Returns: { summaries: [...], total: number }
+
+// Get summary with date range filter
+const filteredSummaries = await snapshotsAPI.getSummary(
+  '2025-01-01T00:00:00',  // startDate
+  '2025-12-31T23:59:59'   // endDate
+);
+
+// Summary response structure for each snapshot date:
+// {
+//   snapshot_date: "2025-12-22T10:00:00",
+//   total_value_eur: 10500.50,
+//   exchange_rate_used: 25.00,
+//   by_currency: [
+//     { currency: "EUR", total_value: 8000.50 },
+//     { currency: "CZK", total_value: 62500.00 }
+//   ],
+//   by_asset_type: [
+//     { asset_type: "investments", total_value_eur: 5000.00 },
+//     { asset_type: "crypto", total_value_eur: 500.00 },
+//     ...
+//   ]
+// }
+```
+
 ## Styling
 
 ### Global Styles

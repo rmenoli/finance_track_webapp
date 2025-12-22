@@ -453,3 +453,206 @@ class TestAssetSnapshotService:
         cd_snapshot = next(s for s in snapshots if s.asset_type == "cd_account")
         assert cd_snapshot.exchange_rate == Decimal("24.00")
         assert cd_snapshot.value_eur == Decimal("100.00")  # 2400 / 24, not 2400 / 30
+
+    # Summary statistics tests
+
+    def test_get_snapshot_summaries_single_date(self, db_session):
+        """Test getting summary for a single snapshot date."""
+        # Create assets
+        other_asset_service.upsert_other_asset(
+            db_session,
+            OtherAssetCreate(
+                asset_type=AssetType.CRYPTO,
+                asset_detail=None,
+                currency=Currency.EUR,
+                value=Decimal("500.00")
+            )
+        )
+
+        # Create snapshot
+        snapshot_date = datetime(2024, 6, 15, 10, 0, 0)
+        asset_snapshot_service.create_snapshot(db_session, snapshot_date)
+
+        # Get summaries
+        summaries = asset_snapshot_service.get_snapshot_summaries(db_session)
+
+        # Verify
+        assert len(summaries) == 1
+        assert summaries[0].snapshot_date == snapshot_date
+        assert summaries[0].total_value_eur == Decimal("500.00")  # crypto + investments(0)
+        assert len(summaries[0].by_currency) == 1  # Only EUR
+        assert summaries[0].by_currency[0].currency == "EUR"
+        assert summaries[0].by_currency[0].total_value == Decimal("500.00")
+        assert len(summaries[0].by_asset_type) == 2  # investments + crypto
+
+    def test_get_snapshot_summaries_multiple_dates(self, db_session):
+        """Test getting summaries for multiple snapshot dates."""
+        date1 = datetime(2024, 1, 1, 10, 0, 0)
+        date2 = datetime(2024, 2, 1, 10, 0, 0)
+
+        # Create snapshots on different dates
+        asset_snapshot_service.create_snapshot(db_session, date1)
+        asset_snapshot_service.create_snapshot(db_session, date2)
+
+        # Get summaries
+        summaries = asset_snapshot_service.get_snapshot_summaries(db_session)
+
+        # Verify
+        assert len(summaries) == 2
+        # Should be ordered by date DESC
+        assert summaries[0].snapshot_date == date2
+        assert summaries[1].snapshot_date == date1
+
+    def test_get_snapshot_summaries_currency_aggregation(self, db_session):
+        """Test that currency breakdown correctly sums EUR and CZK values."""
+        # Create EUR asset
+        other_asset_service.upsert_other_asset(
+            db_session,
+            OtherAssetCreate(
+                asset_type=AssetType.CRYPTO,
+                asset_detail=None,
+                currency=Currency.EUR,
+                value=Decimal("500.00")
+            )
+        )
+
+        # Create CZK asset
+        update_exchange_rate_setting(db_session, Decimal("25.00"))
+        other_asset_service.upsert_other_asset(
+            db_session,
+            OtherAssetCreate(
+                asset_type=AssetType.CD_ACCOUNT,
+                asset_detail=None,
+                currency=Currency.CZK,
+                value=Decimal("2500.00")
+            )
+        )
+
+        # Create snapshot
+        snapshot_date = datetime(2024, 6, 15, 10, 0, 0)
+        asset_snapshot_service.create_snapshot(db_session, snapshot_date)
+
+        # Get summaries
+        summaries = asset_snapshot_service.get_snapshot_summaries(db_session)
+
+        # Verify
+        assert len(summaries) == 1
+        assert summaries[0].total_value_eur == Decimal("600.00")  # 500 + 100 (2500/25)
+
+        # Check currency breakdown
+        by_currency = {c.currency: c.total_value for c in summaries[0].by_currency}
+        assert "EUR" in by_currency
+        assert "CZK" in by_currency
+        assert by_currency["EUR"] == Decimal("500.00")  # crypto + investments(0)
+        assert by_currency["CZK"] == Decimal("2500.00")  # cd_account
+
+    def test_get_snapshot_summaries_asset_type_aggregation(self, db_session):
+        """Test that asset type breakdown correctly groups and sums by asset type."""
+        # Create multiple assets of same type (cash_eur) with different accounts
+        other_asset_service.upsert_other_asset(
+            db_session,
+            OtherAssetCreate(
+                asset_type=AssetType.CASH_EUR,
+                asset_detail="CSOB",
+                currency=Currency.EUR,
+                value=Decimal("1000.00")
+            )
+        )
+        other_asset_service.upsert_other_asset(
+            db_session,
+            OtherAssetCreate(
+                asset_type=AssetType.CASH_EUR,
+                asset_detail="RAIF",
+                currency=Currency.EUR,
+                value=Decimal("500.00")
+            )
+        )
+
+        # Create crypto asset
+        other_asset_service.upsert_other_asset(
+            db_session,
+            OtherAssetCreate(
+                asset_type=AssetType.CRYPTO,
+                asset_detail=None,
+                currency=Currency.EUR,
+                value=Decimal("300.00")
+            )
+        )
+
+        # Create snapshot
+        snapshot_date = datetime(2024, 6, 15, 10, 0, 0)
+        asset_snapshot_service.create_snapshot(db_session, snapshot_date)
+
+        # Get summaries
+        summaries = asset_snapshot_service.get_snapshot_summaries(db_session)
+
+        # Verify
+        by_asset_type = {a.asset_type: a.total_value_eur for a in summaries[0].by_asset_type}
+        assert by_asset_type["cash_eur"] == Decimal("1500.00")  # 1000 + 500
+        assert by_asset_type["crypto"] == Decimal("300.00")
+        assert by_asset_type["investments"] == Decimal("0")
+
+    def test_get_snapshot_summaries_date_filtering(self, db_session):
+        """Test that start_date and end_date filters work correctly."""
+        date1 = datetime(2024, 1, 1, 10, 0, 0)
+        date2 = datetime(2024, 2, 1, 10, 0, 0)
+        date3 = datetime(2024, 3, 1, 10, 0, 0)
+
+        # Create three snapshots
+        asset_snapshot_service.create_snapshot(db_session, date1)
+        asset_snapshot_service.create_snapshot(db_session, date2)
+        asset_snapshot_service.create_snapshot(db_session, date3)
+
+        # Test start_date filter
+        summaries = asset_snapshot_service.get_snapshot_summaries(
+            db_session, start_date=date2
+        )
+        assert len(summaries) == 2  # date2 and date3
+        assert summaries[0].snapshot_date == date3
+        assert summaries[1].snapshot_date == date2
+
+        # Test end_date filter
+        summaries = asset_snapshot_service.get_snapshot_summaries(
+            db_session, end_date=date2
+        )
+        assert len(summaries) == 2  # date1 and date2
+        assert summaries[0].snapshot_date == date2
+        assert summaries[1].snapshot_date == date1
+
+        # Test both filters
+        summaries = asset_snapshot_service.get_snapshot_summaries(
+            db_session, start_date=date2, end_date=date2
+        )
+        assert len(summaries) == 1
+        assert summaries[0].snapshot_date == date2
+
+    def test_get_snapshot_summaries_empty(self, db_session):
+        """Test getting summaries when no snapshots exist."""
+        summaries = asset_snapshot_service.get_snapshot_summaries(db_session)
+        assert len(summaries) == 0
+
+    def test_get_snapshot_summaries_multiple_cash_accounts(self, db_session):
+        """Test that multiple cash accounts are properly aggregated."""
+        # Create multiple cash_eur accounts
+        accounts = ["CSOB", "RAIF", "Revolut"]
+        for account in accounts:
+            other_asset_service.upsert_other_asset(
+                db_session,
+                OtherAssetCreate(
+                    asset_type=AssetType.CASH_EUR,
+                    asset_detail=account,
+                    currency=Currency.EUR,
+                    value=Decimal("100.00")
+                )
+            )
+
+        # Create snapshot
+        snapshot_date = datetime(2024, 6, 15, 10, 0, 0)
+        asset_snapshot_service.create_snapshot(db_session, snapshot_date)
+
+        # Get summaries
+        summaries = asset_snapshot_service.get_snapshot_summaries(db_session)
+
+        # Verify - all cash accounts should be aggregated into one asset_type
+        by_asset_type = {a.asset_type: a.total_value_eur for a in summaries[0].by_asset_type}
+        assert by_asset_type["cash_eur"] == Decimal("300.00")  # 100 * 3 accounts

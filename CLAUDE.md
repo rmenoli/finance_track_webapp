@@ -158,7 +158,7 @@ All logs are structured JSON for easy parsing and filtering.
 ```bash
 cd backend
 
-# Run all tests (216 tests, 95% coverage)
+# Run all tests (245 tests, 95% coverage)
 uv run pytest
 
 # Run with verbose output
@@ -224,7 +224,7 @@ finance_track_webapp/
 │   │   ├── versions/          # Migration files
 │   │   ├── env.py             # Alembic environment
 │   │   └── script.py.mako     # Migration template
-│   ├── tests/                 # Test suite (95% coverage, 216 tests)
+│   ├── tests/                 # Test suite (95% coverage, 245 tests)
 │   │   ├── conftest.py       # Test fixtures
 │   │   ├── test_transaction_service.py
 │   │   ├── test_cost_basis_service.py
@@ -234,6 +234,7 @@ finance_track_webapp/
 │   │   ├── test_api_analytics.py
 │   │   ├── test_api_position_values.py
 │   │   ├── test_api_isin_metadata.py
+│   │   ├── test_api_snapshots.py
 │   │   ├── test_position_value_cleanup.py
 │   │   └── test_schemas.py
 │   ├── .env                   # Environment variables (gitignored)
@@ -449,9 +450,11 @@ All routes prefixed with `/api/v1`:
 **Asset Snapshots**:
 - `POST /snapshots` - Create snapshot of current asset state (investments + other assets)
 - `GET /snapshots` - List all snapshots with optional filters (date range, asset type)
+- `GET /snapshots/summary` - Get aggregated summary statistics per snapshot date (NEW)
 - `GET /snapshots/{snapshot_date}` - Get all assets for specific snapshot date
 - `DELETE /snapshots/{snapshot_date}` - Delete all snapshots for specific date
 - **Note**: Each asset stored separately (no aggregation). Captures exchange rate for historical accuracy.
+- **Summary endpoint** returns total portfolio value, currency breakdown, and asset type breakdown for each snapshot date
 
 Interactive docs: http://localhost:8000/docs (Swagger UI)
 
@@ -541,6 +544,7 @@ When modifying, maintain chronological transaction processing (ORDER BY date).
 - `analyticsAPI`: Portfolio analytics (summary with holdings, total invested, total fees)
 - `positionValuesAPI`: Manual position value tracking (UPSERT, list, get, delete)
 - `isinMetadataAPI`: ISIN metadata management (CRUD, UPSERT, type filtering)
+- `snapshotsAPI`: Asset snapshot operations (create, getSummary with date filters)
 
 **Styling**: Component-scoped CSS files with global utility classes in `index.css`
 
@@ -597,7 +601,7 @@ LOG_FORMAT=json
 
 ## Testing
 
-**Test Suite**: 216 tests, 95% coverage
+**Test Suite**: 245 tests, 95% coverage
 
 **Test Structure**:
 - `tests/conftest.py`: Fixtures for database and test client
@@ -706,8 +710,8 @@ For detailed information, see:
 ## Project Status Summary
 
 **Current Version**: Development
-**Test Coverage**: 95% (216 backend tests)
-**Backend Endpoints**: 22 total (5 transaction, 1 analytics, 4 position values, 6 ISIN metadata, 4 other assets, 2 settings)
+**Test Coverage**: 95% (245 backend tests)
+**Backend Endpoints**: 23 total (5 transaction, 1 analytics, 4 position values, 6 ISIN metadata, 4 other assets, 1 snapshot summary, 2 settings)
 **Frontend Pages**: 6 (Investment Dashboard, Transactions, Add/Edit Transaction, ISIN Metadata, Add/Edit ISIN Metadata, Other Assets)
 **Frontend Components**: 12 main components (Layout, Navigation, TransactionForm, TransactionList, ISINMetadataForm, ISINMetadataList, DashboardHoldingsTable, HoldingsDistributionChart, ClosedPositionsTable, PortfolioSummary, OtherAssetsTable, OtherAssetsDistributionChart)
 **Visualization**: Portfolio distribution pie chart with Chart.js, other assets distribution chart, asset name display in holdings tables

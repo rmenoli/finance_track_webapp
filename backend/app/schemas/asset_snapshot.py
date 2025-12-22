@@ -50,3 +50,34 @@ class SnapshotCreateResponse(BaseModel):
     snapshots: list[AssetSnapshotResponse]
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class CurrencyBreakdown(BaseModel):
+    """Schema for currency breakdown in snapshot summary."""
+
+    currency: str = Field(..., description="Currency code (EUR or CZK)")
+    total_value: Decimal = Field(..., description="Sum of values in native currency")
+
+
+class AssetTypeBreakdown(BaseModel):
+    """Schema for asset type breakdown in snapshot summary."""
+
+    asset_type: str = Field(..., description="Asset type identifier")
+    total_value_eur: Decimal = Field(..., description="Sum of EUR-converted values")
+
+
+class SnapshotSummary(BaseModel):
+    """Schema for snapshot summary statistics for a single date."""
+
+    snapshot_date: datetime = Field(..., description="The snapshot date")
+    total_value_eur: Decimal = Field(..., description="Total portfolio value in EUR")
+    exchange_rate_used: Decimal = Field(..., description="Exchange rate for that snapshot")
+    by_currency: list[CurrencyBreakdown] = Field(..., description="Currency breakdown")
+    by_asset_type: list[AssetTypeBreakdown] = Field(..., description="Asset type breakdown")
+
+
+class SnapshotSummaryListResponse(BaseModel):
+    """Schema for list of snapshot summaries."""
+
+    summaries: list[SnapshotSummary] = Field(..., description="List of summaries per date")
+    total: int = Field(..., description="Number of snapshot dates returned")
