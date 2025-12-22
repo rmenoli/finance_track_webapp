@@ -84,6 +84,17 @@ function Snapshots() {
     });
   };
 
+  const handleDeleteSnapshot = async (isoDate) => {
+    try {
+      await snapshotsAPI.deleteByDate(isoDate);
+      // Reload snapshots after successful deletion
+      await loadSnapshots();
+    } catch (err) {
+      console.error('Failed to delete snapshot:', err);
+      throw err; // Re-throw to let the component handle the error alert
+    }
+  };
+
   return (
     <div className="snapshots-page">
       <div className="page-header">
@@ -134,7 +145,10 @@ function Snapshots() {
             onFilterChange={handleQuickFilterChange}
             activeFilter={activeQuickFilter}
           />
-          <SnapshotsTable snapshots={snapshots} />
+          <SnapshotsTable
+            snapshots={snapshots}
+            onDelete={handleDeleteSnapshot}
+          />
         </>
       )}
     </div>

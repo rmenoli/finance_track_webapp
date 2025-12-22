@@ -38,6 +38,7 @@ A full-stack web application for tracking ETF portfolio transactions with automa
 - ✅ **Historical snapshots** - Capture point-in-time portfolio state with preserved exchange rates
 - ✅ **Portfolio growth tracking** - Automatic calculation of absolute and percentage changes from baseline
 - ✅ **Time-series visualization** - Area chart displaying portfolio value over time with growth indicators
+- ✅ **Snapshot management** - Exchange rate display in snapshots table with hover-to-delete functionality
 
 **User Experience**
 - ✅ Clean, responsive React UI
@@ -326,9 +327,15 @@ All endpoints are prefixed with `/api/v1`
 | POST | `/snapshots` | Create snapshot of current asset state (investments + other assets) |
 | GET | `/snapshots` | List all snapshots (with optional date range and asset type filters) |
 | GET | `/snapshots/summary` | Get aggregated summary with growth tracking (absolute and % changes from oldest) and average monthly increment |
-| DELETE | `/snapshots/{snapshot_date}` | Delete all snapshots for specific date |
+| DELETE | `/snapshots/{snapshot_date}` | Delete snapshots by full datetime (requires ISO 8601 format with time component) |
 
 **Note**: Snapshots capture point-in-time portfolio state with preserved exchange rates. The summary endpoint includes automatic calculation of portfolio growth from the oldest snapshot in the filtered dataset, including `avg_monthly_increment` (normalized 30-day growth rate in EUR).
+
+**Frontend Features**:
+- Exchange rate display in snapshots table (format: "Rate: 25.50 CZK/EUR")
+- Hover-to-delete functionality with red X button on each row
+- Confirmation dialog before deletion
+- Automatic list refresh after successful deletion
 
 **Full interactive API documentation:** http://localhost:8000/docs (Swagger UI)
 

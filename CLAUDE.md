@@ -513,6 +513,44 @@ When modifying, maintain chronological transaction processing (ORDER BY date).
 
 **Frontend Behavior**: Component loads all position values on mount, converts to map `{ISIN: value}`, saves to backend on blur/Enter with validation (must be > 0).
 
+### Snapshot Management
+
+**Purpose**: Capture and display historical point-in-time portfolio states with exchange rates for tracking growth over time.
+
+**Key Files**:
+- Model: `backend/app/models/asset_snapshot.py` - Individual snapshot rows with datetime, asset details, and exchange rate
+- Schemas: `backend/app/schemas/asset_snapshot.py` - SnapshotSummary with growth tracking fields
+- Service: `backend/app/services/asset_snapshot_service.py` - Snapshot creation, aggregation, and deletion logic
+- Router: `backend/app/routers/asset_snapshots.py` - API endpoints for snapshots
+- Frontend Table: `frontend/src/components/SnapshotsTable.jsx` - Display with exchange rate and delete functionality
+- Frontend Page: `frontend/src/pages/Snapshots.jsx` - Snapshot list with filters and charts
+
+**Delete Pattern - CRITICAL**:
+- Backend DELETE endpoint expects **full datetime** in ISO 8601 format (e.g., `2025-12-22T14:30:45.123456`)
+- Uses exact datetime matching in database filter
+- Frontend MUST send `snapshot.snapshot_date` as-is (full datetime string), NOT just date part
+- Browser's fetch API automatically URL-encodes special characters
+- **Common Error**: Sending `"2025-12-22"` (date only) won't match snapshots stored with time component
+
+**SnapshotsTable Component Features**:
+- Exchange rate display: Shows "Rate: X.XX CZK/EUR" for each snapshot
+- Hover-to-delete: Red X button appears on row hover
+- Confirmation dialog: Prompts user before deletion with formatted date
+- Auto-refresh: Reloads snapshot list after successful deletion
+- CSS pattern: `.snapshot-row:hover .delete-button { opacity: 1 }` for reveal effect
+
+**Example Delete Implementation**:
+```javascript
+// CORRECT - Send full datetime
+const handleDelete = async (snapshot) => {
+  await onDelete(snapshot.snapshot_date); // Full ISO datetime string
+};
+
+// WRONG - Don't extract date part
+const date = new Date(snapshot.snapshot_date);
+const isoDate = date.toISOString().split('T')[0]; // ❌ Missing time component
+```
+
 ## Frontend Architecture
 
 **Pattern**: Functional components with hooks (useState, useEffect)
@@ -526,10 +564,11 @@ When modifying, maintain chronological transaction processing (ORDER BY date).
 4. **ISIN Metadata** (`/isin-metadata`) - ISIN metadata list with type filtering and CRUD operations
 5. **Add/Edit ISIN Metadata** (`/isin-metadata/add`, `/isin-metadata/edit/:isin`) - ISIN metadata form
 6. **Other Assets** (`/other-assets`) - Track non-ETF holdings with multi-currency support and distribution chart
+7. **Snapshots** (`/snapshots`) - Historical portfolio snapshots with growth tracking, exchange rate display, and delete functionality
 
 **Key Components**:
 - **Layout**: Main wrapper with navigation for all pages
-- **Navigation**: Navigation bar with route links (Dashboard, Transactions, ISIN Metadata, Other Assets)
+- **Navigation**: Navigation bar with route links (Dashboard, Transactions, ISIN Metadata, Other Assets, Snapshots)
 - **TransactionForm**: Reusable form for creating/editing transactions
 - **TransactionList**: Table view with filters and actions
 - **OtherAssetsTable**: Editable table for tracking non-ETF assets with multi-currency support
@@ -540,6 +579,9 @@ When modifying, maintain chronological transaction processing (ORDER BY date).
 - **HoldingsDistributionChart**: Interactive pie chart showing portfolio distribution by asset (Chart.js)
 - **ClosedPositionsTable**: Table showing closed positions with realized P/L
 - **PortfolioSummary**: Summary cards showing portfolio metrics
+- **SnapshotsTable**: Snapshot list with exchange rate display and hover-to-delete functionality
+- **SnapshotValueChart**: Time-series area chart showing portfolio value over time
+- **SnapshotAssetTypeChart**: Compact pie chart for asset type distribution per snapshot
 
 **Visualization Features**:
 - **Portfolio Distribution Chart**: Interactive pie chart built with Chart.js showing percentage allocation of each asset
@@ -565,7 +607,7 @@ When modifying, maintain chronological transaction processing (ORDER BY date).
 - `analyticsAPI`: Portfolio analytics (summary with holdings, total invested, total fees)
 - `positionValuesAPI`: Manual position value tracking (UPSERT, list, get, delete)
 - `isinMetadataAPI`: ISIN metadata management (CRUD, UPSERT, type filtering)
-- `snapshotsAPI`: Asset snapshot operations (create, getSummary with date filters)
+- `snapshotsAPI`: Asset snapshot operations (create, getSummary with date filters, deleteByDate)
 
 **Styling**: Component-scoped CSS files with global utility classes in `index.css`
 
@@ -738,6 +780,7 @@ For detailed information, see:
 **Visualization**: Portfolio distribution pie charts with Chart.js (centralized color system), time-series area chart with growth tracking, inline asset distribution charts, asset name display in holdings tables
 **Multi-Currency**: EUR/CZK support with backend Decimal precision for other assets
 **Exchange Rate**: User-friendly input with onBlur/Enter save pattern (prevents UI blocking), optimized settings router with 66% fewer database queries
+**Snapshot Management**: Exchange rate display in snapshots table ("Rate: X.XX CZK/EUR"), hover-to-delete with red X button, full datetime deletion with automatic URL encoding, confirmation dialogs with auto-refresh
 **Architecture**: Backend-first calculations - all financial math performed on backend using Decimal, frontend is pure presentation layer
 **Logging**: Structured JSON logging with audit trail for all operations, request tracing, and performance monitoring
 

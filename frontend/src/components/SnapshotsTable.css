@@ -75,6 +75,64 @@
   font-size: 0.9rem;
 }
 
+/* Exchange rate info styling */
+.exchange-rate-info {
+  margin-top: 0.5rem;
+  padding-top: 0.5rem;
+  border-top: 1px dashed #e0e0e0;
+}
+
+.exchange-rate-label {
+  font-size: 0.85rem;
+  color: #7f8c8d;
+  font-style: italic;
+  font-weight: 400;
+  display: block;
+  text-align: left;
+}
+
+/* Actions column styling */
+.actions-header {
+  width: 50px;
+  padding: 0 !important;
+}
+
+.actions-cell {
+  width: 50px;
+  text-align: center;
+  padding: 0.5rem !important;
+  position: relative;
+}
+
+/* Delete button styling */
+.delete-button {
+  background: none;
+  border: none;
+  color: #e74c3c;
+  font-size: 1.5rem;
+  font-weight: bold;
+  cursor: pointer;
+  padding: 0.25rem 0.5rem;
+  opacity: 0;
+  transition: opacity 0.2s ease, color 0.2s ease, transform 0.2s ease;
+  line-height: 1;
+}
+
+/* Show delete button on row hover */
+.snapshot-row:hover .delete-button {
+  opacity: 1;
+}
+
+/* Delete button hover effect */
+.delete-button:hover {
+  color: #c0392b;
+  transform: scale(1.2);
+}
+
+.delete-button:active {
+  transform: scale(1);
+}
+
 @media (max-width: 768px) {
   .snapshots-table {
     font-size: 0.9rem;

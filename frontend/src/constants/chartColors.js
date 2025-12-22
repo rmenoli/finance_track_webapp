@@ -8,7 +8,7 @@ export const ASSET_TYPE_COLORS = {
   cash_eur: { border: 'rgba(75, 192, 192, 1)', background: 'rgba(75, 192, 192, 0.1)' },
   cash_czk: { border: 'hsla(213, 100%, 70%, 1.00)', background: 'rgba(153, 102, 255, 0.1)' },
   cd_account: { border: 'rgba(61, 212, 53, 1)', background: 'rgba(255, 206, 86, 0.1)' },
-  pension_fund: { border: 'rgba(255, 202, 68, 1)', background: 'rgba(255, 99, 132, 0.1)' },
+  pension_fund: { border: 'hsla(43, 77%, 55%, 1.00)', background: 'rgba(255, 99, 132, 0.1)' },
 };
 
 // Fallback colors for unmapped asset types (used in order)

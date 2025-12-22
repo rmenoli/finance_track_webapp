@@ -233,6 +233,14 @@ export const snapshotsAPI = {
     const response = await fetch(url);
     return handleResponse(response);
   },
+
+  // Delete snapshots by date
+  deleteByDate: async (snapshotDate) => {
+    const response = await fetch(`${API_BASE_URL}/snapshots/${snapshotDate}`, {
+      method: 'DELETE',
+    });
+    return handleResponse(response);
+  },
 };
 
 export default {
