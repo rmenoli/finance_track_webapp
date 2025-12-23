@@ -10,7 +10,14 @@ from fastapi.responses import JSONResponse
 
 from app.config import settings
 from app.logging_config import log_with_context, request_id_context, setup_logging
-from app.routers import analytics, asset_snapshots, isin_metadata, other_assets, position_values, transactions
+from app.routers import (
+    analytics,
+    asset_snapshots,
+    isin_metadata,
+    other_assets,
+    position_values,
+    transactions,
+)
 from app.routers import settings as settings_router
 
 # Initialize logging on module import
@@ -43,6 +50,7 @@ app = FastAPI(
     version="0.1.0",
     debug=settings.debug,
     lifespan=lifespan,
+    root_path="/api",
 )
 
 
