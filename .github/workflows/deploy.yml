@@ -71,6 +71,8 @@ jobs:
           aws-region: ${{ secrets.AWS_REGION }}
 
       - name: Build frontend
+        env:
+          VITE_API_URL: /api/v1
         run: |
           cd frontend
           npm ci

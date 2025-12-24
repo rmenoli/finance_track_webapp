@@ -1,4 +1,9 @@
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api/v1';
+const API_BASE_URL = import.meta.env.VITE_API_URL;
+
+ // Fail fast if API URL is not configured
+ if (!API_BASE_URL) {
+   throw new Error('VITE_API_URL environment variable is not set. Check your .env file.');
+ }
 
 // Helper function to handle API responses
 async function handleResponse(response) {
