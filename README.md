@@ -1,5 +1,7 @@
 # ETF Portfolio Tracker
 
+![Deploy Status](https://github.com/rmenoli/finance_track_webapp/workflows/Deploy%20to%20AWS/badge.svg)
+
 A full-stack web application for tracking ETF portfolio transactions with automatic cost basis calculations using the average cost method.
 
 **Single-user system** | **No authentication required** | **Local-first with cloud-ready architecture**
@@ -14,6 +16,7 @@ A full-stack web application for tracking ETF portfolio transactions with automa
 - [Development](#development)
 - [Testing](#testing)
 - [Deployment](#deployment)
+- [CI/CD Pipeline](#cicd-pipeline)
 - [Documentation](#documentation)
 
 ---
@@ -241,28 +244,114 @@ uv run pytest tests/test_schemas.py                   # Validation tests
 
 ## Deployment
 
-### Current Setup (Local Development)
+### Local Development
 
 - **Backend**: Uvicorn server on port 8000
 - **Database**: SQLite (`backend/portfolio.db`)
 - **Frontend**: Vite dev server on port 3000
+- **API Proxy**: Vite proxies `/api/*` to backend (no CORS issues)
 
-### AWS Deployment (Future)
+### Production (AWS)
 
-The project structure is ready for containerized deployment:
+**Current production setup:**
 
-**Backend (ECS/Lambda/EC2):**
-- Containerize `backend/` directory
-- Replace SQLite with RDS PostgreSQL
-- Set environment variables for production
-- Deploy with Dockerfile
+**Infrastructure:**
+- **Frontend**: S3 + CloudFront (CDN with HTTPS)
+  - Static React build files served from S3
+  - CloudFront handles HTTPS termination
+  - CloudFront routes `/api/*` to EC2 backend
+- **Backend**: EC2 t3.micro + SystemD service
+  - FastAPI + Uvicorn on port 8000
+  - SQLite database
+  - Auto-restart on crash via systemd
+  - Daily automated backups
 
-**Frontend (S3 + CloudFront / ECS):**
-- Build static assets: `npm run build`
-- Deploy to S3 with CloudFront
-- Or containerize and deploy alongside backend
+**Key Configuration:**
+- Frontend uses relative paths `/api/v1/*`
+- CloudFront routes these to EC2 backend
+- No CORS issues (same-origin from browser perspective)
+- CI/CD sets `VITE_API_URL=/api/v1` during build
 
-**📖 Detailed deployment guide:** See [`backend/README.md`](backend/README.md#deployment-considerations)
+**Cost**: ~$10-15/month (EC2 + EBS + CloudFront + S3)
+
+**📖 Detailed deployment guides:**
+- **CI/CD Setup**: [`CI_CD.md`](CI_CD.md) - GitHub Actions automated deployment
+- **Manual AWS deployment**: [`DEPLOYMENT.md`](DEPLOYMENT.md) - CLI-based deployment guide
+- **AWS Console deployment**: [`DEPLOYMENT_MANUAL.md`](DEPLOYMENT_MANUAL.md) - Web UI-based deployment guide
+
+---
+
+## CI/CD Pipeline
+
+### Automated Deployment
+
+The project includes a GitHub Actions workflow that automatically deploys to AWS when PRs are merged to the main branch.
+
+**Pipeline Flow:**
+```
+PR Merged → Run Tests → Build Frontend → Deploy to S3 →
+Deploy to EC2 → Verify Health → Complete ✓
+```
+
+**Features:**
+- ✅ Automatic deployment on PR merge to `main`
+- ✅ Backend tests run before deployment (254 tests, 95% coverage)
+- ✅ Frontend builds and deploys to S3 with CloudFront invalidation
+- ✅ Backend deploys to EC2 via SSH with automatic service restart
+- ✅ Health check verification after deployment
+- ✅ Manual deployment trigger available
+- ✅ Deployment time: ~5-7 minutes
+
+### Setup Instructions
+
+**Prerequisites:**
+1. AWS infrastructure deployed (S3, EC2, CloudFront) - see [`DEPLOYMENT.md`](DEPLOYMENT.md)
+2. IAM user created with S3 and CloudFront permissions
+3. SSH key for EC2 access (dedicated for CI/CD)
+
+**GitHub Secrets Required:**
+
+| Secret Name | Description |
+|------------|-------------|
+| `AWS_ACCESS_KEY_ID` | IAM user access key |
+| `AWS_SECRET_ACCESS_KEY` | IAM user secret key |
+| `AWS_REGION` | AWS region (e.g., `us-east-1`) |
+| `S3_BUCKET_NAME` | S3 bucket name for frontend |
+| `CLOUDFRONT_DISTRIBUTION_ID` | CloudFront distribution ID |
+| `EC2_HOST` | EC2 Elastic IP or DNS |
+| `EC2_USERNAME` | EC2 SSH username (`ubuntu`) |
+| `EC2_SSH_PRIVATE_KEY` | Private SSH key for EC2 |
+| `CODECOV_TOKEN` | (Optional) Codecov token |
+
+**Setup Steps:**
+1. Create IAM user with S3/CloudFront permissions
+2. Generate dedicated SSH key for CI/CD
+3. Add all secrets to GitHub repository (Settings → Secrets and variables → Actions)
+4. Merge a PR to `main` or manually trigger workflow
+
+**Manual Deployment:**
+1. Go to **Actions** tab in GitHub
+2. Select **"Deploy to AWS"** workflow
+3. Click **"Run workflow"** → Select branch → **"Run workflow"**
+
+### Monitoring
+
+**View Deployments:**
+- Go to repository **Actions** tab
+- Click on a workflow run to see logs
+- Green checkmarks = success, Red X = failure
+
+**Deployment Badge:**
+- Shows current deployment status (success/failure)
+- Located at top of README
+- Updates automatically after each deployment
+
+**📖 Complete CI/CD documentation:** [`CI_CD.md`](CI_CD.md)
+- Setup instructions with screenshots
+- IAM user creation guide
+- Troubleshooting common issues
+- Security best practices
+- Rollback procedures
 
 ---
 
@@ -343,7 +432,7 @@ All endpoints are prefixed with `/api/v1`
 
 ## Common Issues
 
-### "Failed to fetch" Error
+### "Failed to fetch" Error (Development)
 
 **Symptom**: Frontend shows network errors when connecting to backend.
 
@@ -358,6 +447,46 @@ curl http://localhost:8000/health
 cd backend
 uv run uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
+
+### Production CORS Error
+
+**Symptom**: Production frontend shows CORS errors like:
+```
+Access to fetch at 'http://localhost:8000/api/v1/...' from origin 'https://CLOUDFRONT-DOMAIN'
+has been blocked by CORS policy: Permission was denied for this request to access
+the 'unknown' address space.
+```
+
+**Root Cause**: Frontend build is using hardcoded `localhost:8000` instead of relative paths `/api/v1`.
+
+**Solution**:
+
+1. **Verify GitHub Actions workflow** (`.github/workflows/deploy.yml`):
+   ```yaml
+   - name: Build frontend
+     env:
+       VITE_API_URL: /api/v1  # Must be present
+     run: |
+       cd frontend
+       npm ci
+       npm run build
+   ```
+
+2. **Verify API client** (`frontend/src/services/api.js`):
+   ```javascript
+   const API_BASE_URL = import.meta.env.VITE_API_URL;
+
+   if (!API_BASE_URL) {
+     throw new Error('VITE_API_URL environment variable is not set.');
+   }
+   ```
+
+3. **Deploy and verify**:
+   - Push changes to main branch (triggers CI/CD)
+   - Check browser Network tab after deployment
+   - API calls should go to `/api/v1/*` (not `localhost:8000`)
+
+**📖 Detailed fix guide:** See [`CLAUDE.md`](CLAUDE.md#troubleshooting)
 
 ### Port Already in Use
 

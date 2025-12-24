@@ -6,7 +6,7 @@ function Navigation() {
     <nav className="navigation">
       <div className="nav-container">
         <div className="nav-brand">
-          <h1>ETF Portfolio Tracker</h1>
+          <h1>NW Tracker</h1>
         </div>
         <ul className="nav-menu">
           <li>

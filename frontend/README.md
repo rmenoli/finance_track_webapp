@@ -300,6 +300,54 @@ server: {
 
 This avoids CORS issues during development.
 
+### Production Configuration
+
+**CRITICAL**: For production builds, `VITE_API_URL` must be explicitly set in the build environment.
+
+**CI/CD Configuration** (`.github/workflows/deploy.yml`):
+```yaml
+- name: Build frontend
+  env:
+    VITE_API_URL: /api/v1  # Required for production
+  run: |
+    cd frontend
+    npm ci
+    npm run build
+```
+
+**Why this matters**:
+- Vite doesn't always reliably load `.env.production` in CI/CD environments
+- System environment variables take precedence over `.env.*` files
+- Without explicit configuration, the build may use the fallback value
+- The API client (`src/services/api.js`) uses fail-fast error checking:
+
+```javascript
+const API_BASE_URL = import.meta.env.VITE_API_URL;
+
+if (!API_BASE_URL) {
+  throw new Error('VITE_API_URL environment variable is not set. Check your .env file.');
+}
+```
+
+**Production API Routing**:
+- Frontend uses relative paths: `/api/v1/*`
+- CloudFront routes these requests to EC2 backend
+- No CORS issues (same-origin from browser perspective)
+- Backend serves on `http://EC2-IP:8000` (HTTP only)
+- CloudFront handles HTTPS termination
+
+**Test production build locally**:
+```bash
+# Build with production environment
+VITE_API_URL=/api/v1 npm run build
+
+# Preview the build
+npm run preview
+
+# Verify API URL in browser console
+# Should make requests to relative paths, not localhost
+```
+
 ## API Client
 
 All backend communication goes through `src/services/api.js`.
@@ -537,6 +585,8 @@ Check backend health: http://localhost:8000/health
 
 ### CORS Issues
 
+**Development CORS Issues**:
+
 The Vite proxy should handle CORS during development. If you still have issues:
 
 1. Check backend `.env` includes frontend origin:
@@ -545,6 +595,48 @@ The Vite proxy should handle CORS during development. If you still have issues:
    ```
 
 2. Restart both servers
+
+**Production CORS Issues** (Frontend calling `localhost:8000`):
+
+**Symptom**: Production app shows errors like:
+```
+Access to fetch at 'http://localhost:8000/api/v1/...' from origin 'https://CLOUDFRONT-DOMAIN'
+has been blocked by CORS policy: Permission was denied for this request to access
+the 'unknown' address space.
+```
+
+**Root Cause**: Frontend build is using hardcoded `localhost:8000` instead of relative paths.
+
+**Solution**:
+
+1. **Verify GitHub Actions workflow** (`.github/workflows/deploy.yml`):
+   ```yaml
+   - name: Build frontend
+     env:
+       VITE_API_URL: /api/v1  # Must be present
+     run: |
+       cd frontend
+       npm ci
+       npm run build
+   ```
+
+2. **Verify API client fail-fast** (`src/services/api.js`):
+   ```javascript
+   const API_BASE_URL = import.meta.env.VITE_API_URL;
+
+   if (!API_BASE_URL) {
+     throw new Error('VITE_API_URL environment variable is not set.');
+   }
+   ```
+
+3. **Test locally**:
+   ```bash
+   VITE_API_URL=/api/v1 npm run build
+   npm run preview
+   # Check browser Network tab - should use relative paths
+   ```
+
+4. **Deploy**: Push to main branch, CI/CD will rebuild with correct config
 
 ### Build Issues
 

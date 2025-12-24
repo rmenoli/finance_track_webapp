@@ -662,6 +662,31 @@ LOG_FORMAT=json
 - `.env.development`: `VITE_API_URL=http://localhost:8000/api/v1`
 - `.env.production`: `VITE_API_URL=/api/v1`
 
+**Important - Production Build Configuration**:
+
+In CI/CD, the `VITE_API_URL` environment variable **must be explicitly set** in the GitHub Actions workflow:
+
+```yaml
+- name: Build frontend
+  env:
+    VITE_API_URL: /api/v1  # Required for production builds
+  run: |
+    cd frontend
+    npm ci
+    npm run build
+```
+
+**Why this matters**:
+- Vite doesn't always reliably load `.env.production` in CI/CD environments
+- System environment variables take precedence over `.env.*` files
+- Without explicit configuration, the build may fall back to `localhost:8000`, causing CORS errors in production
+- The frontend API client (`frontend/src/services/api.js`) uses fail-fast error checking to catch missing configuration early
+
+**Production API Routing**:
+- Frontend uses relative paths: `/api/v1/*`
+- CloudFront routes `/api/*` requests to EC2 backend
+- No CORS issues because all requests appear to come from same origin
+
 ## Testing
 
 **Test Suite**: 254 tests, 95% coverage
@@ -734,26 +759,312 @@ uv run alembic upgrade head
 
 ### CORS Issues
 
+**Development CORS Issues**:
+
 Update `CORS_ORIGINS` in `backend/.env`:
 ```env
 CORS_ORIGINS=["http://localhost:3000", "http://localhost:8000"]
 ```
 
+**Production CORS Issues** (Frontend calling `localhost:8000` instead of CloudFront):
+
+**Error message**:
+```
+Access to fetch at 'http://localhost:8000/api/v1/...' from origin 'https://CLOUDFRONT-DOMAIN'
+has been blocked by CORS policy: Permission was denied for this request to access
+the 'unknown' address space.
+```
+
+**Root cause**: Frontend build is using hardcoded `localhost:8000` instead of relative paths `/api/v1`.
+
+**Solution**:
+
+1. **Verify GitHub Actions workflow has environment variable** (`.github/workflows/deploy.yml`):
+   ```yaml
+   - name: Build frontend
+     env:
+       VITE_API_URL: /api/v1  # Must be present
+     run: |
+       cd frontend
+       npm ci
+       npm run build
+   ```
+
+2. **Verify API client has fail-fast checking** (`frontend/src/services/api.js`):
+   ```javascript
+   const API_BASE_URL = import.meta.env.VITE_API_URL;
+
+   if (!API_BASE_URL) {
+     throw new Error('VITE_API_URL environment variable is not set. Check your .env file.');
+   }
+   ```
+
+3. **Test locally before deploying**:
+   ```bash
+   cd frontend
+   VITE_API_URL=/api/v1 npm run build
+   # Build should succeed without errors
+   ```
+
+4. **Deploy and verify**:
+   - Push changes to main branch
+   - CI/CD will automatically rebuild and deploy
+   - Open production URL and check browser Network tab
+   - API calls should go to `/api/v1/*` (not `localhost:8000`)
+
 ## Deployment Considerations
 
-**Current Setup (Local Development)**:
-- Backend: Uvicorn + SQLite
-- Frontend: Vite dev server
+**Local Development**:
+- Backend: Uvicorn + SQLite on `localhost:8000`
+- Frontend: Vite dev server on `localhost:3000`
+- Frontend proxies `/api/*` to backend (configured in `vite.config.js`)
 
-**AWS Deployment (Future)**:
-- Backend: ECS/Lambda/EC2 with RDS PostgreSQL
-- Frontend: S3 + CloudFront or separate container
-- Change only `DATABASE_URL` environment variable for PostgreSQL
+**Production (AWS)**:
+- **Frontend**: S3 + CloudFront (CDN with HTTPS)
+  - Static React build files served from S3
+  - CloudFront handles HTTPS termination
+  - CloudFront routes `/api/*` to EC2 backend
+- **Backend**: EC2 t3.micro + SystemD service
+  - FastAPI + Uvicorn on port 8000 (HTTP only)
+  - SQLite database at `/opt/etf-portfolio/backend/portfolio.db`
+  - Auto-restart on crash via systemd
+  - Daily automated backups
+- **API Routing**:
+  - Frontend uses relative paths `/api/v1/*`
+  - CloudFront routes these to EC2 backend
+  - No CORS issues (same-origin from browser perspective)
 
-**Containerization**:
-- `backend/` directory becomes Docker build context
-- `pyproject.toml` and `uv.lock` in backend/ for dependency installation
-- See `backend/README.md` for Dockerfile example
+**Key Production Configuration**:
+- Backend `.env`: `CORS_ORIGINS=["https://YOUR_CLOUDFRONT_DOMAIN"]`
+- CI/CD: `VITE_API_URL=/api/v1` set in GitHub Actions workflow
+- Frontend: Fail-fast error checking if `VITE_API_URL` not set
+
+**Future Considerations**:
+- Migrate from SQLite to RDS PostgreSQL for better scalability
+- Add Redis for caching and session management
+- Implement API Gateway for rate limiting and authentication
+
+## CI/CD Pipeline
+
+### Overview
+
+Automated deployment using GitHub Actions when PRs are merged to `main` branch.
+
+**Workflow**: `.github/workflows/deploy.yml`
+
+**Pipeline Flow**:
+```
+PR Merge → Run Tests → Build Frontend → Deploy to S3 →
+Deploy to EC2 → Verify Health → Complete ✓
+```
+
+**Duration**: ~5-7 minutes total
+- Tests: ~2 minutes
+- Frontend build/deploy: ~1-2 minutes
+- Backend deploy: ~1 minute
+- CloudFront invalidation: ~1-2 minutes
+
+### GitHub Actions Workflow
+
+**Jobs**:
+1. **test**: Runs pytest suite (254 tests, 95% coverage) on Ubuntu runner
+2. **deploy**: Deploys both frontend and backend (only runs if tests pass)
+
+**Triggers**:
+- Automatic: Push to `main` branch (after PR merge)
+- Manual: workflow_dispatch (Actions tab → Run workflow)
+
+### Required GitHub Secrets
+
+Configure in repository Settings → Secrets and variables → Actions:
+
+| Secret | Description |
+|--------|-------------|
+| `AWS_ACCESS_KEY_ID` | IAM user access key for S3/CloudFront |
+| `AWS_SECRET_ACCESS_KEY` | IAM user secret key |
+| `AWS_REGION` | AWS region (e.g., `us-east-1`) |
+| `S3_BUCKET_NAME` | S3 bucket name for frontend |
+| `CLOUDFRONT_DISTRIBUTION_ID` | CloudFront distribution ID (14 chars, starts with E) |
+| `CLOUDFRONT_DOMAIN` | CloudFront domain (e.g., `d123abc.cloudfront.net`) |
+| `EC2_HOST` | EC2 Elastic IP or public DNS |
+| `EC2_USERNAME` | SSH username (`ubuntu` for Ubuntu instances) |
+| `EC2_SSH_PRIVATE_KEY` | Private SSH key for EC2 (include headers) |
+| `CODECOV_TOKEN` | (Optional) Codecov.io token for coverage reports |
+
+### Manual Deployment
+
+**Trigger deployment manually**:
+1. Go to repository → **Actions** tab
+2. Click **"Deploy to AWS"** workflow
+3. Click **"Run workflow"** dropdown
+4. Select branch (usually `main`)
+5. Click **"Run workflow"** button
+
+**Use cases**:
+- Emergency deployment
+- Deploy specific commit/branch
+- Re-deploy after fixing configuration
+- Rollback to previous version
+
+### Monitoring Deployments
+
+**View workflow logs**:
+1. Go to **Actions** tab
+2. Click on workflow run
+3. Click on job name (test/deploy)
+4. Expand steps to see details
+
+**Deployment badge**:
+- Added to README.md
+- Shows current status (passing/failing)
+- Updates automatically after each deployment
+
+**Notifications**:
+- GitHub email on workflow failure (if enabled)
+- Check GitHub notifications bell
+
+### Deployment Verification
+
+**After successful deployment**:
+
+```bash
+# Check frontend (replace with your CloudFront domain)
+curl https://YOUR_CLOUDFRONT_DOMAIN
+
+# Check backend API
+curl https://YOUR_CLOUDFRONT_DOMAIN/api/v1/health
+# Expected: {"status":"healthy"}
+
+# View full API docs
+open https://YOUR_CLOUDFRONT_DOMAIN/api/v1/docs
+```
+
+### Common CI/CD Issues
+
+**Test failures**:
+```bash
+# Run tests locally before pushing
+cd backend
+uv run pytest -v
+
+# If tests pass locally but fail in CI:
+# - Check Python version matches (3.12)
+# - Verify all dependencies in pyproject.toml
+# - Check for environment-specific issues
+```
+
+**Frontend build failures**:
+```bash
+# Test build locally
+cd frontend
+npm ci
+npm run build
+
+# If build succeeds locally but fails in CI:
+# - Check Node.js version matches (18)
+# - Verify package-lock.json is committed
+# - Clear npm cache if needed
+```
+
+**EC2 SSH connection failures**:
+- Verify `EC2_SSH_PRIVATE_KEY` includes full key with headers
+- Check EC2 security group allows SSH from 0.0.0.0/0 (or GitHub Actions IPs)
+- Ensure SSH key is added to EC2 `~/.ssh/authorized_keys`
+- Test key locally: `ssh -i ~/.ssh/key ubuntu@EC2_IP`
+
+**Backend deployment script failures**:
+```bash
+# SSH to EC2 manually and debug
+ssh -i ~/.ssh/key ubuntu@EC2_IP
+
+cd /opt/etf-portfolio/backend
+
+# Test each step manually
+git status                                    # Check git state
+git pull origin main                          # Test git pull
+/home/ubuntu/.cargo/bin/uv sync --all-extras # Test dependency install
+/home/ubuntu/.cargo/bin/uv run alembic upgrade head  # Test migrations
+sudo systemctl restart etf-portfolio.service  # Test service restart
+curl http://localhost:8000/health             # Test health check
+```
+
+**S3 upload failures**:
+- Verify `S3_BUCKET_NAME` matches actual bucket name
+- Check IAM user has `s3:PutObject`, `s3:DeleteObject`, `s3:ListBucket` permissions
+- Ensure AWS credentials are correct and not expired
+
+**CloudFront invalidation failures**:
+- Verify `CLOUDFRONT_DISTRIBUTION_ID` is correct (14-char ID)
+- Check IAM user has `cloudfront:CreateInvalidation` permission
+- Note: Invalidation takes 1-2 minutes to complete (workflow doesn't wait)
+
+### Rollback Procedure
+
+**Quick rollback** (if deployment broke production):
+
+**Method 1: Revert commit and re-deploy** (Recommended):
+```bash
+# Find bad commit
+git log --oneline
+
+# Revert it (creates new commit)
+git revert <bad-commit-sha>
+
+# Push to main (triggers auto-deployment)
+git push origin main
+```
+
+**Method 2: Manual rollback** (Faster):
+
+**Backend**:
+```bash
+# SSH to EC2
+ssh -i ~/.ssh/key ubuntu@EC2_IP
+
+# Go to backend directory
+cd /opt/etf-portfolio/backend
+
+# Reset to good commit
+git reset --hard <good-commit-sha>
+
+# Rollback migration if needed
+/home/ubuntu/.cargo/bin/uv run alembic downgrade -1
+
+# Restart service
+sudo systemctl restart etf-portfolio.service
+
+# Verify
+curl http://localhost:8000/health
+```
+
+**Frontend**:
+```bash
+# From local machine
+cd frontend
+git reset --hard <good-commit-sha>
+npm run build
+
+# Deploy to S3
+aws s3 sync dist/ s3://BUCKET_NAME/ --delete \
+  --cache-control "public, max-age=31536000, immutable" \
+  --exclude "index.html"
+
+aws s3 cp dist/index.html s3://BUCKET_NAME/index.html \
+  --cache-control "public, max-age=300, must-revalidate"
+
+# Invalidate CloudFront
+aws cloudfront create-invalidation \
+  --distribution-id DISTRIBUTION_ID \
+  --paths "/*"
+```
+
+### CI/CD Documentation
+
+For complete CI/CD setup and troubleshooting guide, see:
+- **Full guide**: `CI_CD.md` - Complete setup instructions with IAM user creation, security best practices, and detailed troubleshooting
+- **Workflow file**: `.github/workflows/deploy.yml` - GitHub Actions workflow definition
+- **Manual deployment**: `DEPLOYMENT.md` - Manual AWS deployment guide (CLI-based)
+- **Console deployment**: `DEPLOYMENT_MANUAL.md` - AWS Console deployment guide (web UI)
 
 ## Migration Notes
 
