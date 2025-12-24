@@ -117,10 +117,10 @@ jobs:
             git pull origin main
 
             echo "Installing dependencies..."
-            /home/ubuntu/.cargo/bin/uv sync --all-extras
+            uv sync --all-extras
 
             echo "Running database migrations..."
-            /home/ubuntu/.cargo/bin/uv run alembic upgrade head
+            uv run alembic upgrade head
 
             echo "Restarting backend service..."
             sudo systemctl restart etf-portfolio.service
