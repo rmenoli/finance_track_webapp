@@ -1548,65 +1548,238 @@ sudo mkdir -p /opt/etf-portfolio/backups
 sudo chown ubuntu:ubuntu /opt/etf-portfolio/backups
 ```
 
-#### Create Backup Script
+#### Create Backup Script (Python)
+
+The backup script is included in the repository at `backend/backup_db.py`. Copy it to the deployment directory:
 
 ```bash
-# Create backup script
-sudo tee /opt/etf-portfolio/backup-db.sh > /dev/null << 'EOF'
-#!/bin/bash
-
-# Configuration
-BACKUP_DIR="/opt/etf-portfolio/backups"
-DB_PATH="/opt/etf-portfolio/backend/portfolio.db"
-DATE=$(date +%Y%m%d_%H%M%S)
-RETENTION_DAYS=7
-
-# Create backup directory if it doesn't exist
-mkdir -p $BACKUP_DIR
-
-# Create SQLite backup using .backup command (consistent, hot backup)
-sqlite3 $DB_PATH ".backup '$BACKUP_DIR/portfolio_$DATE.db'"
-
-# Compress backup
-gzip $BACKUP_DIR/portfolio_$DATE.db
-
-# Log success
-echo "$(date): Backup completed - portfolio_$DATE.db.gz"
-
-# Delete backups older than RETENTION_DAYS
-find $BACKUP_DIR -name "portfolio_*.db.gz" -mtime +$RETENTION_DAYS -delete
-
-# Log cleanup
-echo "$(date): Old backups cleaned up (retention: $RETENTION_DAYS days)"
-EOF
+# Copy backup script from repository
+sudo cp /opt/etf-portfolio/backend/backup_db.py /opt/etf-portfolio/backup_db.py
 
 # Make script executable
-sudo chmod +x /opt/etf-portfolio/backup-db.sh
+sudo chmod +x /opt/etf-portfolio/backup_db.py
 
 # Set ownership
-sudo chown ubuntu:ubuntu /opt/etf-portfolio/backup-db.sh
+sudo chown ubuntu:ubuntu /opt/etf-portfolio/backup_db.py
 ```
+
+**Script features:**
+- Uses Python's `sqlite3` module for hot backups (doesn't lock database)
+- Compresses backups with gzip
+- Automatic cleanup of backups older than 7 days
+- Structured logging with timestamps
+- Better error handling than bash version
+
+**Environment variables** (optional customization):
+- `BACKUP_DIR`: Backup directory (default: `/opt/etf-portfolio/backups`)
+- `DB_PATH`: Database path (default: `/opt/etf-portfolio/backend/portfolio.db`)
+- `RETENTION_DAYS`: Days to keep backups (default: `7`)
 
 #### Test Backup Script
 
 ```bash
 # Run backup manually
-/opt/etf-portfolio/backup-db.sh
+cd /opt/etf-portfolio/backend
+python3 backup_db.py
 
 # Expected output:
-# [timestamp]: Backup completed - portfolio_20251223_143000.db.gz
-# [timestamp]: Old backups cleaned up (retention: 7 days)
+# ============================================================
+# ETF Portfolio Database Backup - Starting
+# Database: /opt/etf-portfolio/backend/portfolio.db
+# Backup directory: /opt/etf-portfolio/backups
+# Retention period: 7 days
+# ============================================================
+# 2025-12-25 10:30:00,123 - INFO - Starting backup of /opt/etf-portfolio/backend/portfolio.db
+# 2025-12-25 10:30:00,234 - INFO - Database backed up to /opt/etf-portfolio/backups/portfolio_20251225_103000.db
+# 2025-12-25 10:30:00,456 - INFO - Backup completed and compressed: portfolio_20251225_103000.db.gz (0.05 MB)
+# 2025-12-25 10:30:00,567 - INFO - Checking 1 backups for cleanup (retention: 7 days)
+# 2025-12-25 10:30:00,678 - INFO - No old backups to delete
+# ============================================================
+# Backup process completed successfully
+# ============================================================
 
 # Verify backup created
 ls -lh /opt/etf-portfolio/backups/
 
 # Should show:
-# -rw-r--r-- 1 ubuntu ubuntu 5.2K [date] portfolio_20251223_143000.db.gz
+# -rw-r--r-- 1 ubuntu ubuntu 52K [date] portfolio_20251225_103000.db.gz
 ```
 
 ---
 
-### Step 6.2: Schedule Daily Backups with Cron
+### Step 6.2: Configure S3 for Off-Site Backups
+
+**⚠️ REQUIRED**: S3 backup is mandatory for disaster recovery. The script will fail without S3 configuration.
+
+#### Why S3 Backup?
+
+- **Disaster recovery**: Backups survive EC2 instance failure or termination
+- **Durability**: 99.999999999% (11 nines)
+- **Cost-effective**: ~$0.001/month for small database
+- **Long-term retention**: Keep S3 backups for 30 days (vs 7 days local)
+
+#### Create S3 Bucket
+
+```bash
+# Replace YOUR-UNIQUE-SUFFIX with something unique (e.g., your initials + random number)
+aws s3 mb s3://etf-portfolio-backups-YOUR-UNIQUE-SUFFIX
+
+# Enable versioning (optional but recommended)
+aws s3api put-bucket-versioning \
+  --bucket etf-portfolio-backups-YOUR-UNIQUE-SUFFIX \
+  --versioning-configuration Status=Enabled
+```
+
+#### Configure IAM Permissions (Recommended Method)
+
+Create IAM policy for S3 access:
+
+```bash
+# Create policy file
+cat > /tmp/s3-backup-policy.json << 'EOF'
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": [
+        "s3:PutObject",
+        "s3:GetObject",
+        "s3:ListBucket",
+        "s3:DeleteObject"
+      ],
+      "Resource": [
+        "arn:aws:s3:::etf-portfolio-backups-YOUR-UNIQUE-SUFFIX/*",
+        "arn:aws:s3:::etf-portfolio-backups-YOUR-UNIQUE-SUFFIX"
+      ]
+    }
+  ]
+}
+EOF
+
+# Create IAM policy
+aws iam create-policy \
+  --policy-name ETFPortfolioS3BackupPolicy \
+  --policy-document file:///tmp/s3-backup-policy.json
+
+# Attach policy to EC2 instance role
+# (Replace INSTANCE-ROLE-NAME with your EC2 instance role)
+aws iam attach-role-policy \
+  --role-name INSTANCE-ROLE-NAME \
+  --policy-arn arn:aws:iam::YOUR-ACCOUNT-ID:policy/ETFPortfolioS3BackupPolicy
+```
+
+#### Attach IAM Role to EC2 Instance
+
+**Option A: Via AWS Console** (Easier for beginners)
+
+1. Go to **EC2 Console** → **Instances**
+2. Select your ETF Portfolio instance
+3. Click **Actions** → **Security** → **Modify IAM role**
+4. If no role exists, **create a new role**:
+   - Click **"Create new IAM role"** (opens IAM console)
+   - Select **"AWS service"** → **"EC2"**
+   - Click **"Next"**
+   - Search for **"ETFPortfolioS3BackupPolicy"** (policy created above)
+   - Select the policy checkbox
+   - Click **"Next"**
+   - **Role name**: `ETFPortfolioEC2Role`
+   - Click **"Create role"**
+   - Return to EC2 console
+5. Select **"ETFPortfolioEC2Role"** from dropdown
+6. Click **"Update IAM role"**
+
+**Option B: Via AWS CLI** (Faster for experienced users)
+
+```bash
+# 1. Create IAM role for EC2
+aws iam create-role \
+  --role-name ETFPortfolioEC2Role \
+  --assume-role-policy-document '{
+    "Version": "2012-10-17",
+    "Statement": [{
+      "Effect": "Allow",
+      "Principal": {"Service": "ec2.amazonaws.com"},
+      "Action": "sts:AssumeRole"
+    }]
+  }'
+
+# 2. Attach S3 backup policy to role (use policy ARN from create-policy output)
+aws iam attach-role-policy \
+  --role-name ETFPortfolioEC2Role \
+  --policy-arn arn:aws:iam::YOUR-ACCOUNT-ID:policy/ETFPortfolioS3BackupPolicy
+
+# 3. Create instance profile (EC2 requires this wrapper around IAM role)
+aws iam create-instance-profile \
+  --instance-profile-name ETFPortfolioEC2Profile
+
+# 4. Add role to instance profile
+aws iam add-role-to-instance-profile \
+  --instance-profile-name ETFPortfolioEC2Profile \
+  --role-name ETFPortfolioEC2Role
+
+# 5. Attach instance profile to EC2 instance
+aws ec2 associate-iam-instance-profile \
+  --instance-id i-YOUR-INSTANCE-ID \
+  --iam-instance-profile Name=ETFPortfolioEC2Profile
+```
+
+**Verify IAM Role is Attached**
+
+SSH to EC2 and check metadata service:
+
+```bash
+# SSH to EC2 instance
+ssh -i ~/.ssh/etf-portfolio-backend-key.pem ubuntu@YOUR_ELASTIC_IP
+
+# Check if IAM role is attached (should return role name)
+curl http://169.254.169.254/latest/meta-data/iam/security-credentials/
+
+# Expected output:
+# ETFPortfolioEC2Role
+
+# View temporary credentials (optional - boto3 does this automatically)
+curl http://169.254.169.254/latest/meta-data/iam/security-credentials/ETFPortfolioEC2Role
+
+# Should return JSON with:
+# {
+#   "AccessKeyId": "ASIA...",
+#   "SecretAccessKey": "...",
+#   "Token": "...",
+#   "Expiration": "2025-12-25T12:30:00Z"
+# }
+```
+
+**How boto3 Uses IAM Roles**:
+- boto3 automatically queries EC2 metadata service (169.254.169.254)
+- Retrieves temporary credentials (AccessKeyId, SecretAccessKey, Token)
+- Credentials auto-rotate every few hours
+- No configuration needed in code or files - completely automatic!
+
+#### Test S3 Upload
+
+```bash
+# Set S3_BUCKET environment variable (replace with your bucket name)
+export S3_BUCKET=etf-portfolio-backups-YOUR-UNIQUE-SUFFIX
+
+# Run backup with S3 upload
+cd /opt/etf-portfolio/backend
+python3 backup_db.py
+
+# Expected output will show S3 upload:
+# 2025-12-25 10:30:00,789 - INFO - Uploading to s3://etf-portfolio-backups-.../backups/portfolio_20251225_103000.db.gz
+# 2025-12-25 10:30:01,123 - INFO - Successfully uploaded to S3: backups/portfolio_20251225_103000.db.gz
+
+# Verify upload to S3
+aws s3 ls s3://etf-portfolio-backups-YOUR-UNIQUE-SUFFIX/backups/
+
+# Should show:
+# 2025-12-25 10:30:01     53421 portfolio_20251225_103000.db.gz
+```
+
+---
+
+### Step 6.3: Schedule Daily Backups with Cron
 
 #### Edit Crontab
 
@@ -1620,17 +1793,30 @@ crontab -e
 
 #### Add Backup Job
 
-Add this line at the end of the file:
+Add this line at the end of the file **(replace YOUR-UNIQUE-SUFFIX with your actual bucket suffix)**:
 
 ```cron
-# Daily database backup at 2:00 AM UTC
-0 2 * * * /opt/etf-portfolio/backup-db.sh >> /var/log/db-backup.log 2>&1
+# Daily database backup at 2:00 AM UTC with S3 upload
+0 2 * * * cd /opt/etf-portfolio/backend && S3_BUCKET=etf-portfolio-backups-YOUR-UNIQUE-SUFFIX /usr/bin/python3 backup_db.py >> /var/log/db-backup.log 2>&1
 ```
 
 **Explanation:**
 - `0 2 * * *`: Run at 2:00 AM every day (UTC time)
-- `/opt/etf-portfolio/backup-db.sh`: Script to run
+- `cd /opt/etf-portfolio/backend`: Change to backend directory
+- `S3_BUCKET=...`: Set S3 bucket name environment variable
+- `/usr/bin/python3 backup_db.py`: Run Python backup script
 - `>> /var/log/db-backup.log 2>&1`: Log output to file
+
+**Alternative (using uv):** If you prefer to use uv for better dependency management:
+
+```cron
+# Daily database backup at 2:00 AM UTC with S3 upload
+0 2 * * * cd /opt/etf-portfolio/backend && S3_BUCKET=etf-portfolio-backups-YOUR-UNIQUE-SUFFIX /home/ubuntu/.cargo/bin/uv run python backup_db.py >> /var/log/db-backup.log 2>&1
+```
+
+**Optional environment variables** (add after S3_BUCKET if needed):
+- `S3_PREFIX=backups/` - S3 key prefix (default: `backups/`)
+- `S3_RETENTION_DAYS=30` - Days to keep S3 backups (default: 30)
 
 **Save and exit:**
 - Press `Ctrl+X`
@@ -1644,7 +1830,7 @@ Add this line at the end of the file:
 crontab -l
 
 # Should show:
-# 0 2 * * * /opt/etf-portfolio/backup-db.sh >> /var/log/db-backup.log 2>&1
+# 0 2 * * * cd /opt/etf-portfolio/backend && S3_BUCKET=etf-portfolio-backups-... /usr/bin/python3 backup_db.py >> /var/log/db-backup.log 2>&1
 ```
 
 #### Check Backup Logs (After First Run)
@@ -1659,9 +1845,9 @@ tail -f /var/log/db-backup.log
 
 ---
 
-### Step 6.3: Restore from Backup (When Needed)
+### Step 6.4: Restore from Backup (When Needed)
 
-If you need to restore the database from a backup:
+If you need to restore the database from a backup (local or S3):
 
 #### Stop Backend Service
 
@@ -1672,6 +1858,8 @@ sudo systemctl stop etf-portfolio.service
 
 #### Restore Database
 
+**Option 1: Restore from Local Backup**
+
 ```bash
 # Navigate to backend directory
 cd /opt/etf-portfolio/backend
@@ -1679,11 +1867,35 @@ cd /opt/etf-portfolio/backend
 # Backup current database (just in case)
 cp portfolio.db portfolio.db.before-restore
 
-# List available backups
+# List available local backups
 ls -lh /opt/etf-portfolio/backups/
 
 # Restore from specific backup (replace date with your backup)
 gunzip -c /opt/etf-portfolio/backups/portfolio_20251223_020000.db.gz > portfolio.db
+
+# Verify restore
+ls -lh portfolio.db
+sqlite3 portfolio.db "PRAGMA integrity_check;"
+# Should return: ok
+```
+
+**Option 2: Restore from S3 Backup** (if local backups lost)
+
+```bash
+# Navigate to backend directory
+cd /opt/etf-portfolio/backend
+
+# Backup current database (just in case)
+cp portfolio.db portfolio.db.before-restore
+
+# List available S3 backups
+aws s3 ls s3://etf-portfolio-backups-YOUR-UNIQUE-SUFFIX/backups/
+
+# Download backup from S3 (replace date with your backup)
+aws s3 cp s3://etf-portfolio-backups-YOUR-UNIQUE-SUFFIX/backups/portfolio_20251223_020000.db.gz /tmp/
+
+# Restore from downloaded backup
+gunzip -c /tmp/portfolio_20251223_020000.db.gz > portfolio.db
 
 # Verify restore
 ls -lh portfolio.db
@@ -1709,55 +1921,149 @@ curl http://localhost:8000/api/v1/analytics/portfolio-summary
 
 ---
 
-### Step 6.4: Optional: Upload Backups to S3
+### Step 6.5: Troubleshooting S3 Backup Issues
 
-For extra safety, store backups in S3 (off-instance storage).
+Common issues and solutions for S3 backup functionality.
 
-#### Create S3 Backup Bucket (AWS Console)
+#### Error: "Unable to locate credentials"
 
-1. Navigate to **S3** → **Create bucket**
-2. **Bucket name**: `etf-portfolio-backups-XXXXXXXX`
-3. **Region**: Same as your application
-4. **Block Public Access**: Enable all (keep private)
-5. **Versioning**: Enable
-6. **Encryption**: Enable (SSE-S3)
-7. Click **"Create bucket"**
-
-#### Configure Lifecycle Policy
-
-To automatically delete old backups:
-
-1. Go to your backup bucket
-2. Click **"Management"** tab
-3. Click **"Create lifecycle rule"**
-4. **Rule configuration:**
-   - **Rule name**: `delete-old-backups`
-   - **Choose rule scope**: Apply to all objects
-5. **Lifecycle rule actions**:
-   - ☑ **Expire current versions of objects**
-   - **Days after object creation**: `30`
-6. Click **"Create rule"**
-
-**Result**: Backups older than 30 days are automatically deleted.
-
-#### Update Backup Script to Upload to S3
-
-Edit backup script on EC2:
-
-```bash
-nano /opt/etf-portfolio/backup-db.sh
+**Symptom**:
+```
+botocore.exceptions.NoCredentialsError: Unable to locate credentials
 ```
 
-Add this line **before the cleanup section** (before `find` command):
+**Cause**: IAM role not attached to EC2 instance, or boto3 cannot find AWS credentials.
 
-```bash
-# Upload to S3 (requires AWS CLI configured)
-aws s3 cp $BACKUP_DIR/portfolio_$DATE.db.gz s3://YOUR_BACKUP_BUCKET_NAME/ --only-show-errors
+**Solution**:
+
+1. **Verify IAM role is attached** to EC2 instance:
+   ```bash
+   # SSH to EC2
+   ssh -i ~/.ssh/etf-portfolio-backend-key.pem ubuntu@YOUR_ELASTIC_IP
+
+   # Check IAM role (should return role name)
+   curl http://169.254.169.254/latest/meta-data/iam/security-credentials/
+   ```
+
+2. **If empty** (no role attached), attach IAM role:
+   - See **Step 6.2 → "Attach IAM Role to EC2 Instance"** above
+   - Use AWS Console (Option A) or AWS CLI (Option B)
+
+3. **Verify credentials are accessible**:
+   ```bash
+   # Should return JSON with credentials
+   curl http://169.254.169.254/latest/meta-data/iam/security-credentials/ETFPortfolioEC2Role
+   ```
+
+---
+
+#### Error: "Access Denied" when uploading to S3
+
+**Symptom**:
+```
+botocore.exceptions.ClientError: An error occurred (AccessDenied) when calling the PutObject operation: Access Denied
 ```
 
-**Save and exit** (Ctrl+X, Y, Enter)
+**Cause**: IAM role lacks S3 permissions, or S3 bucket policy blocks access.
 
-**Note**: This requires AWS CLI to be installed and configured with credentials. See CLI deployment guide for setup.
+**Solution**:
+
+1. **Verify IAM policy is attached** to role:
+   ```bash
+   aws iam list-attached-role-policies --role-name ETFPortfolioEC2Role
+
+   # Should show: ETFPortfolioS3BackupPolicy
+   ```
+
+2. **If policy missing**, attach it:
+   ```bash
+   aws iam attach-role-policy \
+     --role-name ETFPortfolioEC2Role \
+     --policy-arn arn:aws:iam::YOUR-ACCOUNT-ID:policy/ETFPortfolioS3BackupPolicy
+   ```
+
+3. **Verify S3 bucket exists**:
+   ```bash
+   aws s3 ls s3://etf-portfolio-backups-YOUR-UNIQUE-SUFFIX/
+   ```
+
+4. **Check IAM policy has correct permissions**:
+   - Must include: `s3:PutObject`, `s3:GetObject`, `s3:ListBucket`, `s3:DeleteObject`
+   - Resource must match your bucket name
+
+---
+
+#### Error: "S3 bucket does not exist"
+
+**Symptom**:
+```
+botocore.exceptions.ClientError: An error occurred (NoSuchBucket) when calling the PutObject operation: The specified bucket does not exist
+```
+
+**Cause**: S3_BUCKET environment variable points to non-existent bucket.
+
+**Solution**:
+
+1. **Create S3 bucket** (if doesn't exist):
+   ```bash
+   aws s3 mb s3://etf-portfolio-backups-YOUR-UNIQUE-SUFFIX
+   ```
+
+2. **Verify bucket name** in cron job matches created bucket:
+   ```bash
+   crontab -l | grep S3_BUCKET
+   ```
+
+---
+
+#### Error: "boto3 not installed"
+
+**Symptom**:
+```
+ImportError: boto3 not installed. Run: uv add boto3
+```
+
+**Cause**: boto3 dependency not installed on EC2 instance.
+
+**Solution**:
+
+```bash
+# SSH to EC2
+ssh -i ~/.ssh/etf-portfolio-backend-key.pem ubuntu@YOUR_ELASTIC_IP
+
+# Navigate to backend directory
+cd /opt/etf-portfolio/backend
+
+# Install dependencies (including boto3)
+/home/ubuntu/.cargo/bin/uv sync --all-extras
+
+# Verify boto3 is installed
+python3 -c "import boto3; print(boto3.__version__)"
+```
+
+---
+
+#### Verify S3 Upload is Working
+
+**Test backup script manually**:
+
+```bash
+# SSH to EC2
+ssh -i ~/.ssh/etf-portfolio-backend-key.pem ubuntu@YOUR_ELASTIC_IP
+
+# Run backup with S3 upload
+cd /opt/etf-portfolio/backend
+S3_BUCKET=etf-portfolio-backups-YOUR-UNIQUE-SUFFIX python3 backup_db.py
+
+# Check output for S3 upload success:
+# 2025-12-25 10:30:00,789 - INFO - Uploading to s3://...
+# 2025-12-25 10:30:01,123 - INFO - Successfully uploaded to S3: backups/portfolio_...
+
+# Verify backup appears in S3
+aws s3 ls s3://etf-portfolio-backups-YOUR-UNIQUE-SUFFIX/backups/
+
+# Should show timestamped backup files
+```
 
 ---
 
