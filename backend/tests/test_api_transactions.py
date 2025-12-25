@@ -1,5 +1,6 @@
 """Tests for transaction API endpoints."""
 from datetime import date, timedelta
+from io import BytesIO
 
 
 class TestTransactionAPI:
@@ -396,3 +397,91 @@ class TestTransactionAPI:
         assert "message" in data
         assert "version" in data
         assert "docs" in data
+
+    def test_degiro_import_csv_transactions_success(self, client):
+        """Test successful CSV import via API."""
+        csv_content = b"""Date,Time,Product,ISIN,Reference exchange,Venue,Quantity,Price,,Local value,,Value EUR,Exchange rate,AutoFX Fee,Transaction and/or third party fees EUR,Total EUR,Order ID,
+11-12-2024,16:03,VANGUARD FTSE ALL-WORLD...,IE00BK5BQT80,XET,XETA,21,"143,9000",EUR,"-3021,90",EUR,"-3021,90",,"0,00","-3,00","-3024,90",,b1d87359
+10-12-2024,10:30,APPLE INC,US0378331005,NDQ,XNAS,-10,"450,25",USD,"4502,50",EUR,"4000,00","1,125","0,00","-1,50","3998,50",,c2e98460"""
+
+        response = client.post(
+            "/api/v1/transactions/degiro-import-csv-transactions",
+            files={"file": ("degiro.csv", BytesIO(csv_content), "text/csv")},
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["total_rows"] == 2
+        assert data["successful"] == 2
+        assert data["failed"] == 0
+        assert data["success_rate"] == 100.0
+        assert len(data["results"]) == 2
+        assert len(data["errors"]) == 0
+
+        # Verify first transaction (BUY)
+        assert data["results"][0]["row"] == 1
+        assert data["results"][0]["isin"] == "IE00BK5BQT80"
+        assert data["results"][0]["transaction_type"] == "BUY"
+
+        # Verify second transaction (SELL)
+        assert data["results"][1]["row"] == 2
+        assert data["results"][1]["isin"] == "US0378331005"
+        assert data["results"][1]["transaction_type"] == "SELL"
+
+    def test_degiro_import_csv_transactions_with_validation_errors(self, client):
+        """Test CSV import with validation errors."""
+        # Future date that will fail validation
+        future_date = (date.today() + timedelta(days=365)).strftime("%d-%m-%Y")
+        csv_content = f"""Date,Time,Product,ISIN,Reference exchange,Venue,Quantity,Price,,Local value,,Value EUR,Exchange rate,AutoFX Fee,Transaction and/or third party fees EUR,Total EUR,Order ID,
+{future_date},16:03,FUTURE DATE,IE00BK5BQT80,XET,XETA,21,"143,9000",EUR,"-3021,90",EUR,"-3021,90",,"0,00","-3,00","-3024,90",,bad1""".encode()
+
+        response = client.post(
+            "/api/v1/transactions/degiro-import-csv-transactions",
+            files={"file": ("degiro.csv", BytesIO(csv_content), "text/csv")},
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["total_rows"] == 1
+        assert data["successful"] == 0
+        assert data["failed"] == 1
+        assert len(data["errors"]) == 1
+        assert "future" in data["errors"][0]["errors"][0].lower()
+
+    def test_degiro_import_csv_transactions_invalid_file_type(self, client):
+        """Test CSV import rejects non-CSV files."""
+        txt_content = b"not a csv file"
+
+        response = client.post(
+            "/api/v1/transactions/degiro-import-csv-transactions",
+            files={"file": ("data.txt", BytesIO(txt_content), "text/plain")},
+        )
+
+        assert response.status_code == 400
+        assert "must be a CSV file" in response.json()["detail"]
+
+    def test_degiro_import_csv_transactions_invalid_utf8(self, client):
+        """Test CSV import rejects non-UTF-8 files."""
+        # Create invalid UTF-8 bytes
+        invalid_utf8 = b"\x80\x81\x82\x83"
+
+        response = client.post(
+            "/api/v1/transactions/degiro-import-csv-transactions",
+            files={"file": ("degiro.csv", BytesIO(invalid_utf8), "text/csv")},
+        )
+
+        assert response.status_code == 400
+        assert "UTF-8" in response.json()["detail"]
+
+    def test_degiro_import_csv_transactions_missing_columns(self, client):
+        """Test CSV import with missing required columns."""
+        csv_content = b"""Date,Time,ISIN
+11-12-2024,16:03,IE00BK5BQT80"""
+
+        response = client.post(
+            "/api/v1/transactions/degiro-import-csv-transactions",
+            files={"file": ("degiro.csv", BytesIO(csv_content), "text/csv")},
+        )
+
+        assert response.status_code == 400
+        assert "Missing required columns" in response.json()["detail"]

@@ -1,12 +1,14 @@
 from datetime import date
 from typing import Optional
 
-from fastapi import APIRouter, Depends, Query, status
+from fastapi import APIRouter, Depends, File, Query, UploadFile, status
 from sqlalchemy.orm import Session
 
 from app.constants import DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE, TransactionType
 from app.database import get_db
+from app.exceptions import CSVImportError
 from app.schemas.transaction import (
+    CSVImportResponse,
     TransactionCreate,
     TransactionListResponse,
     TransactionResponse,
@@ -129,3 +131,69 @@ def delete_transaction(
 ) -> None:
     """Delete a transaction."""
     transaction_service.delete_transaction(db, transaction_id)
+
+
+@router.delete(
+    "",
+    status_code=status.HTTP_200_OK,
+    summary="Delete all transactions",
+    description="Delete all transactions. WARNING: This operation cannot be undone!",
+)
+def delete_all_transactions(db: Session = Depends(get_db)) -> dict:
+    """Delete all transactions."""
+    deleted_count = transaction_service.delete_all_transactions(db)
+    return {
+        "message": f"Successfully deleted {deleted_count} transaction(s)",
+        "deleted_count": deleted_count,
+    }
+
+
+@router.post(
+    "/degiro-import-csv-transactions",
+    response_model=CSVImportResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Import transactions from DEGIRO CSV",
+    description="Import multiple transactions from a DEGIRO CSV export file. "
+    "Returns detailed results for successful and failed imports.",
+)
+async def degiro_import_csv_transactions_endpoint(
+    file: UploadFile = File(..., description="DEGIRO CSV file"),
+    db: Session = Depends(get_db),
+) -> CSVImportResponse:
+    """
+    Import transactions from DEGIRO CSV file.
+
+    Expected CSV format (DEGIRO export):
+    - Columns: Date, Time, Product, ISIN, Reference exchange, Venue, Quantity, Price,
+               Local value, Value EUR, Exchange rate, AutoFX Fee,
+               Transaction and/or third party fees EUR, Total EUR, Order ID
+    - Date format: DD-MM-YYYY
+    - Number format: European (comma as decimal separator)
+    - Quantity: Positive = BUY, Negative = SELL
+
+    Returns:
+    - Summary of import (total, successful, failed)
+    - List of successful imports with transaction IDs
+    - List of failed imports with detailed error messages
+    """
+    # Validate file type
+    if not file.filename or not file.filename.endswith(".csv"):
+        raise CSVImportError("File must be a CSV file")
+
+    # Read file content
+    try:
+        content = await file.read()
+        csv_content = content.decode("utf-8")
+    except UnicodeDecodeError:
+        raise CSVImportError("File must be UTF-8 encoded")
+    except Exception as e:
+        raise CSVImportError(f"Failed to read file: {str(e)}")
+
+    # Import transactions
+    results = transaction_service.degiro_import_csv_transactions(
+        db=db,
+        csv_content=csv_content,
+    )
+
+    # Convert to response schema
+    return CSVImportResponse(**results)

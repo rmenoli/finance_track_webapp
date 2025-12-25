@@ -433,7 +433,9 @@ All routes prefixed with `/api/v1`:
 - `GET /transactions/{id}` - Get one
 - `PUT /transactions/{id}` - Update
 - `DELETE /transactions/{id}` - Delete
+- `POST /transactions/degiro-import-csv-transactions` - **Bulk import DEGIRO transactions from CSV**
 - **Note**: All transaction responses include computed fields: `total_without_fees`, `total_with_fees`
+- **CSV Import**: Returns detailed results with success/failure counts, row-by-row error reporting. Frontend has import button with color-coded results display.
 
 **Analytics**:
 - `GET /analytics/portfolio-summary` - Complete portfolio overview (includes holdings, total invested, total fees)
@@ -460,6 +462,7 @@ All routes prefixed with `/api/v1`:
 - `GET /snapshots` - List all snapshots with optional filters (date range, asset type)
 - `GET /snapshots/summary` - Get aggregated summary statistics per snapshot date with growth tracking
 - `DELETE /snapshots/{snapshot_date}` - Delete all snapshots for specific date
+- `POST /snapshots/import-csv` - **Bulk import historical snapshots from CSV**
 - **Note**: Each asset stored separately (no aggregation). Captures exchange rate for historical accuracy.
 - **Summary endpoint** returns:
   - Total portfolio value in EUR for each snapshot date
@@ -467,6 +470,7 @@ All routes prefixed with `/api/v1`:
   - Asset type breakdown (EUR-converted values)
   - **Growth tracking**: `absolute_change_from_oldest` and `percentage_change_from_oldest` calculated from oldest snapshot in filtered dataset
   - Ordered by date DESC (most recent first)
+- **CSV Import**: Accepts CSV with columns: `snapshot_date`, `asset_type`, `asset_detail`, `currency`, `value`, `exchange_rate`, `value_eur`, `created_at` (optional). Returns detailed import results. Frontend has import button with validation and error reporting.
 
 Interactive docs: http://localhost:8000/docs (Swagger UI)
 
@@ -1084,14 +1088,15 @@ For detailed information, see:
 ## Project Status Summary
 
 **Current Version**: Development
-**Test Coverage**: 95% (245 tests)
-**Backend Endpoints**: 21 total (5 transaction, 1 analytics, 2 position values, 5 ISIN metadata, 3 other assets, 4 snapshots, 2 settings) - optimized from 27 endpoints
+**Test Coverage**: 95% (277 tests)
+**Backend Endpoints**: 23 total (6 transaction, 1 analytics, 2 position values, 5 ISIN metadata, 3 other assets, 5 snapshots, 2 settings) - includes CSV import for transactions and snapshots
 **Frontend Pages**: 7 (Investment Dashboard, Transactions, Add/Edit Transaction, ISIN Metadata, Add/Edit ISIN Metadata, Other Assets, Snapshots with Growth Tracking)
 **Frontend Components**: 15 main components (Layout, Navigation, TransactionForm, TransactionList, ISINMetadataForm, ISINMetadataList, DashboardHoldingsTable, HoldingsDistributionChart, ClosedPositionsTable, PortfolioSummary, OtherAssetsTable, OtherAssetsDistributionChart, SnapshotValueChart, SnapshotsTable, SnapshotAssetTypeChart)
 **Visualization**: Portfolio distribution pie charts with Chart.js (centralized color system), time-series area chart with growth tracking, inline asset distribution charts, asset name display in holdings tables
 **Multi-Currency**: EUR/CZK support with backend Decimal precision for other assets
 **Exchange Rate**: User-friendly input with onBlur/Enter save pattern (prevents UI blocking), optimized settings router with 66% fewer database queries
 **Snapshot Management**: Exchange rate display in snapshots table ("Rate: X.XX CZK/EUR"), hover-to-delete with red X button, full datetime deletion with automatic URL encoding, confirmation dialogs with auto-refresh
+**CSV Import**: Bulk import for transactions (DEGIRO) and snapshots with detailed error reporting, color-coded results, and row-by-row validation. Frontend has import buttons with file validation and auto-refresh after successful imports.
 **Architecture**: Backend-first calculations - all financial math performed on backend using Decimal, frontend is pure presentation layer
 **Logging**: Structured JSON logging with audit trail for all operations, request tracing, and performance monitoring
 

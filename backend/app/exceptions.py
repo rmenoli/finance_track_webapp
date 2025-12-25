@@ -23,14 +23,22 @@ class TransactionNotFoundError(HTTPException):
 class PositionValueNotFoundError(HTTPException):
     """Exception raised when a position value is not found."""
 
-    def __init__(self, isin: str):
+    def __init__(self, identifier: str | int):
+        # Determine if identifier is an ID (int) or ISIN (str with letters)
+        if isinstance(identifier, int) or (isinstance(identifier, str) and identifier.isdigit()):
+            detail = f"Position value with ID {identifier} not found"
+            extra_field = {"position_value_id": identifier}
+        else:
+            detail = f"Position value for ISIN {identifier} not found"
+            extra_field = {"isin": identifier}
+
         super().__init__(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Position value for ISIN {isin} not found",
+            detail=detail,
         )
         logger.warning(
             "Position value not found",
-            extra={"isin": isin}
+            extra=extra_field
         )
 
 
@@ -92,4 +100,18 @@ class SnapshotNotFoundError(HTTPException):
         logger.warning(
             "Snapshot not found",
             extra={"snapshot_date": snapshot_date}
+        )
+
+
+class CSVImportError(HTTPException):
+    """Exception raised when CSV import fails at file level (not row level)."""
+
+    def __init__(self, message: str):
+        super().__init__(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"CSV import failed: {message}",
+        )
+        logger.error(
+            "CSV import error",
+            extra={"error_message": message}
         )

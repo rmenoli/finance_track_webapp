@@ -130,3 +130,29 @@ class TestPositionValueService:
         """Test deleting non-existent position value raises error."""
         with pytest.raises(PositionValueNotFoundError):
             position_value_service.delete_position_value(db_session, "NONEXISTENT1")
+
+    def test_delete_position_value_by_id(self, db_session):
+        """Test deleting position value by ID."""
+        # Create position value
+        position_value_create = PositionValueCreate(
+            isin="IE00B4L5Y983",
+            current_value=Decimal("5000.00"),
+        )
+        created = position_value_service.upsert_position_value(
+            db_session, position_value_create
+        )
+
+        # Delete by ID
+        position_value_service.delete_position_value_by_id(db_session, created.id)
+
+        # Verify deletion
+        with pytest.raises(PositionValueNotFoundError):
+            position_value_service.get_position_value(db_session, "IE00B4L5Y983")
+
+    def test_delete_position_value_by_id_not_found(self, db_session):
+        """Test deleting non-existent position value by ID raises error."""
+        with pytest.raises(PositionValueNotFoundError) as exc_info:
+            position_value_service.delete_position_value_by_id(db_session, 99999)
+
+        # Verify error message mentions ID
+        assert "ID 99999" in str(exc_info.value.detail)

@@ -75,6 +75,18 @@ export const transactionsAPI = {
     });
     return handleResponse(response);
   },
+
+  // Import transactions from CSV file
+  importCSV: async (file) => {
+    const formData = new FormData();
+    formData.append('file', file);
+
+    const response = await fetch(`${API_BASE_URL}/transactions/degiro-import-csv-transactions`, {
+      method: 'POST',
+      body: formData,
+    });
+    return handleResponse(response);
+  },
 };
 
 // Analytics API methods
@@ -243,6 +255,18 @@ export const snapshotsAPI = {
   deleteByDate: async (snapshotDate) => {
     const response = await fetch(`${API_BASE_URL}/snapshots/${snapshotDate}`, {
       method: 'DELETE',
+    });
+    return handleResponse(response);
+  },
+
+  // Import snapshots from CSV file
+  importCSV: async (file) => {
+    const formData = new FormData();
+    formData.append('file', file);
+
+    const response = await fetch(`${API_BASE_URL}/snapshots/import-csv`, {
+      method: 'POST',
+      body: formData,
     });
     return handleResponse(response);
   },

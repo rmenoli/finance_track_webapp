@@ -48,3 +48,17 @@ def list_position_values(
         ],
         total=len(position_values),
     )
+
+
+@router.delete(
+    "/{position_value_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Delete position value by ID",
+    description="Delete a position value by its ID",
+)
+def delete_position_value_by_id(
+    position_value_id: int = Path(..., description="Position value ID"),
+    db: Session = Depends(get_db),
+) -> None:
+    """Delete a position value by ID."""
+    position_value_service.delete_position_value_by_id(db, position_value_id)

@@ -6,7 +6,11 @@ from typing import Optional
 from sqlalchemy.orm import Session
 
 from app.constants import DEFAULT_PAGE_SIZE, TransactionType
-from app.exceptions import PositionValueNotFoundError, TransactionNotFoundError
+from app.exceptions import (
+    CSVImportError,
+    PositionValueNotFoundError,
+    TransactionNotFoundError,
+)
 from app.logging_config import log_with_context
 from app.models.transaction import Transaction
 from app.schemas.transaction import TransactionCreate, TransactionUpdate
@@ -314,3 +318,187 @@ def _cleanup_position_value_for_closed_position(db: Session, isin: str) -> None:
         )
         # Still don't block transaction operations
         pass
+
+
+def degiro_import_csv_transactions(db: Session, csv_content: str) -> dict:
+    """
+    Import transactions from DEGIRO CSV file.
+
+    Args:
+        db: Database session
+        csv_content: CSV file content as string
+
+    Returns:
+        Dictionary with import results:
+        {
+            "total_rows": int,
+            "successful": int,
+            "failed": int,
+            "results": [{"row": int, "transaction_id": int, ...}],
+            "errors": [{"row": int, "errors": [...], ...}]
+        }
+
+    Raises:
+        CSVImportError: If CSV format is invalid or required columns missing
+    """
+    from pydantic import ValidationError
+
+    from app.services.csv_parser import parse_degiro_csv
+
+    results = {
+        "total_rows": 0,
+        "successful": 0,
+        "failed": 0,
+        "results": [],
+        "errors": [],
+    }
+
+    try:
+        # Parse CSV
+        parsed_rows = parse_degiro_csv(csv_content)
+        results["total_rows"] = len(parsed_rows)
+
+        log_with_context(
+            logger,
+            logging.INFO,
+            "Starting DEGIRO CSV import",
+            total_rows=len(parsed_rows),
+        )
+
+    except ValueError as e:
+        # File-level parsing error
+        log_with_context(
+            logger,
+            logging.ERROR,
+            "CSV parsing failed",
+            error=str(e),
+        )
+        raise CSVImportError(str(e))
+
+    # Process each row
+    for row_data in parsed_rows:
+        try:
+            # Create TransactionCreate schema for validation
+            transaction_create = TransactionCreate(
+                date=row_data.date,
+                isin=row_data.isin,
+                broker="DEGIRO",  # Always DEGIRO for CSV imports
+                fee=row_data.fee,
+                price_per_unit=row_data.price,
+                units=row_data.quantity,
+                transaction_type=row_data.transaction_type,
+            )
+
+            # Create transaction (reuse existing service function)
+            transaction = create_transaction(db, transaction_create)
+
+            # Record success
+            results["successful"] += 1
+            results["results"].append({
+                "row": row_data.row_number,
+                "transaction_id": transaction.id,
+                "isin": transaction.isin,
+                "transaction_type": transaction.transaction_type,
+            })
+
+        except ValidationError as e:
+            # Pydantic validation error
+            results["failed"] += 1
+            error_messages = [f"{err['loc'][-1]}: {err['msg']}" for err in e.errors()]
+            results["errors"].append({
+                "row": row_data.row_number,
+                "isin": row_data.isin,
+                "date": str(row_data.date),
+                "errors": error_messages,
+                "raw_data": row_data.raw_row,
+            })
+
+            log_with_context(
+                logger,
+                logging.WARNING,
+                "Transaction validation failed",
+                row=row_data.row_number,
+                isin=row_data.isin,
+                errors=error_messages,
+            )
+
+        except Exception as e:
+            # Unexpected error
+            results["failed"] += 1
+            results["errors"].append({
+                "row": row_data.row_number,
+                "isin": row_data.isin if hasattr(row_data, "isin") else None,
+                "date": str(row_data.date) if hasattr(row_data, "date") else None,
+                "errors": [f"Unexpected error: {str(e)}"],
+                "raw_data": row_data.raw_row if hasattr(row_data, "raw_row") else None,
+            })
+
+            log_with_context(
+                logger,
+                logging.ERROR,
+                "Unexpected error during CSV import",
+                row=row_data.row_number,
+                error_type=type(e).__name__,
+                error=str(e),
+            )
+
+    # Final summary log
+    log_with_context(
+        logger,
+        logging.INFO,
+        "DEGIRO CSV import completed",
+        total_rows=results["total_rows"],
+        successful=results["successful"],
+        failed=results["failed"],
+        success_rate=(
+            f"{(results['successful'] / results['total_rows'] * 100) if results['total_rows'] > 0 else 0:.2f}%"
+        ),
+    )
+
+    return results
+
+
+def delete_all_transactions(db: Session) -> int:
+    """
+    Delete all transactions from the database.
+
+    WARNING: This is a destructive operation that cannot be undone.
+
+    Args:
+        db: Database session
+
+    Returns:
+        Number of transactions deleted
+
+    Raises:
+        Exception: If database operation fails
+    """
+    try:
+        # Get count before deletion
+        count = db.query(Transaction).count()
+
+        # Delete all transactions
+        db.query(Transaction).delete()
+        db.commit()
+
+        # AUDIT LOG
+        log_with_context(
+            logger,
+            logging.WARNING,
+            "All transactions deleted",
+            operation="BULK_DELETE",
+            deleted_count=count,
+        )
+
+        return count
+
+    except Exception as e:
+        db.rollback()
+        log_with_context(
+            logger,
+            logging.ERROR,
+            "Failed to delete all transactions",
+            operation="BULK_DELETE",
+            error=str(e),
+        )
+        raise

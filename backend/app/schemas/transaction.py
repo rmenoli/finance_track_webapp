@@ -118,3 +118,50 @@ class TransactionListResponse(BaseModel):
     limit: int
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class CSVImportRowError(BaseModel):
+    """Schema for a single CSV import row error."""
+
+    row: int = Field(..., description="Row number (1-indexed, excluding header)")
+    isin: Optional[str] = Field(None, description="ISIN from failed row (if parseable)")
+    date: Optional[str] = Field(None, description="Date from failed row (if parseable)")
+    errors: list[str] = Field(..., description="List of validation error messages")
+    raw_data: Optional[dict] = Field(
+        None, description="Raw CSV row data for debugging"
+    )
+
+
+class CSVImportResult(BaseModel):
+    """Schema for a single successful import."""
+
+    row: int = Field(..., description="Row number (1-indexed, excluding header)")
+    transaction_id: int = Field(..., description="Created transaction ID")
+    isin: str = Field(..., description="ISIN code")
+    transaction_type: TransactionType = Field(..., description="BUY or SELL")
+
+    model_config = ConfigDict(use_enum_values=False)
+
+
+class CSVImportResponse(BaseModel):
+    """Schema for CSV import response."""
+
+    total_rows: int = Field(..., description="Total rows processed (excluding header)")
+    successful: int = Field(..., description="Number of successfully imported transactions")
+    failed: int = Field(..., description="Number of failed rows")
+    results: list[CSVImportResult] = Field(
+        default_factory=list, description="Successful imports"
+    )
+    errors: list[CSVImportRowError] = Field(
+        default_factory=list, description="Failed imports with details"
+    )
+
+    @computed_field
+    @property
+    def success_rate(self) -> float:
+        """Calculate success rate as percentage."""
+        if self.total_rows == 0:
+            return 0.0
+        return round((self.successful / self.total_rows) * 100, 2)
+
+    model_config = ConfigDict(use_enum_values=False)

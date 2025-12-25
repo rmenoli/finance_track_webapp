@@ -150,6 +150,43 @@ def delete_position_value(db: Session, isin: str) -> None:
     )
 
 
+def delete_position_value_by_id(db: Session, position_value_id: int) -> None:
+    """
+    Delete a position value by ID.
+
+    Args:
+        db: Database session
+        position_value_id: Position value ID
+
+    Raises:
+        PositionValueNotFoundError: If position value not found
+    """
+    position_value = (
+        db.query(PositionValue).filter(PositionValue.id == position_value_id).first()
+    )
+
+    if not position_value:
+        raise PositionValueNotFoundError(position_value_id)
+
+    # Store for audit log
+    isin = position_value.isin
+    deleted_value = str(position_value.current_value)
+
+    db.delete(position_value)
+    db.commit()
+
+    # AUDIT LOG
+    log_with_context(
+        logger,
+        logging.INFO,
+        "Position value deleted by ID",
+        operation="DELETE",
+        position_value_id=position_value_id,
+        isin=isin,
+        deleted_value=deleted_value,
+    )
+
+
 def cleanup_orphaned_position_values(db: Session) -> dict:
     """
     Clean up all orphaned position values for closed or non-existent positions.
