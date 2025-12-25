@@ -22,6 +22,9 @@ from datetime import datetime
 from pathlib import Path
 
 import boto3
+from dotenv import load_dotenv
+
+load_dotenv()
 
 
 def backup_and_upload_to_s3(db_path: str, bucket_name: str, s3_prefix: str = "backups/") -> str:
