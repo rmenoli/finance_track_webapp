@@ -93,3 +93,53 @@ class SnapshotSummaryListResponse(BaseModel):
         ...,
         description="Average monthly portfolio increment in EUR (calculated as total change divided by days, normalized to 30 days). Returns 0 if 0 or 1 snapshots."
     )
+
+
+# CSV Import Schemas
+class SnapshotCSVImportResult(BaseModel):
+    """Schema for a single successful snapshot import."""
+
+    row: int = Field(..., description="Row number (1-indexed, excluding header)")
+    snapshot_id: int = Field(..., description="Created snapshot ID")
+    snapshot_date: datetime = Field(..., description="Snapshot datetime")
+    asset_type: str = Field(..., description="Asset type")
+
+
+class SnapshotCSVImportError(BaseModel):
+    """Schema for a single failed snapshot import."""
+
+    row: int = Field(..., description="Row number (1-indexed, excluding header)")
+    snapshot_date: Optional[str] = Field(
+        None, description="Snapshot date from failed row (if parseable)"
+    )
+    asset_type: Optional[str] = Field(
+        None, description="Asset type from failed row (if parseable)"
+    )
+    errors: list[str] = Field(..., description="List of validation error messages")
+    raw_data: Optional[dict] = Field(
+        None, description="Raw CSV row data for debugging"
+    )
+
+
+class SnapshotCSVImportResponse(BaseModel):
+    """Schema for snapshot CSV import response."""
+
+    from pydantic import computed_field
+
+    total_rows: int = Field(..., description="Total rows processed (excluding header)")
+    successful: int = Field(..., description="Number of successfully imported snapshots")
+    failed: int = Field(..., description="Number of failed rows")
+    results: list[SnapshotCSVImportResult] = Field(
+        default_factory=list, description="Successful imports"
+    )
+    errors: list[SnapshotCSVImportError] = Field(
+        default_factory=list, description="Failed imports with details"
+    )
+
+    @computed_field
+    @property
+    def success_rate(self) -> float:
+        """Calculate success rate as percentage."""
+        if self.total_rows == 0:
+            return 0.0
+        return round((self.successful / self.total_rows) * 100, 2)

@@ -376,3 +376,170 @@ def get_snapshot_summaries(
     )
 
     return summaries, avg_monthly_increment
+
+
+def import_snapshots_from_csv(db: Session, csv_content: str) -> dict:
+    """
+    Import asset snapshots from CSV file.
+
+    Args:
+        db: Database session
+        csv_content: CSV file content as string
+
+    Returns:
+        Dictionary with import results:
+        {
+            "total_rows": int,
+            "successful": int,
+            "failed": int,
+            "results": [{"row": int, "snapshot_id": int, ...}],
+            "errors": [{"row": int, "errors": [...], ...}]
+        }
+
+    Raises:
+        ValueError: If CSV format is invalid or required columns missing
+    """
+    from app.services.snapshot_csv_parser import parse_snapshot_csv
+
+    results = {
+        "total_rows": 0,
+        "successful": 0,
+        "failed": 0,
+        "results": [],
+        "errors": [],
+    }
+
+    try:
+        # Parse CSV
+        parsed_rows = parse_snapshot_csv(csv_content)
+        results["total_rows"] = len(parsed_rows)
+
+        log_with_context(
+            logger,
+            logging.INFO,
+            "Starting snapshot CSV import",
+            total_rows=len(parsed_rows),
+        )
+
+    except ValueError as e:
+        # File-level parsing error
+        log_with_context(
+            logger,
+            logging.ERROR,
+            "Snapshot CSV parsing failed",
+            error=str(e),
+        )
+        raise
+
+    # Process each row
+    for row_data in parsed_rows:
+        try:
+            # Create AssetSnapshot record
+            snapshot = AssetSnapshot(
+                snapshot_date=row_data.snapshot_date,
+                asset_type=row_data.asset_type,
+                asset_detail=row_data.asset_detail,
+                currency=row_data.currency,
+                value=row_data.value,
+                exchange_rate=row_data.exchange_rate,
+                value_eur=row_data.value_eur,
+                created_at=row_data.created_at or datetime.utcnow(),
+            )
+
+            db.add(snapshot)
+            db.flush()  # Get the ID
+
+            # Record success
+            results["successful"] += 1
+            results["results"].append({
+                "row": row_data.row_number,
+                "snapshot_id": snapshot.id,
+                "snapshot_date": snapshot.snapshot_date,
+                "asset_type": snapshot.asset_type,
+            })
+
+        except Exception as e:
+            # Record failure
+            results["failed"] += 1
+            error_message = str(e)
+            results["errors"].append({
+                "row": row_data.row_number,
+                "snapshot_date": row_data.snapshot_date.isoformat() if row_data.snapshot_date else None,
+                "asset_type": row_data.asset_type,
+                "errors": [error_message],
+                "raw_data": row_data.raw_row,
+            })
+
+            log_with_context(
+                logger,
+                logging.WARNING,
+                "Snapshot import failed for row",
+                row=row_data.row_number,
+                error=error_message,
+            )
+
+    # Commit if any successful
+    if results["successful"] > 0:
+        db.commit()
+    else:
+        db.rollback()
+
+    # AUDIT LOG
+    log_with_context(
+        logger,
+        logging.INFO,
+        "Snapshot CSV import completed",
+        operation="BULK_CREATE",
+        total_rows=results["total_rows"],
+        successful=results["successful"],
+        failed=results["failed"],
+        success_rate=f"{(results['successful'] / results['total_rows'] * 100):.2f}%" if results['total_rows'] > 0 else "0%",
+    )
+
+    return results
+
+
+def delete_all_snapshots(db: Session) -> int:
+    """
+    Delete all asset snapshots from the database.
+
+    WARNING: This is a destructive operation that cannot be undone.
+
+    Args:
+        db: Database session
+
+    Returns:
+        Number of snapshots deleted
+
+    Raises:
+        Exception: If database operation fails
+    """
+    try:
+        # Get count before deletion
+        count = db.query(AssetSnapshot).count()
+
+        # Delete all snapshots
+        db.query(AssetSnapshot).delete()
+        db.commit()
+
+        # AUDIT LOG
+        log_with_context(
+            logger,
+            logging.WARNING,
+            "All snapshots deleted",
+            operation="BULK_DELETE",
+            deleted_count=count,
+        )
+
+        return count
+
+    except Exception as e:
+        db.rollback()
+        log_with_context(
+            logger,
+            logging.ERROR,
+            "Failed to delete all snapshots",
+            operation="BULK_DELETE",
+            error=str(e),
+        )
+        raise

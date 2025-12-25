@@ -42,12 +42,14 @@ A full-stack web application for tracking ETF portfolio transactions with automa
 - ✅ **Portfolio growth tracking** - Automatic calculation of absolute and percentage changes from baseline
 - ✅ **Time-series visualization** - Area chart displaying portfolio value over time with growth indicators
 - ✅ **Snapshot management** - Exchange rate display in snapshots table with hover-to-delete functionality
+- ✅ **Bulk CSV import** - Import DEGIRO transactions from CSV with detailed error reporting
+- ✅ **Snapshot CSV import** - Bulk import historical snapshot data from CSV files
 
 **User Experience**
 - ✅ Clean, responsive React UI
 - ✅ Interactive API documentation (Swagger UI)
 - ✅ Fast development with hot reload
-- ✅ Comprehensive test coverage (95%, 245 tests)
+- ✅ Comprehensive test coverage (95%, 277 tests)
 
 ### Tech Stack
 
@@ -376,6 +378,7 @@ All endpoints are prefixed with `/api/v1`
 | GET | `/transactions/{id}` | Get specific transaction |
 | PUT | `/transactions/{id}` | Update transaction |
 | DELETE | `/transactions/{id}` | Delete transaction |
+| POST | `/transactions/degiro-import-csv-transactions` | **Bulk import DEGIRO transactions from CSV** - Returns detailed success/failure report with row-by-row errors |
 
 #### Analytics Endpoints
 | Method | Endpoint | Description |
@@ -417,14 +420,25 @@ All endpoints are prefixed with `/api/v1`
 | GET | `/snapshots` | List all snapshots (with optional date range and asset type filters) |
 | GET | `/snapshots/summary` | Get aggregated summary with growth tracking (absolute and % changes from oldest) and average monthly increment |
 | DELETE | `/snapshots/{snapshot_date}` | Delete snapshots by full datetime (requires ISO 8601 format with time component) |
+| POST | `/snapshots/import-csv` | **Bulk import historical snapshots from CSV** - Accepts CSV with columns: snapshot_date, asset_type, asset_detail, currency, value, exchange_rate, value_eur |
 
-**Note**: Snapshots capture point-in-time portfolio state with preserved exchange rates. The summary endpoint includes automatic calculation of portfolio growth from the oldest snapshot in the filtered dataset, including `avg_monthly_increment` (normalized 30-day growth rate in EUR).
+**Note**: Snapshots capture point-in-time portfolio state with preserved exchange rates. The summary endpoint includes automatic calculation of portfolio growth from the oldest snapshot in the filtered dataset, including `avg_monthly_increment` (normalized 30-day growth rate in EUR). CSV import allows bulk importing of historical snapshot data with detailed error reporting per row.
 
 **Frontend Features**:
 - Exchange rate display in snapshots table (format: "Rate: 25.50 CZK/EUR")
 - Hover-to-delete functionality with red X button on each row
 - Confirmation dialog before deletion
 - Automatic list refresh after successful deletion
+- CSV import button for bulk importing historical snapshot data
+- Detailed import results with success/failure counts and per-row error reporting
+
+**CSV Import Features** (Transactions & Snapshots):
+- File picker accepts .csv files only
+- Shows "Importing..." state during upload
+- Displays color-coded results (green = success, yellow = partial, red = error)
+- Lists specific errors with row numbers and validation details
+- Auto-refreshes list after successful imports
+- Dismissible results card
 
 **Full interactive API documentation:** http://localhost:8000/docs (Swagger UI)
 
@@ -560,9 +574,9 @@ realized_gain = (sell_price × units - fee) - cost_removed
 ## Project Status
 
 **Current Version**: Development
-**Test Coverage**: 95% (245 tests)
-**Frontend Pages**: 6 pages (Investment Dashboard, Transactions, Add/Edit Transaction, ISIN Metadata Management, Other Assets, Snapshots with Growth Tracking)
-**Backend Endpoints**: 21 endpoints (5 transaction, 1 analytics, 2 position values, 5 ISIN metadata, 3 other assets, 2 settings, 4 snapshots) - optimized from 27 endpoints
+**Test Coverage**: 95% (277 tests)
+**Frontend Pages**: 7 pages (Investment Dashboard, Transactions, Add/Edit Transaction, ISIN Metadata Management, Add/Edit ISIN Metadata, Other Assets, Snapshots with Growth Tracking)
+**Backend Endpoints**: 23 endpoints (6 transaction, 1 analytics, 2 position values, 5 ISIN metadata, 3 other assets, 2 settings, 5 snapshots) - includes CSV import for transactions and snapshots
 
 ---
 

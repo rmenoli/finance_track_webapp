@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { snapshotsAPI } from '../services/api';
 import SnapshotsTable from '../components/SnapshotsTable';
 import SnapshotValueChart from '../components/SnapshotValueChart';
@@ -15,6 +15,9 @@ function Snapshots() {
   const [activeQuickFilter, setActiveQuickFilter] = useState('ALL');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [importing, setImporting] = useState(false);
+  const [importResult, setImportResult] = useState(null);
+  const fileInputRef = useRef(null);
 
   // Load snapshots when filters change
   useEffect(() => {
@@ -95,11 +98,120 @@ function Snapshots() {
     }
   };
 
+  const handleImportClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChange = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    if (!file.name.endsWith('.csv')) {
+      setImportResult({
+        total_rows: 0,
+        successful: 0,
+        failed: 1,
+        results: [],
+        errors: [{ row: 0, errors: ['Please select a CSV file'] }],
+        success_rate: 0,
+      });
+      e.target.value = '';
+      return;
+    }
+
+    try {
+      setImporting(true);
+      setImportResult(null);
+
+      const result = await snapshotsAPI.importCSV(file);
+      setImportResult(result);
+
+      // Reload snapshots if any were successfully imported
+      if (result.successful > 0) {
+        loadSnapshots();
+      }
+    } catch (err) {
+      setImportResult({
+        total_rows: 0,
+        successful: 0,
+        failed: 1,
+        results: [],
+        errors: [{ row: 0, errors: [err.message || 'Import failed'] }],
+        success_rate: 0,
+      });
+    } finally {
+      setImporting(false);
+      // Reset file input
+      e.target.value = '';
+    }
+  };
+
+  const handleDismissImportResult = () => {
+    setImportResult(null);
+  };
+
   return (
     <div className="snapshots-page">
       <div className="page-header">
         <h1>Asset Snapshots</h1>
+        <div className="button-group">
+          <button
+            className="btn btn-secondary"
+            onClick={handleImportClick}
+            disabled={importing}
+          >
+            {importing ? 'Importing...' : '📁 Import CSV'}
+          </button>
+        </div>
       </div>
+
+      {/* Hidden file input */}
+      <input
+        type="file"
+        ref={fileInputRef}
+        onChange={handleFileChange}
+        accept=".csv"
+        style={{ display: 'none' }}
+      />
+
+      {/* Import Results */}
+      {importResult && (
+        <div className={`import-results ${
+          importResult.failed === 0 ? 'success' :
+          importResult.successful > 0 ? 'partial' : 'error'
+        }`}>
+          <h3>Import Results</h3>
+          <p className="import-summary">
+            {importResult.failed === 0 ? '✓' : '⚠️'}
+            {' '}Successfully imported {importResult.successful} of {importResult.total_rows} snapshots
+            ({importResult.success_rate}%)
+          </p>
+
+          {importResult.errors.length > 0 && (
+            <div className="import-errors">
+              <h4>Errors:</h4>
+              <ul className="import-error-list">
+                {importResult.errors.map((error, index) => (
+                  <li key={index} className="import-error-item">
+                    Row {error.row}
+                    {error.snapshot_date && ` (${error.snapshot_date})`}
+                    {error.asset_type && `, ${error.asset_type}`}
+                    : {error.errors.join(', ')}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          <button
+            className="btn btn-secondary"
+            onClick={handleDismissImportResult}
+          >
+            Dismiss
+          </button>
+        </div>
+      )}
 
       <div className="filters-card">
         <h3>Filters</h3>

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { transactionsAPI } from '../services/api';
 import TransactionList from '../components/TransactionList';
@@ -15,7 +15,10 @@ function Transactions() {
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [importing, setImporting] = useState(false);
+  const [importResult, setImportResult] = useState(null);
   const navigate = useNavigate();
+  const fileInputRef = useRef(null);
 
   useEffect(() => {
     loadTransactions();
@@ -61,17 +64,126 @@ function Transactions() {
     navigate(`/transactions/edit/${id}`);
   };
 
+  const handleImportClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChange = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    if (!file.name.endsWith('.csv')) {
+      setImportResult({
+        total_rows: 0,
+        successful: 0,
+        failed: 1,
+        results: [],
+        errors: [{ row: 0, errors: ['Please select a CSV file'] }],
+        success_rate: 0,
+      });
+      e.target.value = '';
+      return;
+    }
+
+    try {
+      setImporting(true);
+      setImportResult(null);
+
+      const result = await transactionsAPI.importCSV(file);
+      setImportResult(result);
+
+      // Reload transactions if any were successfully imported
+      if (result.successful > 0) {
+        loadTransactions();
+      }
+    } catch (err) {
+      setImportResult({
+        total_rows: 0,
+        successful: 0,
+        failed: 1,
+        results: [],
+        errors: [{ row: 0, errors: [err.message || 'Import failed'] }],
+        success_rate: 0,
+      });
+    } finally {
+      setImporting(false);
+      // Reset file input
+      e.target.value = '';
+    }
+  };
+
+  const handleDismissImportResult = () => {
+    setImportResult(null);
+  };
+
   return (
     <div className="transactions-page">
       <div className="page-header">
         <h1>Transactions</h1>
-        <button
-          className="btn btn-primary"
-          onClick={() => navigate('/transactions/add')}
-        >
-          + Add Transaction
-        </button>
+        <div className="button-group">
+          <button
+            className="btn btn-primary"
+            onClick={() => navigate('/transactions/add')}
+          >
+            + Add Transaction
+          </button>
+          <button
+            className="btn btn-secondary"
+            onClick={handleImportClick}
+            disabled={importing}
+          >
+            {importing ? 'Importing...' : '📁 Import DEGIRO CSV'}
+          </button>
+        </div>
       </div>
+
+      {/* Hidden file input */}
+      <input
+        type="file"
+        ref={fileInputRef}
+        onChange={handleFileChange}
+        accept=".csv"
+        style={{ display: 'none' }}
+      />
+
+      {/* Import Results */}
+      {importResult && (
+        <div className={`import-results ${
+          importResult.failed === 0 ? 'success' :
+          importResult.successful > 0 ? 'partial' : 'error'
+        }`}>
+          <h3>Import Results</h3>
+          <p className="import-summary">
+            {importResult.failed === 0 ? '✓' : '⚠️'}
+            {' '}Successfully imported {importResult.successful} of {importResult.total_rows} transactions
+            ({importResult.success_rate}%)
+          </p>
+
+          {importResult.errors.length > 0 && (
+            <div className="import-errors">
+              <h4>Errors:</h4>
+              <ul className="import-error-list">
+                {importResult.errors.map((error, index) => (
+                  <li key={index} className="import-error-item">
+                    Row {error.row}
+                    {error.isin && ` (${error.isin})`}
+                    {error.date && `, ${error.date}`}
+                    : {error.errors.join(', ')}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          <button
+            className="btn btn-secondary"
+            onClick={handleDismissImportResult}
+          >
+            Dismiss
+          </button>
+        </div>
+      )}
 
       <div className="filters-card">
         <h3>Filters</h3>

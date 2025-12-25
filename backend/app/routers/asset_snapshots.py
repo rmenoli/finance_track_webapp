@@ -3,14 +3,16 @@
 from datetime import datetime
 from decimal import Decimal
 
-from fastapi import APIRouter, Depends, Path, Query, status
+from fastapi import APIRouter, Depends, File, Path, Query, UploadFile, status
 from sqlalchemy.orm import Session
 
 from app.database import get_db
+from app.exceptions import CSVImportError
 from app.schemas.asset_snapshot import (
     AssetSnapshotListResponse,
     AssetSnapshotResponse,
     SnapshotCreateResponse,
+    SnapshotCSVImportResponse,
     SnapshotSummaryListResponse,
 )
 from app.services import asset_snapshot_service
@@ -119,3 +121,67 @@ def delete_snapshot_by_date(
         "deleted_count": deleted_count,
         "snapshot_date": snapshot_date.isoformat(),
     }
+
+
+@router.delete(
+    "",
+    status_code=status.HTTP_200_OK,
+    summary="Delete all snapshots",
+    description="Delete all asset snapshots. WARNING: This operation cannot be undone!",
+)
+def delete_all_snapshots(db: Session = Depends(get_db)) -> dict:
+    """Delete all snapshots."""
+    deleted_count = asset_snapshot_service.delete_all_snapshots(db)
+    return {
+        "message": f"Successfully deleted {deleted_count} snapshot(s)",
+        "deleted_count": deleted_count,
+    }
+
+
+@router.post(
+    "/import-csv",
+    response_model=SnapshotCSVImportResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Import snapshots from CSV",
+    description="Import multiple asset snapshots from a CSV file. "
+    "Returns detailed results for successful and failed imports.",
+)
+async def import_snapshots_csv_endpoint(
+    file: UploadFile = File(..., description="Snapshot CSV file"),
+    db: Session = Depends(get_db),
+) -> SnapshotCSVImportResponse:
+    """
+    Import asset snapshots from CSV file.
+
+    Expected CSV format:
+    - Required columns: snapshot_date, asset_type, currency, value, exchange_rate, value_eur
+    - Optional columns: asset_detail, created_at
+    - Datetime format: ISO 8601 (e.g., 2023-01-17T00:00:00.397717)
+    - Decimal format: Standard notation (e.g., 41800.00)
+
+    Returns:
+    - Summary of import (total, successful, failed)
+    - List of successful imports with snapshot IDs
+    - List of failed imports with detailed error messages
+    """
+    # Validate file type
+    if not file.filename or not file.filename.endswith(".csv"):
+        raise CSVImportError("File must be a CSV file")
+
+    # Read file content
+    try:
+        content = await file.read()
+        csv_content = content.decode("utf-8")
+    except UnicodeDecodeError:
+        raise CSVImportError("File must be UTF-8 encoded")
+    except Exception as e:
+        raise CSVImportError(f"Failed to read file: {str(e)}")
+
+    # Import snapshots
+    results = asset_snapshot_service.import_snapshots_from_csv(
+        db=db,
+        csv_content=csv_content,
+    )
+
+    # Convert to response schema
+    return SnapshotCSVImportResponse(**results)

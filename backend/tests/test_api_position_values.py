@@ -76,3 +76,31 @@ class TestPositionValuesAPI:
         json_data = response.json()
         assert json_data["total"] == 0
         assert json_data["position_values"] == []
+
+    def test_delete_position_value_by_id_success(self, client):
+        """Test deleting position value by ID via API."""
+        # Create position value
+        create_response = client.post(
+            "/api/v1/position-values",
+            json={
+                "isin": "IE00B4L5Y983",
+                "current_value": 5000.00,
+            },
+        )
+        position_value_id = create_response.json()["id"]
+
+        # Delete by ID
+        response = client.delete(f"/api/v1/position-values/{position_value_id}")
+
+        assert response.status_code == 204
+
+        # Verify deletion - list should be empty
+        list_response = client.get("/api/v1/position-values")
+        assert list_response.json()["total"] == 0
+
+    def test_delete_position_value_by_id_not_found(self, client):
+        """Test deleting non-existent position value by ID returns 404."""
+        response = client.delete("/api/v1/position-values/99999")
+
+        assert response.status_code == 404
+        assert "ID 99999" in response.json()["detail"]
