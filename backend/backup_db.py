@@ -101,7 +101,7 @@ def backup_and_upload_to_s3(db_path: str, bucket_name: str, s3_prefix: str = "ba
 if __name__ == "__main__":
     # Configuration
     DB_PATH = os.path.join(os.path.dirname(__file__), "portfolio.db")
-    BUCKET_NAME = "your-s3-bucket-name"
+    BUCKET_NAME = os.getenv("S3_BUCKET_BACKUPS")
 
     try:
         print("=" * 60)
