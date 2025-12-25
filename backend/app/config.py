@@ -12,15 +12,14 @@ class Settings(BaseSettings):
     project_name: str = "ETF Portfolio Tracker"
     debug: bool = False
     cors_origins: str = '["http://localhost:3000", "http://localhost:8000"]'
+    s3_bucket_backups: str = "your-s3-bucket-name"
 
     # Logging configuration
     log_level: str = "INFO"
     log_format: str = "json"  # json or text
 
     model_config = SettingsConfigDict(
-        env_file=".env",
-        env_file_encoding="utf-8",
-        case_sensitive=False
+        env_file=".env", env_file_encoding="utf-8", case_sensitive=False
     )
 
     @property
