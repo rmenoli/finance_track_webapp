@@ -12,7 +12,7 @@ class Settings(BaseSettings):
     project_name: str = "ETF Portfolio Tracker"
     debug: bool = False
     cors_origins: str = '["http://localhost:3000", "http://localhost:8000"]'
-    s3_bucket_backups: str
+    s3_bucket_backups: str = "your-s3-bucket-name"
 
     # Logging configuration
     log_level: str = "INFO"
