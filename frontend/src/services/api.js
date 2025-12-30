@@ -223,6 +223,42 @@ export const settingsAPI = {
     });
     return handleResponse(response);
   },
+
+  // Get expected return investment setting
+  getExpectedReturnInvestment: async () => {
+    const response = await fetch(`${API_BASE_URL}/settings/expected-return-investment`);
+    return handleResponse(response);
+  },
+
+  // Update expected return investment setting
+  updateExpectedReturnInvestment: async (percentage) => {
+    const response = await fetch(`${API_BASE_URL}/settings/expected-return-investment`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ expected_return: percentage }),
+    });
+    return handleResponse(response);
+  },
+
+  // Get expected return CD setting
+  getExpectedReturnCD: async () => {
+    const response = await fetch(`${API_BASE_URL}/settings/expected-return-cd`);
+    return handleResponse(response);
+  },
+
+  // Update expected return CD setting
+  updateExpectedReturnCD: async (percentage) => {
+    const response = await fetch(`${API_BASE_URL}/settings/expected-return-cd`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ expected_return: percentage }),
+    });
+    return handleResponse(response);
+  },
 };
 
 // Snapshots API methods

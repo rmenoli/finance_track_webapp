@@ -14,10 +14,7 @@ class TransactionNotFoundError(HTTPException):
             detail=f"Transaction with id {transaction_id} not found",
         )
         # Log when exception is raised
-        logger.warning(
-            "Transaction not found",
-            extra={"transaction_id": transaction_id}
-        )
+        logger.warning("Transaction not found", extra={"transaction_id": transaction_id})
 
 
 class PositionValueNotFoundError(HTTPException):
@@ -36,10 +33,7 @@ class PositionValueNotFoundError(HTTPException):
             status_code=status.HTTP_404_NOT_FOUND,
             detail=detail,
         )
-        logger.warning(
-            "Position value not found",
-            extra=extra_field
-        )
+        logger.warning("Position value not found", extra=extra_field)
 
 
 class ISINMetadataNotFoundError(HTTPException):
@@ -50,10 +44,7 @@ class ISINMetadataNotFoundError(HTTPException):
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"ISIN metadata for {isin} not found",
         )
-        logger.warning(
-            "ISIN metadata not found",
-            extra={"isin": isin}
-        )
+        logger.warning("ISIN metadata not found", extra={"isin": isin})
 
 
 class ISINMetadataAlreadyExistsError(HTTPException):
@@ -64,10 +55,7 @@ class ISINMetadataAlreadyExistsError(HTTPException):
             status_code=status.HTTP_409_CONFLICT,
             detail=f"ISIN metadata for {isin} already exists",
         )
-        logger.warning(
-            "ISIN metadata already exists",
-            extra={"isin": isin}
-        )
+        logger.warning("ISIN metadata already exists", extra={"isin": isin})
 
 
 class OtherAssetNotFoundError(HTTPException):
@@ -84,8 +72,7 @@ class OtherAssetNotFoundError(HTTPException):
             detail=detail,
         )
         logger.warning(
-            "Other asset not found",
-            extra={"asset_type": asset_type, "asset_detail": asset_detail}
+            "Other asset not found", extra={"asset_type": asset_type, "asset_detail": asset_detail}
         )
 
 
@@ -97,10 +84,7 @@ class SnapshotNotFoundError(HTTPException):
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"No snapshots found for date {snapshot_date}",
         )
-        logger.warning(
-            "Snapshot not found",
-            extra={"snapshot_date": snapshot_date}
-        )
+        logger.warning("Snapshot not found", extra={"snapshot_date": snapshot_date})
 
 
 class CSVImportError(HTTPException):
@@ -111,7 +95,4 @@ class CSVImportError(HTTPException):
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"CSV import failed: {message}",
         )
-        logger.error(
-            "CSV import error",
-            extra={"error_message": message}
-        )
+        logger.error("CSV import error", extra={"error_message": message})

@@ -68,9 +68,7 @@ def get_transaction(db: Session, transaction_id: int) -> Transaction:
     Raises:
         TransactionNotFoundError: If transaction not found
     """
-    transaction = (
-        db.query(Transaction).filter(Transaction.id == transaction_id).first()
-    )
+    transaction = db.query(Transaction).filter(Transaction.id == transaction_id).first()
     if not transaction:
         raise TransactionNotFoundError(transaction_id)
     return transaction
@@ -394,24 +392,28 @@ def degiro_import_csv_transactions(db: Session, csv_content: str) -> dict:
 
             # Record success
             results["successful"] += 1
-            results["results"].append({
-                "row": row_data.row_number,
-                "transaction_id": transaction.id,
-                "isin": transaction.isin,
-                "transaction_type": transaction.transaction_type,
-            })
+            results["results"].append(
+                {
+                    "row": row_data.row_number,
+                    "transaction_id": transaction.id,
+                    "isin": transaction.isin,
+                    "transaction_type": transaction.transaction_type,
+                }
+            )
 
         except ValidationError as e:
             # Pydantic validation error
             results["failed"] += 1
             error_messages = [f"{err['loc'][-1]}: {err['msg']}" for err in e.errors()]
-            results["errors"].append({
-                "row": row_data.row_number,
-                "isin": row_data.isin,
-                "date": str(row_data.date),
-                "errors": error_messages,
-                "raw_data": row_data.raw_row,
-            })
+            results["errors"].append(
+                {
+                    "row": row_data.row_number,
+                    "isin": row_data.isin,
+                    "date": str(row_data.date),
+                    "errors": error_messages,
+                    "raw_data": row_data.raw_row,
+                }
+            )
 
             log_with_context(
                 logger,
@@ -425,13 +427,15 @@ def degiro_import_csv_transactions(db: Session, csv_content: str) -> dict:
         except Exception as e:
             # Unexpected error
             results["failed"] += 1
-            results["errors"].append({
-                "row": row_data.row_number,
-                "isin": row_data.isin if hasattr(row_data, "isin") else None,
-                "date": str(row_data.date) if hasattr(row_data, "date") else None,
-                "errors": [f"Unexpected error: {str(e)}"],
-                "raw_data": row_data.raw_row if hasattr(row_data, "raw_row") else None,
-            })
+            results["errors"].append(
+                {
+                    "row": row_data.row_number,
+                    "isin": row_data.isin if hasattr(row_data, "isin") else None,
+                    "date": str(row_data.date) if hasattr(row_data, "date") else None,
+                    "errors": [f"Unexpected error: {str(e)}"],
+                    "raw_data": row_data.raw_row if hasattr(row_data, "raw_row") else None,
+                }
+            )
 
             log_with_context(
                 logger,

@@ -1,6 +1,6 @@
 """Tests for asset snapshot service."""
 
-from datetime import datetime, timedelta
+from datetime import datetime
 from decimal import Decimal
 
 import pytest
@@ -29,15 +29,14 @@ class TestAssetSnapshotService:
             transaction_type="BUY",
             units=Decimal("10.00"),
             price_per_unit=Decimal("100.00"),
-            fee=Decimal("5.00")
+            fee=Decimal("5.00"),
         )
         db_session.add(transaction)
         db_session.commit()
 
         # Add position value
         position_value_service.upsert_position_value(
-            db_session,
-            PositionValueCreate(isin="IE00B4L5Y983", current_value=Decimal("1200.00"))
+            db_session, PositionValueCreate(isin="IE00B4L5Y983", current_value=Decimal("1200.00"))
         )
 
         # Create other assets
@@ -47,8 +46,8 @@ class TestAssetSnapshotService:
                 asset_type=AssetType.CRYPTO,
                 asset_detail=None,
                 currency=Currency.EUR,
-                value=Decimal("500.00")
-            )
+                value=Decimal("500.00"),
+            ),
         )
 
         # Create snapshot
@@ -90,14 +89,13 @@ class TestAssetSnapshotService:
             transaction_type="BUY",
             units=Decimal("10.00"),
             price_per_unit=Decimal("100.00"),
-            fee=Decimal("5.00")
+            fee=Decimal("5.00"),
         )
         db_session.add(transaction)
         db_session.commit()
 
         position_value_service.upsert_position_value(
-            db_session,
-            PositionValueCreate(isin="IE00B4L5Y983", current_value=Decimal("1200.00"))
+            db_session, PositionValueCreate(isin="IE00B4L5Y983", current_value=Decimal("1200.00"))
         )
 
         # Create snapshot
@@ -118,8 +116,8 @@ class TestAssetSnapshotService:
                 asset_type=AssetType.CRYPTO,
                 asset_detail=None,
                 currency=Currency.EUR,
-                value=Decimal("500.00")
-            )
+                value=Decimal("500.00"),
+            ),
         )
 
         # Create snapshot
@@ -142,8 +140,8 @@ class TestAssetSnapshotService:
                 asset_type=AssetType.CASH_EUR,
                 asset_detail="CSOB",
                 currency=Currency.EUR,
-                value=Decimal("1000.00")
-            )
+                value=Decimal("1000.00"),
+            ),
         )
         other_asset_service.upsert_other_asset(
             db_session,
@@ -151,8 +149,8 @@ class TestAssetSnapshotService:
                 asset_type=AssetType.CASH_EUR,
                 asset_detail="RAIF",
                 currency=Currency.EUR,
-                value=Decimal("500.00")
-            )
+                value=Decimal("500.00"),
+            ),
         )
 
         # Create snapshot
@@ -177,9 +175,7 @@ class TestAssetSnapshotService:
         """Test creating snapshot with custom datetime."""
         custom_date = datetime(2024, 6, 15, 10, 30, 0)
 
-        snapshots, metadata = asset_snapshot_service.create_snapshot(
-            db_session, custom_date
-        )
+        snapshots, metadata = asset_snapshot_service.create_snapshot(db_session, custom_date)
 
         assert len(snapshots) >= 1
         assert snapshots[0].snapshot_date == custom_date
@@ -197,8 +193,8 @@ class TestAssetSnapshotService:
                 asset_type=AssetType.CD_ACCOUNT,
                 asset_detail=None,
                 currency=Currency.CZK,
-                value=Decimal("2400.00")
-            )
+                value=Decimal("2400.00"),
+            ),
         )
 
         # Create snapshot
@@ -220,8 +216,8 @@ class TestAssetSnapshotService:
                 asset_type=AssetType.CASH_EUR,
                 asset_detail="Wise",
                 currency=Currency.EUR,
-                value=Decimal("300.00")
-            )
+                value=Decimal("300.00"),
+            ),
         )
 
         # Create crypto (no detail)
@@ -231,8 +227,8 @@ class TestAssetSnapshotService:
                 asset_type=AssetType.CRYPTO,
                 asset_detail=None,
                 currency=Currency.EUR,
-                value=Decimal("500.00")
-            )
+                value=Decimal("500.00"),
+            ),
         )
 
         # Create snapshot
@@ -278,9 +274,7 @@ class TestAssetSnapshotService:
 
         # Query with date range (Jan 10 - Jan 20)
         snapshots = asset_snapshot_service.get_snapshots(
-            db_session,
-            start_date=datetime(2024, 1, 10),
-            end_date=datetime(2024, 1, 20)
+            db_session, start_date=datetime(2024, 1, 10), end_date=datetime(2024, 1, 20)
         )
 
         # Should only have Jan 15 snapshots
@@ -295,16 +289,14 @@ class TestAssetSnapshotService:
                 asset_type=AssetType.CRYPTO,
                 asset_detail=None,
                 currency=Currency.EUR,
-                value=Decimal("500.00")
-            )
+                value=Decimal("500.00"),
+            ),
         )
 
         asset_snapshot_service.create_snapshot(db_session)
 
         # Query only crypto snapshots
-        snapshots = asset_snapshot_service.get_snapshots(
-            db_session, asset_type="crypto"
-        )
+        snapshots = asset_snapshot_service.get_snapshots(db_session, asset_type="crypto")
 
         assert len(snapshots) == 1
         assert snapshots[0].asset_type == "crypto"
@@ -314,14 +306,10 @@ class TestAssetSnapshotService:
         snapshot_date = datetime(2024, 6, 15, 10, 0, 0)
 
         # Create snapshot
-        created_snapshots, _ = asset_snapshot_service.create_snapshot(
-            db_session, snapshot_date
-        )
+        created_snapshots, _ = asset_snapshot_service.create_snapshot(db_session, snapshot_date)
 
         # Get by date
-        snapshots = asset_snapshot_service.get_snapshots_by_date(
-            db_session, snapshot_date
-        )
+        snapshots = asset_snapshot_service.get_snapshots_by_date(db_session, snapshot_date)
 
         assert len(snapshots) == len(created_snapshots)
         assert all(s.snapshot_date == snapshot_date for s in snapshots)
@@ -329,9 +317,7 @@ class TestAssetSnapshotService:
     def test_get_snapshots_by_date_not_found(self, db_session):
         """Test getting snapshots for non-existent date raises error."""
         with pytest.raises(SnapshotNotFoundError):
-            asset_snapshot_service.get_snapshots_by_date(
-                db_session, datetime(2024, 12, 31)
-            )
+            asset_snapshot_service.get_snapshots_by_date(db_session, datetime(2024, 12, 31))
 
     def test_get_snapshots_ordering(self, db_session):
         """Test that snapshots are ordered by date DESC, asset_type ASC."""
@@ -346,8 +332,8 @@ class TestAssetSnapshotService:
                 asset_type=AssetType.CRYPTO,
                 asset_detail=None,
                 currency=Currency.EUR,
-                value=Decimal("500.00")
-            )
+                value=Decimal("500.00"),
+            ),
         )
 
         asset_snapshot_service.create_snapshot(db_session, date1)
@@ -366,15 +352,11 @@ class TestAssetSnapshotService:
         snapshot_date = datetime(2024, 6, 15, 10, 0, 0)
 
         # Create snapshot
-        created_snapshots, _ = asset_snapshot_service.create_snapshot(
-            db_session, snapshot_date
-        )
+        created_snapshots, _ = asset_snapshot_service.create_snapshot(db_session, snapshot_date)
         num_created = len(created_snapshots)
 
         # Delete
-        deleted_count = asset_snapshot_service.delete_snapshots_by_date(
-            db_session, snapshot_date
-        )
+        deleted_count = asset_snapshot_service.delete_snapshots_by_date(db_session, snapshot_date)
 
         assert deleted_count == num_created
 
@@ -385,9 +367,7 @@ class TestAssetSnapshotService:
     def test_delete_snapshots_by_date_not_found(self, db_session):
         """Test deleting non-existent snapshots raises error."""
         with pytest.raises(SnapshotNotFoundError):
-            asset_snapshot_service.delete_snapshots_by_date(
-                db_session, datetime(2024, 12, 31)
-            )
+            asset_snapshot_service.delete_snapshots_by_date(db_session, datetime(2024, 12, 31))
 
     def test_delete_snapshots_only_deletes_specified_date(self, db_session):
         """Test that deletion only affects the specified date."""
@@ -420,9 +400,7 @@ class TestAssetSnapshotService:
         asset_snapshot_service.create_snapshot(db_session, snapshot_date)
 
         # Should have snapshots from both creations
-        snapshots = asset_snapshot_service.get_snapshots_by_date(
-            db_session, snapshot_date
-        )
+        snapshots = asset_snapshot_service.get_snapshots_by_date(db_session, snapshot_date)
 
         # Each creation adds at least 1 asset (investments), so should have at least 2
         assert len(snapshots) >= 2
@@ -439,8 +417,8 @@ class TestAssetSnapshotService:
                 asset_type=AssetType.CD_ACCOUNT,
                 asset_detail=None,
                 currency=Currency.CZK,
-                value=Decimal("2400.00")
-            )
+                value=Decimal("2400.00"),
+            ),
         )
 
         # Create snapshot
@@ -465,8 +443,8 @@ class TestAssetSnapshotService:
                 asset_type=AssetType.CRYPTO,
                 asset_detail=None,
                 currency=Currency.EUR,
-                value=Decimal("500.00")
-            )
+                value=Decimal("500.00"),
+            ),
         )
 
         # Create snapshot
@@ -512,8 +490,8 @@ class TestAssetSnapshotService:
                 asset_type=AssetType.CRYPTO,
                 asset_detail=None,
                 currency=Currency.EUR,
-                value=Decimal("500.00")
-            )
+                value=Decimal("500.00"),
+            ),
         )
 
         # Create CZK asset
@@ -524,8 +502,8 @@ class TestAssetSnapshotService:
                 asset_type=AssetType.CD_ACCOUNT,
                 asset_detail=None,
                 currency=Currency.CZK,
-                value=Decimal("2500.00")
-            )
+                value=Decimal("2500.00"),
+            ),
         )
 
         # Create snapshot
@@ -555,8 +533,8 @@ class TestAssetSnapshotService:
                 asset_type=AssetType.CASH_EUR,
                 asset_detail="CSOB",
                 currency=Currency.EUR,
-                value=Decimal("1000.00")
-            )
+                value=Decimal("1000.00"),
+            ),
         )
         other_asset_service.upsert_other_asset(
             db_session,
@@ -564,8 +542,8 @@ class TestAssetSnapshotService:
                 asset_type=AssetType.CASH_EUR,
                 asset_detail="RAIF",
                 currency=Currency.EUR,
-                value=Decimal("500.00")
-            )
+                value=Decimal("500.00"),
+            ),
         )
 
         # Create crypto asset
@@ -575,8 +553,8 @@ class TestAssetSnapshotService:
                 asset_type=AssetType.CRYPTO,
                 asset_detail=None,
                 currency=Currency.EUR,
-                value=Decimal("300.00")
-            )
+                value=Decimal("300.00"),
+            ),
         )
 
         # Create snapshot
@@ -604,17 +582,13 @@ class TestAssetSnapshotService:
         asset_snapshot_service.create_snapshot(db_session, date3)
 
         # Test start_date filter
-        summaries, _ = asset_snapshot_service.get_snapshot_summaries(
-            db_session, start_date=date2
-        )
+        summaries, _ = asset_snapshot_service.get_snapshot_summaries(db_session, start_date=date2)
         assert len(summaries) == 2  # date2 and date3
         assert summaries[0].snapshot_date == date3
         assert summaries[1].snapshot_date == date2
 
         # Test end_date filter
-        summaries, _ = asset_snapshot_service.get_snapshot_summaries(
-            db_session, end_date=date2
-        )
+        summaries, _ = asset_snapshot_service.get_snapshot_summaries(db_session, end_date=date2)
         assert len(summaries) == 2  # date1 and date2
         assert summaries[0].snapshot_date == date2
         assert summaries[1].snapshot_date == date1
@@ -642,8 +616,8 @@ class TestAssetSnapshotService:
                     asset_type=AssetType.CASH_EUR,
                     asset_detail=account,
                     currency=Currency.EUR,
-                    value=Decimal("100.00")
-                )
+                    value=Decimal("100.00"),
+                ),
             )
 
         # Create snapshot

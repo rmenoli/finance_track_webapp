@@ -89,9 +89,7 @@ def setup_logging() -> None:
     logging.getLogger("sqlalchemy.engine").setLevel(logging.WARNING)
 
 
-def log_with_context(
-    logger: logging.Logger, level: int, message: str, **extra_fields: Any
-) -> None:
+def log_with_context(logger: logging.Logger, level: int, message: str, **extra_fields: Any) -> None:
     """
     Log a message with structured extra fields.
 

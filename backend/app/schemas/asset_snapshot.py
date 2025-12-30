@@ -13,11 +13,17 @@ class AssetSnapshotResponse(BaseModel):
     id: int = Field(..., description="Snapshot ID")
     snapshot_date: datetime = Field(..., description="When snapshot was taken")
     asset_type: str = Field(..., description="Asset type (investments, crypto, cash_eur, etc.)")
-    asset_detail: Optional[str] = Field(None, description="Account name for cash assets, NULL for others")
+    asset_detail: Optional[str] = Field(
+        None, description="Account name for cash assets, NULL for others"
+    )
     currency: str = Field(..., description="Currency (EUR or CZK)")
     value: Decimal = Field(..., description="Value in native currency")
-    exchange_rate: Decimal = Field(..., description="Exchange rate (CZK per 1 EUR) at snapshot time")
-    value_eur: Decimal = Field(..., description="Value converted to EUR using snapshot exchange rate")
+    exchange_rate: Decimal = Field(
+        ..., description="Exchange rate (CZK per 1 EUR) at snapshot time"
+    )
+    value_eur: Decimal = Field(
+        ..., description="Value converted to EUR using snapshot exchange rate"
+    )
     created_at: datetime = Field(..., description="When record was created")
 
     model_config = ConfigDict(from_attributes=True)
@@ -37,7 +43,9 @@ class AssetSnapshotListResponse(BaseModel):
 
     snapshots: list[AssetSnapshotResponse]
     total: int = Field(..., description="Total number of snapshot rows returned")
-    metadata: Optional[SnapshotMetadata] = Field(None, description="Snapshot metadata (if grouped by date)")
+    metadata: Optional[SnapshotMetadata] = Field(
+        None, description="Snapshot metadata (if grouped by date)"
+    )
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -76,11 +84,11 @@ class SnapshotSummary(BaseModel):
     by_asset_type: list[AssetTypeBreakdown] = Field(..., description="Asset type breakdown")
     absolute_change_from_oldest: Decimal = Field(
         ...,
-        description="Absolute value change from oldest snapshot in filtered result set in EUR (0 for oldest snapshot)"
+        description="Absolute value change from oldest snapshot in filtered result set in EUR (0 for oldest snapshot)",
     )
     percentage_change_from_oldest: Decimal = Field(
         ...,
-        description="Percentage change from oldest snapshot in filtered result set (0 for oldest snapshot)"
+        description="Percentage change from oldest snapshot in filtered result set (0 for oldest snapshot)",
     )
 
 
@@ -91,7 +99,7 @@ class SnapshotSummaryListResponse(BaseModel):
     total: int = Field(..., description="Number of snapshot dates returned")
     avg_monthly_increment: Decimal = Field(
         ...,
-        description="Average monthly portfolio increment in EUR (calculated as total change divided by days, normalized to 30 days). Returns 0 if 0 or 1 snapshots."
+        description="Average monthly portfolio increment in EUR (calculated as total change divided by days, normalized to 30 days). Returns 0 if 0 or 1 snapshots.",
     )
 
 
@@ -112,13 +120,9 @@ class SnapshotCSVImportError(BaseModel):
     snapshot_date: Optional[str] = Field(
         None, description="Snapshot date from failed row (if parseable)"
     )
-    asset_type: Optional[str] = Field(
-        None, description="Asset type from failed row (if parseable)"
-    )
+    asset_type: Optional[str] = Field(None, description="Asset type from failed row (if parseable)")
     errors: list[str] = Field(..., description="List of validation error messages")
-    raw_data: Optional[dict] = Field(
-        None, description="Raw CSV row data for debugging"
-    )
+    raw_data: Optional[dict] = Field(None, description="Raw CSV row data for debugging")
 
 
 class SnapshotCSVImportResponse(BaseModel):

@@ -149,7 +149,31 @@ def get_all_other_assets(db: Session) -> list[OtherAsset]:
     )
 
 
-def get_all_other_assets_with_investments(db: Session) -> tuple[list[OtherAsset], Decimal]:
+def calculate_monthly_expected_return(value: Decimal, annual_rate_percentage: Decimal) -> Decimal:
+    """
+    Calculate monthly expected return.
+
+    Args:
+        value: Asset value in EUR
+        annual_rate_percentage: Annual return rate as percentage (e.g., 7.00 for 7%)
+
+    Returns:
+        Monthly expected return in EUR (rounded to 2 decimal places)
+
+    Example:
+        calculate_monthly_expected_return(Decimal("1000.00"), Decimal("7.00"))
+        # Returns: Decimal("5.83")  # (1000 * 0.07) / 12
+    """
+    if value == 0 or annual_rate_percentage == 0:
+        return Decimal("0.00")
+
+    monthly_return = (value * annual_rate_percentage / 100) / 12
+    return monthly_return.quantize(Decimal("0.01"))
+
+
+def get_all_other_assets_with_investments(
+    db: Session,
+) -> tuple[list[OtherAsset], Decimal, Decimal, Decimal]:
     """
     Get all other assets including synthetic 'investments' row with EUR conversion metadata.
 
@@ -164,7 +188,7 @@ def get_all_other_assets_with_investments(db: Session) -> tuple[list[OtherAsset]
         db: Database session
 
     Returns:
-        Tuple of (assets list with synthetic investments row first, exchange_rate_used)
+        Tuple of (assets_list, exchange_rate, monthly_return_investment, monthly_return_cd)
     """
     # Get exchange rate from settings (default 25.00)
     setting = user_setting_service.get_exchange_rate_setting(db)
@@ -200,8 +224,37 @@ def get_all_other_assets_with_investments(db: Session) -> tuple[list[OtherAsset]
     for asset in all_assets:
         asset.exchange_rate_ = exchange_rate
 
-    # Return assets and exchange rate used
-    return all_assets, exchange_rate
+    # Calculate monthly expected returns
+    # 1. Get expected return settings
+    investment_setting = user_setting_service.get_expected_return_investment_setting(db)
+    cd_setting = user_setting_service.get_expected_return_cd_setting(db)
+
+    investment_rate = (
+        Decimal(investment_setting.setting_value) if investment_setting else Decimal("7.00")
+    )
+    cd_rate = Decimal(cd_setting.setting_value) if cd_setting else Decimal("4.00")
+
+    # 2. Extract investment value from synthetic row (first in list, id=0)
+    investment_value = (
+        all_assets[0].value if all_assets and all_assets[0].id == 0 else Decimal("0.00")
+    )
+
+    # 3. Sum all cd_account values in EUR
+    cd_total_value_eur = Decimal("0.00")
+    for asset in all_assets:
+        if asset.asset_type == AssetType.CD_ACCOUNT.value:
+            # Convert to EUR if needed (CD accounts are typically in CZK)
+            if asset.currency == Currency.EUR.value:
+                cd_total_value_eur += asset.value
+            else:  # CZK
+                cd_total_value_eur += asset.value / exchange_rate
+
+    # 4. Calculate monthly returns (in EUR)
+    monthly_return_investment = calculate_monthly_expected_return(investment_value, investment_rate)
+    monthly_return_cd = calculate_monthly_expected_return(cd_total_value_eur, cd_rate)
+
+    # Return assets, exchange rate, and monthly returns
+    return all_assets, exchange_rate, monthly_return_investment, monthly_return_cd
 
 
 def delete_other_asset(db: Session, asset_type: str, asset_detail: str | None = None) -> None:

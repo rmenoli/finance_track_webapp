@@ -7,8 +7,6 @@ from decimal import Decimal, InvalidOperation
 from io import StringIO
 from typing import Optional
 
-from app.logging_config import log_with_context
-
 logger = logging.getLogger(__name__)
 
 
@@ -84,9 +82,7 @@ def parse_iso_datetime(datetime_str: str) -> datetime:
         try:
             return datetime.strptime(datetime_str.strip(), "%Y-%m-%dT%H:%M:%S.%f")
         except ValueError:
-            raise ValueError(
-                f"Invalid datetime format: {datetime_str} (expected ISO 8601 format)"
-            )
+            raise ValueError(f"Invalid datetime format: {datetime_str} (expected ISO 8601 format)")
 
 
 def parse_snapshot_row(row: dict, row_number: int) -> SnapshotRowData:
@@ -110,9 +106,7 @@ def parse_snapshot_row(row: dict, row_number: int) -> SnapshotRowData:
         # asset_type (required)
         asset_type = row["asset_type"].strip()
         if not asset_type or len(asset_type) > 50:
-            raise ValueError(
-                f"Invalid asset_type: must be between 1 and 50 characters"
-            )
+            raise ValueError("Invalid asset_type: must be between 1 and 50 characters")
 
         # asset_detail (optional)
         asset_detail_raw = row.get("asset_detail", "").strip()
@@ -123,7 +117,7 @@ def parse_snapshot_row(row: dict, row_number: int) -> SnapshotRowData:
         # currency (required)
         currency = row["currency"].strip().upper()
         if len(currency) != 3:
-            raise ValueError(f"Invalid currency: must be exactly 3 characters")
+            raise ValueError("Invalid currency: must be exactly 3 characters")
 
         # value (required)
         value = parse_decimal(row["value"])
@@ -196,9 +190,7 @@ def parse_snapshot_csv(csv_content: str) -> list[SnapshotRowData]:
 
         missing_columns = required_columns - set(reader.fieldnames)
         if missing_columns:
-            raise ValueError(
-                f"Missing required columns: {', '.join(missing_columns)}"
-            )
+            raise ValueError(f"Missing required columns: {', '.join(missing_columns)}")
 
         # Parse rows
         parsed_rows = []

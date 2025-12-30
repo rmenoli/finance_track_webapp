@@ -53,18 +53,25 @@ def upsert_other_asset(
 )
 def list_other_assets(
     include_investments: bool = Query(
-        True,
-        description="Include synthetic investments row computed from portfolio summary"
+        True, description="Include synthetic investments row computed from portfolio summary"
     ),
     db: Session = Depends(get_db),
 ) -> OtherAssetListResponse:
     """List all other assets."""
     if include_investments:
-        other_assets, exchange_rate = other_asset_service.get_all_other_assets_with_investments(db)
+        (
+            other_assets,
+            exchange_rate,
+            monthly_return_investment,
+            monthly_return_cd,
+        ) = other_asset_service.get_all_other_assets_with_investments(db)
     else:
         other_assets = other_asset_service.get_all_other_assets(db)
         setting = user_setting_service.get_exchange_rate_setting(db)
         exchange_rate = Decimal(setting.setting_value) if setting else Decimal("25.00")
+        # No monthly returns when investments are not included
+        monthly_return_investment = Decimal("0.00")
+        monthly_return_cd = Decimal("0.00")
 
     # Create response objects with exchange_rate_ set
     response_assets = []
@@ -85,6 +92,8 @@ def list_other_assets(
         other_assets=response_assets,
         total=len(response_assets),
         exchange_rate_used=exchange_rate,
+        monthly_expected_return_investment=monthly_return_investment,
+        monthly_expected_return_cd=monthly_return_cd,
     )
 
 
@@ -96,7 +105,9 @@ def list_other_assets(
 )
 def delete_other_asset(
     asset_type: str = Path(..., min_length=1, max_length=50, description="Asset type"),
-    asset_detail: Optional[str] = Query(None, max_length=100, description="Asset detail (account name for cash)"),
+    asset_detail: Optional[str] = Query(
+        None, max_length=100, description="Asset detail (account name for cash)"
+    ),
     db: Session = Depends(get_db),
 ) -> None:
     """Delete an other asset."""

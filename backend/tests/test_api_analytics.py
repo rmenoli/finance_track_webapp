@@ -1,4 +1,5 @@
 """Tests for analytics API endpoints."""
+
 from datetime import date, timedelta
 
 
@@ -17,8 +18,8 @@ class TestAnalyticsAPI:
                 "fee": 1.50,
                 "price_per_unit": 100.00,
                 "units": 10.0,
-                "transaction_type": "BUY"
-            }
+                "transaction_type": "BUY",
+            },
         )
         client.post(
             "/api/v1/transactions",
@@ -29,8 +30,8 @@ class TestAnalyticsAPI:
                 "fee": 2.00,
                 "price_per_unit": 200.00,
                 "units": 5.0,
-                "transaction_type": "BUY"
-            }
+                "transaction_type": "BUY",
+            },
         )
         client.post(
             "/api/v1/transactions",
@@ -41,8 +42,8 @@ class TestAnalyticsAPI:
                 "fee": 1.50,
                 "price_per_unit": 120.00,
                 "units": 3.0,
-                "transaction_type": "SELL"
-            }
+                "transaction_type": "SELL",
+            },
         )
 
         response = client.get("/api/v1/analytics/portfolio-summary")
@@ -62,7 +63,9 @@ class TestAnalyticsAPI:
         assert float(data["total_invested"]) > 0
         assert float(data["total_withdrawn"]) > 0
         assert float(data["total_fees"]) > 0
-        assert float(data["total_current_portfolio_invested_value"]) == 0.0  # No position values added
+        assert (
+            float(data["total_current_portfolio_invested_value"]) == 0.0
+        )  # No position values added
         # P/L = 0 (current) + 360 (withdrawn) - 5.0 (fees) - 2000 (invested) = -1645.0
         assert float(data["total_profit_loss"]) < 0  # Should be negative
         assert len(data["holdings"]) == 2
@@ -93,8 +96,8 @@ class TestAnalyticsAPI:
                 "fee": 1.50,
                 "price_per_unit": 100.00,
                 "units": 10.0,
-                "transaction_type": "BUY"
-            }
+                "transaction_type": "BUY",
+            },
         )
         client.post(
             "/api/v1/transactions",
@@ -105,24 +108,16 @@ class TestAnalyticsAPI:
                 "fee": 2.00,
                 "price_per_unit": 200.00,
                 "units": 5.0,
-                "transaction_type": "BUY"
-            }
+                "transaction_type": "BUY",
+            },
         )
 
         # Create position values
         client.post(
-            "/api/v1/position-values",
-            json={
-                "isin": "IE00B4L5Y983",
-                "current_value": 1100.00
-            }
+            "/api/v1/position-values", json={"isin": "IE00B4L5Y983", "current_value": 1100.00}
         )
         client.post(
-            "/api/v1/position-values",
-            json={
-                "isin": "US0378331005",
-                "current_value": 1050.00
-            }
+            "/api/v1/position-values", json={"isin": "US0378331005", "current_value": 1050.00}
         )
 
         # Get portfolio summary

@@ -9,7 +9,7 @@ class TestISINMetadataAPI:
         data = {
             "isin": "IE00B4L5Y983",
             "name": "iShares Core MSCI Emerging Markets ETF",
-            "type": "STOCK"
+            "type": "STOCK",
         }
 
         response = client.post("/api/v1/isin-metadata", json=data)
@@ -77,9 +77,16 @@ class TestISINMetadataAPI:
     def test_list_isin_metadata(self, client):
         """Test listing all ISIN metadata."""
         # Create multiple metadata entries
-        client.post("/api/v1/isin-metadata", json={"isin": "IE00B4L5Y983", "name": "ETF 1", "type": "STOCK"})
-        client.post("/api/v1/isin-metadata", json={"isin": "US0378331005", "name": "Stock 1", "type": "STOCK"})
-        client.post("/api/v1/isin-metadata", json={"isin": "GB00B24CGK77", "name": "Bond 1", "type": "BOND"})
+        client.post(
+            "/api/v1/isin-metadata", json={"isin": "IE00B4L5Y983", "name": "ETF 1", "type": "STOCK"}
+        )
+        client.post(
+            "/api/v1/isin-metadata",
+            json={"isin": "US0378331005", "name": "Stock 1", "type": "STOCK"},
+        )
+        client.post(
+            "/api/v1/isin-metadata", json={"isin": "GB00B24CGK77", "name": "Bond 1", "type": "BOND"}
+        )
 
         # List all
         response = client.get("/api/v1/isin-metadata")
@@ -103,10 +110,20 @@ class TestISINMetadataAPI:
     def test_list_isin_metadata_filter_by_type(self, client):
         """Test listing ISIN metadata filtered by type."""
         # Create mixed types
-        client.post("/api/v1/isin-metadata", json={"isin": "IE00B4L5Y983", "name": "ETF 1", "type": "STOCK"})
-        client.post("/api/v1/isin-metadata", json={"isin": "US0378331005", "name": "Stock 1", "type": "STOCK"})
-        client.post("/api/v1/isin-metadata", json={"isin": "GB00B24CGK77", "name": "Bond 1", "type": "BOND"})
-        client.post("/api/v1/isin-metadata", json={"isin": "DE0005933931", "name": "Real Asset 1", "type": "REAL_ASSET"})
+        client.post(
+            "/api/v1/isin-metadata", json={"isin": "IE00B4L5Y983", "name": "ETF 1", "type": "STOCK"}
+        )
+        client.post(
+            "/api/v1/isin-metadata",
+            json={"isin": "US0378331005", "name": "Stock 1", "type": "STOCK"},
+        )
+        client.post(
+            "/api/v1/isin-metadata", json={"isin": "GB00B24CGK77", "name": "Bond 1", "type": "BOND"}
+        )
+        client.post(
+            "/api/v1/isin-metadata",
+            json={"isin": "DE0005933931", "name": "Real Asset 1", "type": "REAL_ASSET"},
+        )
 
         # Filter by STOCK
         response = client.get("/api/v1/isin-metadata?type=STOCK")
@@ -132,7 +149,10 @@ class TestISINMetadataAPI:
     def test_get_isin_metadata_by_isin(self, client):
         """Test getting specific ISIN metadata by ISIN."""
         # Create metadata
-        client.post("/api/v1/isin-metadata", json={"isin": "IE00B4L5Y983", "name": "Test ETF", "type": "STOCK"})
+        client.post(
+            "/api/v1/isin-metadata",
+            json={"isin": "IE00B4L5Y983", "name": "Test ETF", "type": "STOCK"},
+        )
 
         # Get by ISIN
         response = client.get("/api/v1/isin-metadata/IE00B4L5Y983")
@@ -153,7 +173,10 @@ class TestISINMetadataAPI:
     def test_update_isin_metadata(self, client):
         """Test updating ISIN metadata."""
         # Create metadata
-        client.post("/api/v1/isin-metadata", json={"isin": "IE00B4L5Y983", "name": "Original Name", "type": "STOCK"})
+        client.post(
+            "/api/v1/isin-metadata",
+            json={"isin": "IE00B4L5Y983", "name": "Original Name", "type": "STOCK"},
+        )
 
         # Update both fields
         update_data = {"name": "Updated Name", "type": "BOND"}
@@ -168,7 +191,10 @@ class TestISINMetadataAPI:
     def test_update_isin_metadata_partial(self, client):
         """Test updating only some fields of ISIN metadata."""
         # Create metadata
-        client.post("/api/v1/isin-metadata", json={"isin": "IE00B4L5Y983", "name": "Original Name", "type": "STOCK"})
+        client.post(
+            "/api/v1/isin-metadata",
+            json={"isin": "IE00B4L5Y983", "name": "Original Name", "type": "STOCK"},
+        )
 
         # Update only name
         update_data = {"name": "New Name"}
@@ -190,7 +216,10 @@ class TestISINMetadataAPI:
     def test_delete_isin_metadata(self, client):
         """Test deleting ISIN metadata."""
         # Create metadata
-        client.post("/api/v1/isin-metadata", json={"isin": "IE00B4L5Y983", "name": "Test ETF", "type": "STOCK"})
+        client.post(
+            "/api/v1/isin-metadata",
+            json={"isin": "IE00B4L5Y983", "name": "Test ETF", "type": "STOCK"},
+        )
 
         # Delete
         response = client.delete("/api/v1/isin-metadata/IE00B4L5Y983")

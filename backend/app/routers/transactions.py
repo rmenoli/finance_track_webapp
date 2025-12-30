@@ -56,12 +56,8 @@ def list_transactions(
         le=MAX_PAGE_SIZE,
         description="Maximum number of records to return",
     ),
-    sort_by: str = Query(
-        "date", pattern="^(date|created_at)$", description="Sort by field"
-    ),
-    sort_order: str = Query(
-        "desc", pattern="^(asc|desc)$", description="Sort order"
-    ),
+    sort_by: str = Query("date", pattern="^(date|created_at)$", description="Sort by field"),
+    sort_order: str = Query("desc", pattern="^(asc|desc)$", description="Sort order"),
     db: Session = Depends(get_db),
 ) -> TransactionListResponse:
     """List all transactions with optional filters."""
@@ -113,9 +109,7 @@ def update_transaction(
     db: Session = Depends(get_db),
 ) -> TransactionResponse:
     """Update a transaction."""
-    updated_transaction = transaction_service.update_transaction(
-        db, transaction_id, update_data
-    )
+    updated_transaction = transaction_service.update_transaction(db, transaction_id, update_data)
     return TransactionResponse.model_validate(updated_transaction)
 
 

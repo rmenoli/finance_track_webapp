@@ -24,9 +24,7 @@ class ISINMetadataCreate(ISINMetadataBase):
     def validate_isin(cls, v: str) -> str:
         """Validate ISIN format and normalize to uppercase."""
         if not ISIN_PATTERN.match(v.upper()):
-            raise ValueError(
-                "ISIN must be 12 characters: 2 letters + 9 alphanumeric + 1 digit"
-            )
+            raise ValueError("ISIN must be 12 characters: 2 letters + 9 alphanumeric + 1 digit")
         return v.upper()
 
     @field_validator("name")

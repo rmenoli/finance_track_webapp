@@ -2,8 +2,6 @@
 
 from decimal import Decimal
 
-import pytest
-
 from app.services import user_setting_service
 
 

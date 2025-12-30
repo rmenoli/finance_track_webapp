@@ -1,4 +1,5 @@
 """Tests for Pydantic schema validation."""
+
 from datetime import date, datetime, timedelta
 from decimal import Decimal
 
@@ -6,11 +7,11 @@ import pytest
 from pydantic import ValidationError
 
 from app.constants import AssetType, Currency, ISINType, TransactionType
-from app.schemas.transaction import TransactionCreate, TransactionUpdate, TransactionResponse
 from app.schemas.analytics import CostBasisResponse
-from app.schemas.position_value import PositionValueCreate
 from app.schemas.isin_metadata import ISINMetadataCreate, ISINMetadataUpdate
 from app.schemas.other_asset import OtherAssetCreate
+from app.schemas.position_value import PositionValueCreate
+from app.schemas.transaction import TransactionCreate, TransactionResponse, TransactionUpdate
 
 
 class TestTransactionSchemas:
@@ -25,7 +26,7 @@ class TestTransactionSchemas:
             fee=Decimal("1.50"),
             price_per_unit=Decimal("450.25"),
             units=Decimal("10.0"),
-            transaction_type=TransactionType.BUY
+            transaction_type=TransactionType.BUY,
         )
 
         assert transaction.isin == "IE00B4L5Y983"
@@ -40,7 +41,7 @@ class TestTransactionSchemas:
             fee=Decimal("1.00"),
             price_per_unit=Decimal("100.00"),
             units=Decimal("10.0"),
-            transaction_type=TransactionType.BUY
+            transaction_type=TransactionType.BUY,
         )
 
         assert transaction.isin == "IE00B4L5Y983"  # Should be uppercase
@@ -55,7 +56,7 @@ class TestTransactionSchemas:
                 fee=Decimal("1.00"),
                 price_per_unit=Decimal("100.00"),
                 units=Decimal("10.0"),
-                transaction_type=TransactionType.BUY
+                transaction_type=TransactionType.BUY,
             )
 
         assert "String should have at least 12 characters" in str(exc_info.value)
@@ -70,7 +71,7 @@ class TestTransactionSchemas:
                 fee=Decimal("1.00"),
                 price_per_unit=Decimal("100.00"),
                 units=Decimal("10.0"),
-                transaction_type=TransactionType.BUY
+                transaction_type=TransactionType.BUY,
             )
 
         assert "ISIN must be 12 characters" in str(exc_info.value)
@@ -87,7 +88,7 @@ class TestTransactionSchemas:
                 fee=Decimal("1.00"),
                 price_per_unit=Decimal("100.00"),
                 units=Decimal("10.0"),
-                transaction_type=TransactionType.BUY
+                transaction_type=TransactionType.BUY,
             )
 
         assert "cannot be in the future" in str(exc_info.value)
@@ -101,7 +102,7 @@ class TestTransactionSchemas:
             fee=Decimal("1.00"),
             price_per_unit=Decimal("100.00"),
             units=Decimal("10.0"),
-            transaction_type=TransactionType.BUY
+            transaction_type=TransactionType.BUY,
         )
 
         assert transaction.date == date.today()
@@ -117,7 +118,7 @@ class TestTransactionSchemas:
             fee=Decimal("1.00"),
             price_per_unit=Decimal("100.00"),
             units=Decimal("10.0"),
-            transaction_type=TransactionType.BUY
+            transaction_type=TransactionType.BUY,
         )
 
         assert transaction.date == past_date
@@ -132,7 +133,7 @@ class TestTransactionSchemas:
                 fee=Decimal("1.00"),
                 price_per_unit=Decimal("100.00"),
                 units=Decimal("-10.0"),  # Negative
-                transaction_type=TransactionType.BUY
+                transaction_type=TransactionType.BUY,
             )
 
         assert "greater than 0" in str(exc_info.value)
@@ -147,7 +148,7 @@ class TestTransactionSchemas:
                 fee=Decimal("1.00"),
                 price_per_unit=Decimal("100.00"),
                 units=Decimal("0.0"),  # Zero
-                transaction_type=TransactionType.BUY
+                transaction_type=TransactionType.BUY,
             )
 
         assert "greater than 0" in str(exc_info.value)
@@ -162,7 +163,7 @@ class TestTransactionSchemas:
                 fee=Decimal("1.00"),
                 price_per_unit=Decimal("-100.00"),  # Negative
                 units=Decimal("10.0"),
-                transaction_type=TransactionType.BUY
+                transaction_type=TransactionType.BUY,
             )
 
         assert "greater than 0" in str(exc_info.value)
@@ -177,7 +178,7 @@ class TestTransactionSchemas:
                 fee=Decimal("1.00"),
                 price_per_unit=Decimal("0.0"),  # Zero
                 units=Decimal("10.0"),
-                transaction_type=TransactionType.BUY
+                transaction_type=TransactionType.BUY,
             )
 
         assert "greater than 0" in str(exc_info.value)
@@ -192,7 +193,7 @@ class TestTransactionSchemas:
                 fee=Decimal("-1.00"),  # Negative
                 price_per_unit=Decimal("100.00"),
                 units=Decimal("10.0"),
-                transaction_type=TransactionType.BUY
+                transaction_type=TransactionType.BUY,
             )
 
         assert "greater than or equal to 0" in str(exc_info.value)
@@ -206,7 +207,7 @@ class TestTransactionSchemas:
             fee=Decimal("0.00"),  # Zero is OK for fees
             price_per_unit=Decimal("100.00"),
             units=Decimal("10.0"),
-            transaction_type=TransactionType.BUY
+            transaction_type=TransactionType.BUY,
         )
 
         assert transaction.fee == Decimal("0.00")
@@ -220,7 +221,7 @@ class TestTransactionSchemas:
             # fee not provided
             price_per_unit=Decimal("100.00"),
             units=Decimal("10.0"),
-            transaction_type=TransactionType.BUY
+            transaction_type=TransactionType.BUY,
         )
 
         assert transaction.fee == Decimal("0.00")
@@ -235,17 +236,14 @@ class TestTransactionSchemas:
                 fee=Decimal("1.00"),
                 price_per_unit=Decimal("100.00"),
                 units=Decimal("10.0"),
-                transaction_type=TransactionType.BUY
+                transaction_type=TransactionType.BUY,
             )
 
         assert "at least 1 character" in str(exc_info.value)
 
     def test_transaction_update_partial_fields(self):
         """Test updating with only some fields."""
-        update = TransactionUpdate(
-            broker="New Broker",
-            fee=Decimal("2.00")
-        )
+        update = TransactionUpdate(broker="New Broker", fee=Decimal("2.00"))
 
         assert update.broker == "New Broker"
         assert update.fee == Decimal("2.00")
@@ -300,7 +298,7 @@ class TestTransactionSchemas:
             fee=Decimal("1.00"),
             price_per_unit=Decimal("100.00"),
             units=Decimal("10.0"),
-            transaction_type=TransactionType.BUY
+            transaction_type=TransactionType.BUY,
         )
 
         sell_transaction = TransactionCreate(
@@ -310,7 +308,7 @@ class TestTransactionSchemas:
             fee=Decimal("1.00"),
             price_per_unit=Decimal("100.00"),
             units=Decimal("10.0"),
-            transaction_type=TransactionType.SELL
+            transaction_type=TransactionType.SELL,
         )
 
         assert buy_transaction.transaction_type == TransactionType.BUY
@@ -333,7 +331,7 @@ class TestTransactionSchemas:
                 fee=Decimal("1.00"),
                 price_per_unit=Decimal("100.00"),
                 units=Decimal("10.0"),
-                transaction_type=TransactionType.BUY
+                transaction_type=TransactionType.BUY,
             )
             assert transaction.isin == isin
 
@@ -343,10 +341,7 @@ class TestPositionValueSchemas:
 
     def test_position_value_create_valid(self):
         """Test creating valid position value schema."""
-        pv = PositionValueCreate(
-            isin="IE00B4L5Y983",
-            current_value=Decimal("5000.50")
-        )
+        pv = PositionValueCreate(isin="IE00B4L5Y983", current_value=Decimal("5000.50"))
 
         assert pv.isin == "IE00B4L5Y983"
         assert pv.current_value == Decimal("5000.50")
@@ -354,18 +349,12 @@ class TestPositionValueSchemas:
     def test_position_value_create_negative_value(self):
         """Test that negative current_value is rejected."""
         with pytest.raises(ValidationError):
-            PositionValueCreate(
-                isin="IE00B4L5Y983",
-                current_value=Decimal("-100.00")
-            )
+            PositionValueCreate(isin="IE00B4L5Y983", current_value=Decimal("-100.00"))
 
     def test_position_value_create_zero_value(self):
         """Test that zero current_value is rejected."""
         with pytest.raises(ValidationError):
-            PositionValueCreate(
-                isin="IE00B4L5Y983",
-                current_value=Decimal("0.00")
-            )
+            PositionValueCreate(isin="IE00B4L5Y983", current_value=Decimal("0.00"))
 
     def test_position_value_create_missing_fields(self):
         """Test that missing required fields are rejected."""
@@ -384,9 +373,7 @@ class TestISINMetadataSchemas:
     def test_isin_metadata_create_valid(self):
         """Test creating valid ISIN metadata schema."""
         metadata = ISINMetadataCreate(
-            isin="IE00B4L5Y983",
-            name="iShares Core MSCI Emerging Markets ETF",
-            type=ISINType.STOCK
+            isin="IE00B4L5Y983", name="iShares Core MSCI Emerging Markets ETF", type=ISINType.STOCK
         )
 
         assert metadata.isin == "IE00B4L5Y983"
@@ -398,7 +385,7 @@ class TestISINMetadataSchemas:
         metadata = ISINMetadataCreate(
             isin="ie00b4l5y983",  # lowercase
             name="Test ETF",
-            type=ISINType.STOCK
+            type=ISINType.STOCK,
         )
 
         assert metadata.isin == "IE00B4L5Y983"  # Should be uppercase
@@ -409,7 +396,7 @@ class TestISINMetadataSchemas:
             ISINMetadataCreate(
                 isin="1234567890AB",  # Wrong format (starts with digits)
                 name="Test ETF",
-                type=ISINType.STOCK
+                type=ISINType.STOCK,
             )
 
         assert "ISIN must be 12 characters" in str(exc_info.value)
@@ -419,7 +406,7 @@ class TestISINMetadataSchemas:
         metadata = ISINMetadataCreate(
             isin="IE00B4L5Y983",
             name="  Test ETF  ",  # Leading/trailing whitespace
-            type=ISINType.STOCK
+            type=ISINType.STOCK,
         )
 
         assert metadata.name == "Test ETF"  # Whitespace should be stripped
@@ -427,11 +414,7 @@ class TestISINMetadataSchemas:
     def test_isin_metadata_create_empty_name_rejected(self):
         """Test that empty name is rejected."""
         with pytest.raises(ValidationError):
-            ISINMetadataCreate(
-                isin="IE00B4L5Y983",
-                name="",
-                type=ISINType.STOCK
-            )
+            ISINMetadataCreate(isin="IE00B4L5Y983", name="", type=ISINType.STOCK)
 
     def test_isin_metadata_create_invalid_type(self):
         """Test that invalid type is rejected."""
@@ -439,17 +422,13 @@ class TestISINMetadataSchemas:
             ISINMetadataCreate(
                 isin="IE00B4L5Y983",
                 name="Test ETF",
-                type="INVALID_TYPE"  # Not a valid ISINType
+                type="INVALID_TYPE",  # Not a valid ISINType
             )
 
     def test_isin_metadata_create_all_types(self):
         """Test all valid ISIN types."""
         for isin_type in [ISINType.STOCK, ISINType.BOND, ISINType.REAL_ASSET]:
-            metadata = ISINMetadataCreate(
-                isin="IE00B4L5Y983",
-                name="Test Asset",
-                type=isin_type
-            )
+            metadata = ISINMetadataCreate(isin="IE00B4L5Y983", name="Test Asset", type=isin_type)
             assert metadata.type == isin_type
 
     def test_isin_metadata_create_missing_fields(self):
@@ -499,11 +478,7 @@ class TestISINMetadataSchemas:
         ]
 
         for isin in valid_isins:
-            metadata = ISINMetadataCreate(
-                isin=isin,
-                name="Test Asset",
-                type=ISINType.STOCK
-            )
+            metadata = ISINMetadataCreate(isin=isin, name="Test Asset", type=ISINType.STOCK)
             assert metadata.isin == isin
 
 
@@ -516,7 +491,7 @@ class TestOtherAssetSchemas:
             asset_type=AssetType.CRYPTO,
             asset_detail=None,
             currency=Currency.EUR,
-            value=Decimal("700.00")
+            value=Decimal("700.00"),
         )
 
         assert asset.asset_type == AssetType.CRYPTO
@@ -530,7 +505,7 @@ class TestOtherAssetSchemas:
             asset_type=AssetType.CASH_EUR,
             asset_detail="CSOB",
             currency=Currency.EUR,
-            value=Decimal("1500.00")
+            value=Decimal("1500.00"),
         )
 
         assert asset.asset_type == AssetType.CASH_EUR
@@ -544,7 +519,7 @@ class TestOtherAssetSchemas:
                 asset_type=AssetType.INVESTMENTS,
                 asset_detail=None,
                 currency=Currency.EUR,
-                value=Decimal("10000.00")
+                value=Decimal("10000.00"),
             )
 
         assert "investments" in str(exc_info.value).lower()
@@ -556,7 +531,7 @@ class TestOtherAssetSchemas:
                 asset_type=AssetType.CASH_EUR,
                 asset_detail=None,  # Missing account name
                 currency=Currency.EUR,
-                value=Decimal("1000.00")
+                value=Decimal("1000.00"),
             )
 
         assert "account name" in str(exc_info.value).lower()
@@ -568,7 +543,7 @@ class TestOtherAssetSchemas:
                 asset_type=AssetType.CASH_EUR,
                 asset_detail="InvalidBank",  # Not in VALID_ACCOUNT_NAMES
                 currency=Currency.EUR,
-                value=Decimal("1000.00")
+                value=Decimal("1000.00"),
             )
 
         assert "invalid account name" in str(exc_info.value).lower()
@@ -580,7 +555,7 @@ class TestOtherAssetSchemas:
                 asset_type=AssetType.CRYPTO,
                 asset_detail="CSOB",  # Should be None for crypto
                 currency=Currency.EUR,
-                value=Decimal("700.00")
+                value=Decimal("700.00"),
             )
 
         assert "must not have" in str(exc_info.value).lower()
@@ -592,7 +567,7 @@ class TestOtherAssetSchemas:
                 asset_type=AssetType.CASH_EUR,
                 asset_detail="CSOB",
                 currency=Currency.CZK,  # Wrong currency
-                value=Decimal("1000.00")
+                value=Decimal("1000.00"),
             )
 
         assert "currency mismatch" in str(exc_info.value).lower()
@@ -604,7 +579,7 @@ class TestOtherAssetSchemas:
                 asset_type=AssetType.CASH_CZK,
                 asset_detail="CSOB",
                 currency=Currency.EUR,  # Wrong currency
-                value=Decimal("1000.00")
+                value=Decimal("1000.00"),
             )
 
         assert "currency mismatch" in str(exc_info.value).lower()
@@ -616,7 +591,7 @@ class TestOtherAssetSchemas:
                 asset_type=AssetType.CRYPTO,
                 asset_detail=None,
                 currency=Currency.EUR,
-                value=Decimal("-100.00")
+                value=Decimal("-100.00"),
             )
 
     def test_other_asset_create_zero_value_accepted(self):
@@ -625,7 +600,7 @@ class TestOtherAssetSchemas:
             asset_type=AssetType.CRYPTO,
             asset_detail=None,
             currency=Currency.EUR,
-            value=Decimal("0.00")
+            value=Decimal("0.00"),
         )
 
         assert asset.value == Decimal("0.00")
@@ -646,7 +621,7 @@ class TestTransactionResponseComputedFields:
             units=Decimal("100.0"),
             transaction_type=TransactionType.BUY,
             created_at=datetime.now(),
-            updated_at=datetime.now()
+            updated_at=datetime.now(),
         )
 
         expected_total = Decimal("100.0") * Decimal("25.75")
@@ -665,7 +640,7 @@ class TestTransactionResponseComputedFields:
             units=Decimal("100.0"),
             transaction_type=TransactionType.BUY,
             created_at=datetime.now(),
-            updated_at=datetime.now()
+            updated_at=datetime.now(),
         )
 
         expected_total = Decimal("2575.00") + Decimal("1.50")
@@ -684,7 +659,7 @@ class TestTransactionResponseComputedFields:
             units=Decimal("50.1234"),
             transaction_type=TransactionType.BUY,
             created_at=datetime.now(),
-            updated_at=datetime.now()
+            updated_at=datetime.now(),
         )
 
         expected_total_without_fees = Decimal("123.4567") * Decimal("50.1234")
@@ -703,7 +678,7 @@ class TestTransactionResponseComputedFields:
             units=Decimal("10.0"),
             transaction_type=TransactionType.BUY,
             created_at=datetime.now(),
-            updated_at=datetime.now()
+            updated_at=datetime.now(),
         )
 
         assert transaction.total_without_fees == Decimal("1000.00")
@@ -721,7 +696,7 @@ class TestCostBasisResponseComputedFields:
             total_cost_without_fees=Decimal("5000.00"),
             total_gains_without_fees=Decimal("1000.00"),
             total_fees=Decimal("50.00"),
-            transactions_count=5
+            transactions_count=5,
         )
 
         expected_net_cost = Decimal("5000.00") - Decimal("1000.00")
@@ -736,7 +711,7 @@ class TestCostBasisResponseComputedFields:
             total_cost_without_fees=Decimal("5000.00"),
             total_gains_without_fees=Decimal("1000.00"),
             total_fees=Decimal("50.00"),
-            transactions_count=5
+            transactions_count=5,
         )
 
         expected_per_unit = Decimal("4000.00") / Decimal("100.0")
@@ -751,7 +726,7 @@ class TestCostBasisResponseComputedFields:
             total_cost_without_fees=Decimal("5000.00"),
             total_gains_without_fees=Decimal("5000.00"),
             total_fees=Decimal("50.00"),
-            transactions_count=5
+            transactions_count=5,
         )
 
         assert holding.net_buy_in_cost_per_unit is None
@@ -765,7 +740,7 @@ class TestCostBasisResponseComputedFields:
             total_gains_without_fees=Decimal("0.00"),
             total_fees=Decimal("50.00"),
             transactions_count=3,
-            current_value=Decimal("6000.00")
+            current_value=Decimal("6000.00"),
         )
 
         expected_price = Decimal("6000.00") / Decimal("100.0")
@@ -781,7 +756,7 @@ class TestCostBasisResponseComputedFields:
             total_gains_without_fees=Decimal("0.00"),
             total_fees=Decimal("50.00"),
             transactions_count=3,
-            current_value=None
+            current_value=None,
         )
 
         assert holding.current_price_per_unit is None
@@ -795,7 +770,7 @@ class TestCostBasisResponseComputedFields:
             total_gains_without_fees=Decimal("5000.00"),
             total_fees=Decimal("50.00"),
             transactions_count=5,
-            current_value=Decimal("0.00")
+            current_value=Decimal("0.00"),
         )
 
         assert holding.current_price_per_unit is None

@@ -1,4 +1,5 @@
 """Tests for transaction API endpoints."""
+
 from datetime import date, timedelta
 from io import BytesIO
 
@@ -17,8 +18,8 @@ class TestTransactionAPI:
                 "fee": 1.50,
                 "price_per_unit": 450.25,
                 "units": 10.0,
-                "transaction_type": "BUY"
-            }
+                "transaction_type": "BUY",
+            },
         )
 
         assert response.status_code == 201
@@ -40,8 +41,8 @@ class TestTransactionAPI:
                 "fee": 1.00,
                 "price_per_unit": 100.00,
                 "units": 10.0,
-                "transaction_type": "BUY"
-            }
+                "transaction_type": "BUY",
+            },
         )
 
         assert response.status_code == 422
@@ -58,8 +59,8 @@ class TestTransactionAPI:
                 "fee": 1.00,
                 "price_per_unit": 100.00,
                 "units": 10.0,
-                "transaction_type": "BUY"
-            }
+                "transaction_type": "BUY",
+            },
         )
 
         assert response.status_code == 422
@@ -75,8 +76,8 @@ class TestTransactionAPI:
                 "fee": 1.00,
                 "price_per_unit": 100.00,
                 "units": -10.0,  # Negative
-                "transaction_type": "BUY"
-            }
+                "transaction_type": "BUY",
+            },
         )
 
         assert response.status_code == 422
@@ -92,8 +93,8 @@ class TestTransactionAPI:
                 "fee": 1.00,
                 "price_per_unit": -100.00,  # Negative
                 "units": 10.0,
-                "transaction_type": "BUY"
-            }
+                "transaction_type": "BUY",
+            },
         )
 
         assert response.status_code == 422
@@ -109,8 +110,8 @@ class TestTransactionAPI:
                 "fee": -1.00,  # Negative
                 "price_per_unit": 100.00,
                 "units": 10.0,
-                "transaction_type": "BUY"
-            }
+                "transaction_type": "BUY",
+            },
         )
 
         assert response.status_code == 422
@@ -139,8 +140,8 @@ class TestTransactionAPI:
                     "fee": 1.00,
                     "price_per_unit": 100.00,
                     "units": 10.0,
-                    "transaction_type": "BUY"
-                }
+                    "transaction_type": "BUY",
+                },
             )
 
         response = client.get("/api/v1/transactions")
@@ -162,8 +163,8 @@ class TestTransactionAPI:
                 "fee": 1.00,
                 "price_per_unit": 100.00,
                 "units": 10.0,
-                "transaction_type": "BUY"
-            }
+                "transaction_type": "BUY",
+            },
         )
         client.post(
             "/api/v1/transactions",
@@ -174,8 +175,8 @@ class TestTransactionAPI:
                 "fee": 1.00,
                 "price_per_unit": 200.00,
                 "units": 5.0,
-                "transaction_type": "BUY"
-            }
+                "transaction_type": "BUY",
+            },
         )
 
         response = client.get("/api/v1/transactions?isin=IE00B4L5Y983")
@@ -196,8 +197,8 @@ class TestTransactionAPI:
                 "fee": 1.00,
                 "price_per_unit": 100.00,
                 "units": 10.0,
-                "transaction_type": "BUY"
-            }
+                "transaction_type": "BUY",
+            },
         )
         client.post(
             "/api/v1/transactions",
@@ -208,8 +209,8 @@ class TestTransactionAPI:
                 "fee": 1.00,
                 "price_per_unit": 100.00,
                 "units": 10.0,
-                "transaction_type": "BUY"
-            }
+                "transaction_type": "BUY",
+            },
         )
 
         response = client.get("/api/v1/transactions?broker=Interactive%20Brokers")
@@ -230,8 +231,8 @@ class TestTransactionAPI:
                 "fee": 1.00,
                 "price_per_unit": 100.00,
                 "units": 10.0,
-                "transaction_type": "BUY"
-            }
+                "transaction_type": "BUY",
+            },
         )
         client.post(
             "/api/v1/transactions",
@@ -242,8 +243,8 @@ class TestTransactionAPI:
                 "fee": 1.00,
                 "price_per_unit": 110.00,
                 "units": 5.0,
-                "transaction_type": "SELL"
-            }
+                "transaction_type": "SELL",
+            },
         )
 
         response = client.get("/api/v1/transactions?transaction_type=BUY")
@@ -266,8 +267,8 @@ class TestTransactionAPI:
                     "fee": 1.00,
                     "price_per_unit": 100.00,
                     "units": 10.0,
-                    "transaction_type": "BUY"
-                }
+                    "transaction_type": "BUY",
+                },
             )
 
         # Get first 2
@@ -289,8 +290,8 @@ class TestTransactionAPI:
                 "fee": 1.00,
                 "price_per_unit": 100.00,
                 "units": 10.0,
-                "transaction_type": "BUY"
-            }
+                "transaction_type": "BUY",
+            },
         )
         transaction_id = create_response.json()["id"]
 
@@ -320,18 +321,14 @@ class TestTransactionAPI:
                 "fee": 1.00,
                 "price_per_unit": 100.00,
                 "units": 10.0,
-                "transaction_type": "BUY"
-            }
+                "transaction_type": "BUY",
+            },
         )
         transaction_id = create_response.json()["id"]
 
         # Update transaction
         response = client.put(
-            f"/api/v1/transactions/{transaction_id}",
-            json={
-                "broker": "New Broker",
-                "fee": 2.00
-            }
+            f"/api/v1/transactions/{transaction_id}", json={"broker": "New Broker", "fee": 2.00}
         )
 
         assert response.status_code == 200
@@ -342,10 +339,7 @@ class TestTransactionAPI:
 
     def test_update_transaction_not_found(self, client):
         """Test updating a non-existent transaction."""
-        response = client.put(
-            "/api/v1/transactions/999",
-            json={"broker": "New Broker"}
-        )
+        response = client.put("/api/v1/transactions/999", json={"broker": "New Broker"})
 
         assert response.status_code == 404
 
@@ -361,8 +355,8 @@ class TestTransactionAPI:
                 "fee": 1.00,
                 "price_per_unit": 100.00,
                 "units": 10.0,
-                "transaction_type": "BUY"
-            }
+                "transaction_type": "BUY",
+            },
         )
         transaction_id = create_response.json()["id"]
 

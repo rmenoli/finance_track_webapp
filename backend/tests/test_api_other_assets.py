@@ -1,6 +1,18 @@
 """Tests for other assets API endpoints."""
 
+from datetime import date
 from decimal import Decimal
+
+from app.constants import AssetType, Currency, TransactionType
+from app.schemas.other_asset import OtherAssetCreate
+from app.schemas.position_value import PositionValueCreate
+from app.schemas.transaction import TransactionCreate
+from app.services import (
+    other_asset_service,
+    position_value_service,
+    transaction_service,
+    user_setting_service,
+)
 
 
 class TestOtherAssetsAPI:
@@ -8,12 +20,7 @@ class TestOtherAssetsAPI:
 
     def test_upsert_other_asset_create_crypto(self, client):
         """Test creating a new crypto asset via API."""
-        data = {
-            "asset_type": "crypto",
-            "asset_detail": None,
-            "currency": "EUR",
-            "value": "700.00"
-        }
+        data = {"asset_type": "crypto", "asset_detail": None, "currency": "EUR", "value": "700.00"}
 
         response = client.post("/api/v1/other-assets", json=data)
 
@@ -33,7 +40,7 @@ class TestOtherAssetsAPI:
             "asset_type": "cash_eur",
             "asset_detail": "CSOB",
             "currency": "EUR",
-            "value": "1500.00"
+            "value": "1500.00",
         }
 
         response = client.post("/api/v1/other-assets", json=data)
@@ -48,23 +55,13 @@ class TestOtherAssetsAPI:
     def test_upsert_other_asset_update(self, client):
         """Test updating an existing asset via API."""
         # Create initial asset
-        data1 = {
-            "asset_type": "crypto",
-            "asset_detail": None,
-            "currency": "EUR",
-            "value": "700.00"
-        }
+        data1 = {"asset_type": "crypto", "asset_detail": None, "currency": "EUR", "value": "700.00"}
         response1 = client.post("/api/v1/other-assets", json=data1)
         assert response1.status_code == 200
         id1 = response1.json()["id"]
 
         # Update with new value
-        data2 = {
-            "asset_type": "crypto",
-            "asset_detail": None,
-            "currency": "EUR",
-            "value": "850.00"
-        }
+        data2 = {"asset_type": "crypto", "asset_detail": None, "currency": "EUR", "value": "850.00"}
         response2 = client.post("/api/v1/other-assets", json=data2)
 
         assert response2.status_code == 200
@@ -78,7 +75,7 @@ class TestOtherAssetsAPI:
             "asset_type": "investments",
             "asset_detail": None,
             "currency": "EUR",
-            "value": "10000.00"
+            "value": "10000.00",
         }
 
         response = client.post("/api/v1/other-assets", json=data)
@@ -92,7 +89,7 @@ class TestOtherAssetsAPI:
             "asset_type": "cash_eur",
             "asset_detail": None,  # Missing account name
             "currency": "EUR",
-            "value": "1000.00"
+            "value": "1000.00",
         }
 
         response = client.post("/api/v1/other-assets", json=data)
@@ -106,7 +103,7 @@ class TestOtherAssetsAPI:
             "asset_type": "cash_eur",
             "asset_detail": "InvalidBank",  # Not in VALID_ACCOUNT_NAMES
             "currency": "EUR",
-            "value": "1000.00"
+            "value": "1000.00",
         }
 
         response = client.post("/api/v1/other-assets", json=data)
@@ -119,7 +116,7 @@ class TestOtherAssetsAPI:
             "asset_type": "crypto",
             "asset_detail": "CSOB",  # Should be None for crypto
             "currency": "EUR",
-            "value": "700.00"
+            "value": "700.00",
         }
 
         response = client.post("/api/v1/other-assets", json=data)
@@ -129,12 +126,7 @@ class TestOtherAssetsAPI:
     def test_list_other_assets_with_investments(self, client):
         """Test listing all assets including synthetic investments row."""
         # Create a crypto asset
-        data = {
-            "asset_type": "crypto",
-            "asset_detail": None,
-            "currency": "EUR",
-            "value": "700.00"
-        }
+        data = {"asset_type": "crypto", "asset_detail": None, "currency": "EUR", "value": "700.00"}
         client.post("/api/v1/other-assets", json=data)
 
         # List all with investments (default)
@@ -154,12 +146,7 @@ class TestOtherAssetsAPI:
     def test_list_other_assets_without_investments(self, client):
         """Test listing assets without synthetic investments row."""
         # Create a crypto asset
-        data = {
-            "asset_type": "crypto",
-            "asset_detail": None,
-            "currency": "EUR",
-            "value": "700.00"
-        }
+        data = {"asset_type": "crypto", "asset_detail": None, "currency": "EUR", "value": "700.00"}
         client.post("/api/v1/other-assets", json=data)
 
         # List without investments
@@ -176,12 +163,7 @@ class TestOtherAssetsAPI:
     def test_delete_other_asset(self, client):
         """Test deleting an asset."""
         # Create asset
-        data = {
-            "asset_type": "crypto",
-            "asset_detail": None,
-            "currency": "EUR",
-            "value": "700.00"
-        }
+        data = {"asset_type": "crypto", "asset_detail": None, "currency": "EUR", "value": "700.00"}
         client.post("/api/v1/other-assets", json=data)
 
         # Delete
@@ -208,7 +190,7 @@ class TestOtherAssetsAPI:
             "asset_type": "cd_account",
             "asset_detail": None,
             "currency": "CZK",
-            "value": "2500.00"
+            "value": "2500.00",
         }
         client.post("/api/v1/other-assets", json=czk_asset_data)
 
@@ -238,7 +220,7 @@ class TestOtherAssetsAPI:
             "asset_type": "crypto",
             "asset_detail": None,
             "currency": "EUR",
-            "value": "500.00"
+            "value": "500.00",
         }
         client.post("/api/v1/other-assets", json=eur_asset_data)
 
@@ -248,3 +230,120 @@ class TestOtherAssetsAPI:
 
         # EUR assets should have value_eur == value
         assert Decimal(crypto["value_eur"]) == Decimal("500.00")
+
+
+class TestMonthlyExpectedReturns:
+    """Test monthly expected return calculations in other assets response."""
+
+    def test_monthly_returns_with_defaults(self, client, db_session):
+        """Test monthly returns calculated with default rates."""
+        # Setup: Create transaction for investments value
+        transaction_service.create_transaction(
+            db_session,
+            TransactionCreate(
+                date=date.today(),
+                isin="IE00B4L5Y983",
+                broker="Test",
+                units=Decimal("10.0"),
+                price_per_unit=Decimal("100.0"),
+                transaction_type=TransactionType.BUY,
+                fee=Decimal("0.0"),
+            ),
+        )
+
+        # Create position value (sets current value to €1200)
+        position_value_service.upsert_position_value(
+            db_session,
+            PositionValueCreate(isin="IE00B4L5Y983", current_value=Decimal("1200.0")),
+        )
+
+        # Create CD account (€600)
+        other_asset_service.upsert_other_asset(
+            db_session,
+            OtherAssetCreate(
+                asset_type=AssetType.CD_ACCOUNT,
+                asset_detail=None,
+                currency=Currency.CZK,
+                value=Decimal("600.0"),
+            ),
+        )
+
+        # Get assets
+        response = client.get("/api/v1/other-assets?include_investments=true")
+
+        assert response.status_code == 200
+        data = response.json()
+
+        # Verify monthly returns
+        # Investment: (1200 EUR * 7%) / 12 = 7.00 EUR/month
+        assert Decimal(data["monthly_expected_return_investment"]) == Decimal("7.00")
+
+        # CD: 600 CZK / 25 = 24 EUR, then (24 EUR * 4%) / 12 = 0.08 EUR/month
+        assert Decimal(data["monthly_expected_return_cd"]) == Decimal("0.08")
+
+    def test_monthly_returns_with_zero_values(self, client, db_session):
+        """Test monthly returns when asset values are zero."""
+        response = client.get("/api/v1/other-assets?include_investments=true")
+
+        assert response.status_code == 200
+        data = response.json()
+
+        # Both should be 0.00 when no assets
+        assert data["monthly_expected_return_investment"] == "0.00"
+        assert data["monthly_expected_return_cd"] == "0.00"
+
+    def test_monthly_returns_with_custom_rates(self, client, db_session):
+        """Test monthly returns with custom expected return rates."""
+        # Create CD account
+        other_asset_service.upsert_other_asset(
+            db_session,
+            OtherAssetCreate(
+                asset_type=AssetType.CD_ACCOUNT,
+                asset_detail=None,
+                currency=Currency.CZK,
+                value=Decimal("1000.0"),
+            ),
+        )
+
+        # Set custom CD rate to 6%
+        user_setting_service.update_expected_return_cd_setting(db_session, Decimal("6.00"))
+
+        response = client.get("/api/v1/other-assets?include_investments=true")
+
+        assert response.status_code == 200
+        data = response.json()
+
+        # CD: 1000 CZK / 25 = 40 EUR, then (40 EUR * 6%) / 12 = 0.20 EUR/month
+        assert Decimal(data["monthly_expected_return_cd"]) == Decimal("0.20")
+
+    def test_monthly_returns_sums_multiple_cd_accounts(self, client, db_session):
+        """Test that multiple CD accounts are summed correctly."""
+        # Create CD account
+        other_asset_service.upsert_other_asset(
+            db_session,
+            OtherAssetCreate(
+                asset_type=AssetType.CD_ACCOUNT,
+                asset_detail=None,
+                currency=Currency.CZK,
+                value=Decimal("400.0"),
+            ),
+        )
+
+        response = client.get("/api/v1/other-assets?include_investments=true")
+
+        assert response.status_code == 200
+        data = response.json()
+
+        # CD: 400 CZK / 25 = 16 EUR, then (16 EUR * 4%) / 12 = 0.05 EUR/month
+        assert Decimal(data["monthly_expected_return_cd"]) == Decimal("0.05")
+
+    def test_monthly_returns_excluded_when_investments_false(self, client, db_session):
+        """Test that monthly returns are 0.00 when include_investments=false."""
+        response = client.get("/api/v1/other-assets?include_investments=false")
+
+        assert response.status_code == 200
+        data = response.json()
+
+        # Both should be 0.00 when investments not included
+        assert data["monthly_expected_return_investment"] == "0.00"
+        assert data["monthly_expected_return_cd"] == "0.00"

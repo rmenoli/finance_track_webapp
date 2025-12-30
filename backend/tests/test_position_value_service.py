@@ -14,10 +14,7 @@ class TestPositionValueService:
 
     def test_upsert_position_value_create(self, db_session):
         """Test creating a new position value."""
-        pv_data = PositionValueCreate(
-            isin="IE00B4L5Y983",
-            current_value=Decimal("5000.50")
-        )
+        pv_data = PositionValueCreate(isin="IE00B4L5Y983", current_value=Decimal("5000.50"))
 
         position_value = position_value_service.upsert_position_value(db_session, pv_data)
 
@@ -30,19 +27,13 @@ class TestPositionValueService:
     def test_upsert_position_value_update(self, db_session):
         """Test updating an existing position value."""
         # Create initial value
-        pv_data = PositionValueCreate(
-            isin="IE00B4L5Y983",
-            current_value=Decimal("5000.50")
-        )
+        pv_data = PositionValueCreate(isin="IE00B4L5Y983", current_value=Decimal("5000.50"))
         initial = position_value_service.upsert_position_value(db_session, pv_data)
         initial_id = initial.id
         initial_created_at = initial.created_at
 
         # Update with new value
-        pv_update = PositionValueCreate(
-            isin="IE00B4L5Y983",
-            current_value=Decimal("6000.75")
-        )
+        pv_update = PositionValueCreate(isin="IE00B4L5Y983", current_value=Decimal("6000.75"))
         updated = position_value_service.upsert_position_value(db_session, pv_update)
 
         # Verify it's the same record with updated value
@@ -56,7 +47,7 @@ class TestPositionValueService:
         """Test that ISIN is normalized to uppercase."""
         pv_data = PositionValueCreate(
             isin="ie00b4l5y983",  # lowercase
-            current_value=Decimal("1000.00")
+            current_value=Decimal("1000.00"),
         )
 
         position_value = position_value_service.upsert_position_value(db_session, pv_data)
@@ -66,10 +57,7 @@ class TestPositionValueService:
     def test_get_position_value(self, db_session):
         """Test getting a position value by ISIN."""
         # Create position value
-        pv_data = PositionValueCreate(
-            isin="IE00B4L5Y983",
-            current_value=Decimal("5000.50")
-        )
+        pv_data = PositionValueCreate(isin="IE00B4L5Y983", current_value=Decimal("5000.50"))
         created = position_value_service.upsert_position_value(db_session, pv_data)
 
         # Get by ISIN
@@ -113,10 +101,7 @@ class TestPositionValueService:
     def test_delete_position_value(self, db_session):
         """Test deleting a position value."""
         # Create position value
-        pv_data = PositionValueCreate(
-            isin="IE00B4L5Y983",
-            current_value=Decimal("5000.50")
-        )
+        pv_data = PositionValueCreate(isin="IE00B4L5Y983", current_value=Decimal("5000.50"))
         position_value_service.upsert_position_value(db_session, pv_data)
 
         # Delete
@@ -138,9 +123,7 @@ class TestPositionValueService:
             isin="IE00B4L5Y983",
             current_value=Decimal("5000.00"),
         )
-        created = position_value_service.upsert_position_value(
-            db_session, position_value_create
-        )
+        created = position_value_service.upsert_position_value(db_session, position_value_create)
 
         # Delete by ID
         position_value_service.delete_position_value_by_id(db_session, created.id)

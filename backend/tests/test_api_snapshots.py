@@ -24,8 +24,8 @@ class TestSnapshotsAPI:
                 asset_type=AssetType.CRYPTO,
                 asset_detail=None,
                 currency=Currency.EUR,
-                value=Decimal("500.00")
-            )
+                value=Decimal("500.00"),
+            ),
         )
         other_asset_service.upsert_other_asset(
             db_session,
@@ -33,8 +33,8 @@ class TestSnapshotsAPI:
                 asset_type=AssetType.CASH_EUR,
                 asset_detail="CSOB",
                 currency=Currency.EUR,
-                value=Decimal("1000.00")
-            )
+                value=Decimal("1000.00"),
+            ),
         )
         other_asset_service.upsert_other_asset(
             db_session,
@@ -42,8 +42,8 @@ class TestSnapshotsAPI:
                 asset_type=AssetType.CD_ACCOUNT,
                 asset_detail=None,
                 currency=Currency.CZK,
-                value=Decimal("2500.00")
-            )
+                value=Decimal("2500.00"),
+            ),
         )
 
         # Create two snapshots at different dates
@@ -91,7 +91,9 @@ class TestSnapshotsAPI:
         assert by_currency["CZK"] == Decimal("2500.00")  # cd_account
 
         # Verify asset type breakdown
-        by_asset_type = {a["asset_type"]: Decimal(a["total_value_eur"]) for a in summary["by_asset_type"]}
+        by_asset_type = {
+            a["asset_type"]: Decimal(a["total_value_eur"]) for a in summary["by_asset_type"]
+        }
         assert "investments" in by_asset_type
         assert "crypto" in by_asset_type
         assert "cash_eur" in by_asset_type
@@ -112,17 +114,13 @@ class TestSnapshotsAPI:
         asset_snapshot_service.create_snapshot(db_session, date3)
 
         # Test with start_date filter
-        response = client.get(
-            f"/api/v1/snapshots/summary?start_date={date2.isoformat()}"
-        )
+        response = client.get(f"/api/v1/snapshots/summary?start_date={date2.isoformat()}")
         assert response.status_code == 200
         json_data = response.json()
         assert json_data["total"] == 2  # date2 and date3
 
         # Test with end_date filter
-        response = client.get(
-            f"/api/v1/snapshots/summary?end_date={date2.isoformat()}"
-        )
+        response = client.get(f"/api/v1/snapshots/summary?end_date={date2.isoformat()}")
         assert response.status_code == 200
         json_data = response.json()
         assert json_data["total"] == 2  # date1 and date2
@@ -150,8 +148,8 @@ class TestSnapshotsAPI:
                 asset_type=AssetType.CASH_EUR,
                 asset_detail="CSOB",
                 currency=Currency.EUR,
-                value=Decimal("100.00")
-            )
+                value=Decimal("100.00"),
+            ),
         )
 
         date1 = datetime(2024, 1, 1, 10, 0, 0)
@@ -164,8 +162,8 @@ class TestSnapshotsAPI:
                 asset_type=AssetType.CASH_EUR,
                 asset_detail="CSOB",
                 currency=Currency.EUR,
-                value=Decimal("150.00")
-            )
+                value=Decimal("150.00"),
+            ),
         )
 
         date2 = datetime(2024, 1, 2, 10, 0, 0)
@@ -178,8 +176,8 @@ class TestSnapshotsAPI:
                 asset_type=AssetType.CASH_EUR,
                 asset_detail="CSOB",
                 currency=Currency.EUR,
-                value=Decimal("200.00")
-            )
+                value=Decimal("200.00"),
+            ),
         )
 
         date3 = datetime(2024, 1, 3, 10, 0, 0)
@@ -225,8 +223,8 @@ class TestSnapshotsAPI:
                 asset_type=AssetType.CASH_EUR,
                 asset_detail="CSOB",
                 currency=Currency.EUR,
-                value=Decimal("100.00")
-            )
+                value=Decimal("100.00"),
+            ),
         )
 
         date1 = datetime(2024, 1, 1, 10, 0, 0)
@@ -249,7 +247,13 @@ class TestSnapshotsAPI:
         update_exchange_rate_setting(db_session, Decimal("25.00"))
 
         # Create 5 snapshots with values: 100, 150, 200, 250, 300
-        values = [Decimal("100.00"), Decimal("150.00"), Decimal("200.00"), Decimal("250.00"), Decimal("300.00")]
+        values = [
+            Decimal("100.00"),
+            Decimal("150.00"),
+            Decimal("200.00"),
+            Decimal("250.00"),
+            Decimal("300.00"),
+        ]
         dates = [
             datetime(2024, 1, 1, 10, 0, 0),
             datetime(2024, 1, 2, 10, 0, 0),
@@ -265,16 +269,14 @@ class TestSnapshotsAPI:
                     asset_type=AssetType.CASH_EUR,
                     asset_detail="CSOB",
                     currency=Currency.EUR,
-                    value=value
-                )
+                    value=value,
+                ),
             )
             asset_snapshot_service.create_snapshot(db_session, date)
 
         # Filter to get only last 3 snapshots (dates 3, 4, 5 with values 200, 250, 300)
         # Baseline should be 200 (oldest in filtered set), not 100 (global oldest)
-        response = client.get(
-            f"/api/v1/snapshots/summary?start_date={dates[2].isoformat()}"
-        )
+        response = client.get(f"/api/v1/snapshots/summary?start_date={dates[2].isoformat()}")
 
         assert response.status_code == 200
         summaries = response.json()["summaries"]
@@ -310,8 +312,8 @@ class TestSnapshotsAPI:
                 asset_type=AssetType.CASH_EUR,
                 asset_detail="CSOB",
                 currency=Currency.EUR,
-                value=Decimal("200.00")
-            )
+                value=Decimal("200.00"),
+            ),
         )
 
         date1 = datetime(2024, 1, 1, 10, 0, 0)
@@ -324,8 +326,8 @@ class TestSnapshotsAPI:
                 asset_type=AssetType.CASH_EUR,
                 asset_detail="CSOB",
                 currency=Currency.EUR,
-                value=Decimal("150.00")
-            )
+                value=Decimal("150.00"),
+            ),
         )
 
         date2 = datetime(2024, 1, 2, 10, 0, 0)
@@ -349,6 +351,7 @@ class TestSnapshotsAPI:
         assert Decimal(summaries[0]["percentage_change_from_oldest"]) == Decimal("-25.00")
         # Oldest: 0%
         assert Decimal(summaries[1]["percentage_change_from_oldest"]) == Decimal("0.00")
+
     def test_snapshot_summary_avg_monthly_increment_multiple_snapshots(self, client, db_session):
         """Test avg_monthly_increment calculation with multiple snapshots."""
         # Set exchange rate
@@ -362,8 +365,8 @@ class TestSnapshotsAPI:
                 asset_type=AssetType.CASH_EUR,
                 asset_detail="CSOB",
                 currency=Currency.EUR,
-                value=Decimal("1000.00")
-            )
+                value=Decimal("1000.00"),
+            ),
         )
 
         date1 = datetime(2024, 1, 1, 10, 0, 0)
@@ -376,8 +379,8 @@ class TestSnapshotsAPI:
                 asset_type=AssetType.CASH_EUR,
                 asset_detail="CSOB",
                 currency=Currency.EUR,
-                value=Decimal("1600.00")
-            )
+                value=Decimal("1600.00"),
+            ),
         )
 
         date2 = datetime(2024, 3, 1, 10, 0, 0)  # 60 days later
@@ -413,8 +416,8 @@ class TestSnapshotsAPI:
                 asset_type=AssetType.CASH_EUR,
                 asset_detail="CSOB",
                 currency=Currency.EUR,
-                value=Decimal("1000.00")
-            )
+                value=Decimal("1000.00"),
+            ),
         )
 
         date1 = datetime(2024, 1, 1, 10, 0, 0)
@@ -454,8 +457,8 @@ class TestSnapshotsAPI:
                 asset_type=AssetType.CASH_EUR,
                 asset_detail="CSOB",
                 currency=Currency.EUR,
-                value=Decimal("1000.00")
-            )
+                value=Decimal("1000.00"),
+            ),
         )
 
         date1 = datetime(2024, 1, 1, 10, 0, 0)
@@ -468,8 +471,8 @@ class TestSnapshotsAPI:
                 asset_type=AssetType.CASH_EUR,
                 asset_detail="CSOB",
                 currency=Currency.EUR,
-                value=Decimal("1500.00")
-            )
+                value=Decimal("1500.00"),
+            ),
         )
 
         date2 = datetime(2024, 1, 1, 15, 0, 0)  # Same day, different hour
@@ -497,8 +500,8 @@ class TestSnapshotsAPI:
                 asset_type=AssetType.CASH_EUR,
                 asset_detail="CSOB",
                 currency=Currency.EUR,
-                value=Decimal("2000.00")
-            )
+                value=Decimal("2000.00"),
+            ),
         )
 
         date1 = datetime(2024, 1, 1, 10, 0, 0)
@@ -511,8 +514,8 @@ class TestSnapshotsAPI:
                 asset_type=AssetType.CASH_EUR,
                 asset_detail="CSOB",
                 currency=Currency.EUR,
-                value=Decimal("1500.00")
-            )
+                value=Decimal("1500.00"),
+            ),
         )
 
         date2 = datetime(2024, 1, 31, 10, 0, 0)  # 30 days later

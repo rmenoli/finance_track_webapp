@@ -107,6 +107,13 @@ jobs:
           # Add EC2 host to known_hosts to avoid prompt
           ssh-keyscan -H ${{ secrets.EC2_HOST }} >> ~/.ssh/known_hosts
 
+      - name: Run backup script on EC2
+        run: |
+          cd /opt/etf-portfolio/backend
+
+          uv run python backup_db.py
+
+
       - name: Deploy backend to EC2
         run: |
           ssh -i ~/.ssh/deploy_key ${{ secrets.EC2_USERNAME }}@${{ secrets.EC2_HOST }} << 'EOF'

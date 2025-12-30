@@ -41,14 +41,12 @@ class AssetSnapshot(Base):
     value_eur: Mapped[Decimal] = mapped_column(Numeric(15, 2), nullable=False)
 
     # Audit timestamp
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime, nullable=False, default=datetime.utcnow
-    )
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=datetime.utcnow)
 
     # Table constraints and indexes
     __table_args__ = (
-        Index('idx_snapshot_date', 'snapshot_date'),
-        Index('idx_snapshot_date_asset_type', 'snapshot_date', 'asset_type'),
+        Index("idx_snapshot_date", "snapshot_date"),
+        Index("idx_snapshot_date_asset_type", "snapshot_date", "asset_type"),
     )
 
     def __repr__(self) -> str:

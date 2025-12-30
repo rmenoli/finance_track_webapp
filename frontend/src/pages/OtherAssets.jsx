@@ -7,9 +7,15 @@ import './OtherAssets.css';
 function OtherAssets() {
   const [assets, setAssets] = useState([]);
   const [exchangeRate, setExchangeRate] = useState(25.00);
+  const [expectedReturnInvestment, setExpectedReturnInvestment] = useState(7.00);
+  const [expectedReturnCD, setExpectedReturnCD] = useState(4.00);
+  const [monthlyReturnInvestment, setMonthlyReturnInvestment] = useState(0);
+  const [monthlyReturnCD, setMonthlyReturnCD] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [isSavingExchangeRate, setIsSavingExchangeRate] = useState(false);
+  const [isSavingReturnInvestment, setIsSavingReturnInvestment] = useState(false);
+  const [isSavingReturnCD, setIsSavingReturnCD] = useState(false);
   const [isCreatingSnapshot, setIsCreatingSnapshot] = useState(false);
   const [snapshotSuccess, setSnapshotSuccess] = useState(false);
 
@@ -19,6 +25,10 @@ function OtherAssets() {
       setError(null);
       const response = await otherAssetsAPI.getAll(true); // Include investments
       setAssets(response.other_assets || []);
+
+      // Extract monthly returns from response
+      setMonthlyReturnInvestment(parseFloat(response.monthly_expected_return_investment || 0));
+      setMonthlyReturnCD(parseFloat(response.monthly_expected_return_cd || 0));
     } catch (err) {
       console.error('Failed to load other assets:', err);
       setError('Failed to load assets. Please try again.');
@@ -28,19 +38,30 @@ function OtherAssets() {
   };
 
   useEffect(() => {
-    // Load exchange rate from backend on mount
-    const loadExchangeRate = async () => {
+    // Load all settings from backend on mount
+    const loadSettings = async () => {
       try {
-        const data = await settingsAPI.getExchangeRate();
-        setExchangeRate(parseFloat(data.exchange_rate));
+        // Load exchange rate
+        const exchangeRateData = await settingsAPI.getExchangeRate();
+        setExchangeRate(parseFloat(exchangeRateData.exchange_rate));
+
+        // Load expected return investment
+        const returnInvestmentData = await settingsAPI.getExpectedReturnInvestment();
+        setExpectedReturnInvestment(parseFloat(returnInvestmentData.expected_return));
+
+        // Load expected return CD
+        const returnCDData = await settingsAPI.getExpectedReturnCD();
+        setExpectedReturnCD(parseFloat(returnCDData.expected_return));
       } catch (err) {
-        console.error('Failed to load exchange rate:', err);
-        // Use default if backend fails
+        console.error('Failed to load settings:', err);
+        // Use defaults if backend fails
         setExchangeRate(25.00);
+        setExpectedReturnInvestment(7.00);
+        setExpectedReturnCD(4.00);
       }
     };
 
-    loadExchangeRate();
+    loadSettings();
     loadAssets();
   }, []);
 
@@ -89,6 +110,108 @@ function OtherAssets() {
 
   // Handle Enter key press
   const handleExchangeRateKeyDown = (e) => {
+    if (e.key === 'Enter') {
+      e.target.blur(); // Trigger onBlur to save
+    }
+  };
+
+  // ---------- Expected Return Investment Handlers ----------
+
+  // Called on every keystroke - updates local state only
+  const handleReturnInvestmentInputChange = (e) => {
+    const value = e.target.value;
+
+    // Allow empty string (user is clearing the field)
+    if (value === '') {
+      setExpectedReturnInvestment('');
+      return;
+    }
+
+    // Update local state immediately for responsive UI
+    const numValue = parseFloat(value);
+    if (!isNaN(numValue)) {
+      setExpectedReturnInvestment(numValue);
+    }
+  };
+
+  // Called on blur or Enter - saves to backend
+  const saveReturnInvestment = async () => {
+    const numValue = parseFloat(expectedReturnInvestment);
+
+    // Validate before saving
+    if (isNaN(numValue) || numValue < 0 || numValue > 100) {
+      setError('Expected return must be between 0% and 100%');
+      return;
+    }
+
+    try {
+      setIsSavingReturnInvestment(true);
+      setError(null);
+
+      await settingsAPI.updateExpectedReturnInvestment(numValue);
+
+      // Note: No need to reload assets - this is reference only
+    } catch (err) {
+      console.error('Failed to update expected return investment:', err);
+      setError('Failed to save expected return. Please try again.');
+    } finally {
+      setIsSavingReturnInvestment(false);
+    }
+  };
+
+  // Handle Enter key press
+  const handleReturnInvestmentKeyDown = (e) => {
+    if (e.key === 'Enter') {
+      e.target.blur(); // Trigger onBlur to save
+    }
+  };
+
+  // ---------- Expected Return CD Handlers ----------
+
+  // Called on every keystroke - updates local state only
+  const handleReturnCDInputChange = (e) => {
+    const value = e.target.value;
+
+    // Allow empty string (user is clearing the field)
+    if (value === '') {
+      setExpectedReturnCD('');
+      return;
+    }
+
+    // Update local state immediately for responsive UI
+    const numValue = parseFloat(value);
+    if (!isNaN(numValue)) {
+      setExpectedReturnCD(numValue);
+    }
+  };
+
+  // Called on blur or Enter - saves to backend
+  const saveReturnCD = async () => {
+    const numValue = parseFloat(expectedReturnCD);
+
+    // Validate before saving
+    if (isNaN(numValue) || numValue < 0 || numValue > 100) {
+      setError('Expected return must be between 0% and 100%');
+      return;
+    }
+
+    try {
+      setIsSavingReturnCD(true);
+      setError(null);
+
+      await settingsAPI.updateExpectedReturnCD(numValue);
+
+      // Note: No need to reload assets - this is reference only
+    } catch (err) {
+      console.error('Failed to update expected return CD:', err);
+      setError('Failed to save expected return. Please try again.');
+    } finally {
+      setIsSavingReturnCD(false);
+    }
+  };
+
+  // Handle Enter key press
+  const handleReturnCDKeyDown = (e) => {
     if (e.key === 'Enter') {
       e.target.blur(); // Trigger onBlur to save
     }
@@ -155,28 +278,87 @@ function OtherAssets() {
         <div className="success-message">Snapshot created successfully!</div>
       )}
 
-      <div className="exchange-rate-section">
-        <label htmlFor="exchangeRate">
-          Exchange Rate (1 EUR =
-          <input
-            id="exchangeRate"
-            type="number"
-            step="0.01"
-            min="0.01"
-            value={exchangeRate}
-            onChange={handleExchangeRateInputChange}
-            onBlur={saveExchangeRate}
-            onKeyDown={handleExchangeRateKeyDown}
-            disabled={isSavingExchangeRate}
-            className="exchange-rate-input"
-          />
-          CZK)
-          {isSavingExchangeRate && <span className="saving-indicator">💾 Saving...</span>}
-        </label>
-        <p className="helper-text">
-          Current rate: 1 EUR = {exchangeRate || '0.00'} CZK
-          {!isSavingExchangeRate && exchangeRate && ' (Press Enter or click outside to save)'}
-        </p>
+      <div className="settings-section">
+        <h2 className="settings-title">Settings</h2>
+
+        <div className="settings-grid">
+          {/* Exchange Rate Setting */}
+          <div className="setting-item">
+            <label htmlFor="exchangeRate">
+              Exchange Rate (1 EUR =
+              <input
+                id="exchangeRate"
+                type="number"
+                step="0.01"
+                min="0.01"
+                value={exchangeRate}
+                onChange={handleExchangeRateInputChange}
+                onBlur={saveExchangeRate}
+                onKeyDown={handleExchangeRateKeyDown}
+                disabled={isSavingExchangeRate}
+                className="setting-input"
+              />
+              CZK)
+              {isSavingExchangeRate && <span className="saving-indicator">💾 Saving...</span>}
+            </label>
+            <p className="helper-text">
+              Current rate: 1 EUR = {exchangeRate || '0.00'} CZK
+              {!isSavingExchangeRate && exchangeRate && ' (Press Enter or click outside to save)'}
+            </p>
+          </div>
+
+          {/* Expected Return Investment Setting */}
+          <div className="setting-item">
+            <label htmlFor="returnInvestment">
+              Expected Return - Investment:
+              <input
+                id="returnInvestment"
+                type="number"
+                step="0.01"
+                min="0"
+                max="100"
+                value={expectedReturnInvestment}
+                onChange={handleReturnInvestmentInputChange}
+                onBlur={saveReturnInvestment}
+                onKeyDown={handleReturnInvestmentKeyDown}
+                disabled={isSavingReturnInvestment}
+                className="setting-input"
+              />
+              %
+              {isSavingReturnInvestment && <span className="saving-indicator">💾 Saving...</span>}
+            </label>
+            <p className="helper-text">
+              Expected annual return: {expectedReturnInvestment || '0.00'}%
+              {!isSavingReturnInvestment && expectedReturnInvestment !== '' && ' (Press Enter or click outside to save)'}
+            </p>
+          </div>
+
+          {/* Expected Return CD Setting */}
+          <div className="setting-item">
+            <label htmlFor="returnCD">
+              Expected Return - CD:
+              <input
+                id="returnCD"
+                type="number"
+                step="0.01"
+                min="0"
+                max="100"
+                value={expectedReturnCD}
+                onChange={handleReturnCDInputChange}
+                onBlur={saveReturnCD}
+                onKeyDown={handleReturnCDKeyDown}
+                disabled={isSavingReturnCD}
+                className="setting-input"
+              />
+              %
+              {isSavingReturnCD && <span className="saving-indicator">💾 Saving...</span>}
+            </label>
+            <p className="helper-text">
+              Expected annual return: {expectedReturnCD || '0.00'}%
+              {!isSavingReturnCD && expectedReturnCD !== '' && ' (Press Enter or click outside to save)'}
+            </p>
+          </div>
+        </div>
       </div>
 
       <OtherAssetsTable
@@ -184,6 +366,30 @@ function OtherAssets() {
         exchangeRate={exchangeRate || 25.00}
         onDataChange={handleDataChange}
       />
+
+      {/* Monthly Expected Returns Display */}
+      <div className="monthly-returns-section">
+        <h2>Monthly Expected Returns</h2>
+        <div className="returns-grid">
+          <div className="return-card">
+            <h3>Investment Returns</h3>
+            <p className="return-value">€{monthlyReturnInvestment.toFixed(2)}</p>
+            <p className="return-description">per month from investments</p>
+          </div>
+
+          <div className="return-card">
+            <h3>CD Account Returns</h3>
+            <p className="return-value">€{monthlyReturnCD.toFixed(2)}</p>
+            <p className="return-description">per month from CD accounts</p>
+          </div>
+
+          <div className="return-card total-return">
+            <h3>Total Monthly Returns</h3>
+            <p className="return-value">€{(monthlyReturnInvestment + monthlyReturnCD).toFixed(2)}</p>
+            <p className="return-description">total expected per month</p>
+          </div>
+        </div>
+      </div>
 
       <OtherAssetsDistributionChart
         assets={assets}

@@ -48,9 +48,7 @@ def list_isin_metadata(
     isin_metadata_list = isin_metadata_service.get_all_isin_metadata(db, asset_type=type)
 
     return ISINMetadataListResponse(
-        items=[
-            ISINMetadataResponse.model_validate(im) for im in isin_metadata_list
-        ],
+        items=[ISINMetadataResponse.model_validate(im) for im in isin_metadata_list],
         total=len(isin_metadata_list),
     )
 
