@@ -27,17 +27,15 @@ class UserSetting(Base):
     setting_value: Mapped[str] = mapped_column(String(255), nullable=False)
 
     # Timestamps
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime, nullable=False, default=datetime.utcnow
-    )
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=datetime.utcnow)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow
     )
 
     # Table constraints
     __table_args__ = (
-        UniqueConstraint('setting_key', name='uq_user_setting_key'),
-        Index('idx_user_setting_key', 'setting_key'),
+        UniqueConstraint("setting_key", name="uq_user_setting_key"),
+        Index("idx_user_setting_key", "setting_key"),
     )
 
     def __repr__(self) -> str:

@@ -3,8 +3,6 @@
 from datetime import date, timedelta
 from decimal import Decimal
 
-import pytest
-
 from app.constants import TransactionType
 from app.schemas.transaction import TransactionCreate
 from app.services import cost_basis_service, transaction_service
@@ -249,8 +247,8 @@ class TestCostBasisService:
             ),
         )
 
-        holdings, closed_positions = cost_basis_service.calculate_current_holdings_and_closed_positions(
-            db_session, {}
+        holdings, closed_positions = (
+            cost_basis_service.calculate_current_holdings_and_closed_positions(db_session, {})
         )
 
         assert len(holdings) == 2
@@ -286,8 +284,8 @@ class TestCostBasisService:
             ),
         )
 
-        holdings, closed_positions = cost_basis_service.calculate_current_holdings_and_closed_positions(
-            db_session, {}
+        holdings, closed_positions = (
+            cost_basis_service.calculate_current_holdings_and_closed_positions(db_session, {})
         )
         assert len(holdings) == 0
         assert len(closed_positions) == 1
@@ -328,8 +326,8 @@ class TestCostBasisService:
             ),
         )
 
-        holdings, closed_positions = cost_basis_service.calculate_current_holdings_and_closed_positions(
-            db_session, {}
+        holdings, closed_positions = (
+            cost_basis_service.calculate_current_holdings_and_closed_positions(db_session, {})
         )
 
         assert len(holdings) == 0
@@ -400,8 +398,8 @@ class TestCostBasisService:
             ),
         )
 
-        holdings, closed_positions = cost_basis_service.calculate_current_holdings_and_closed_positions(
-            db_session, {}
+        holdings, closed_positions = (
+            cost_basis_service.calculate_current_holdings_and_closed_positions(db_session, {})
         )
 
         assert len(holdings) == 0
@@ -485,8 +483,8 @@ class TestCostBasisService:
             ),
         )
 
-        holdings, closed_positions = cost_basis_service.calculate_current_holdings_and_closed_positions(
-            db_session, {}
+        holdings, closed_positions = (
+            cost_basis_service.calculate_current_holdings_and_closed_positions(db_session, {})
         )
 
         # Verify counts
@@ -560,8 +558,8 @@ class TestCostBasisService:
             ),
         )
 
-        holdings, closed_positions = cost_basis_service.calculate_current_holdings_and_closed_positions(
-            db_session, {}
+        holdings, closed_positions = (
+            cost_basis_service.calculate_current_holdings_and_closed_positions(db_session, {})
         )
 
         assert len(holdings) == 0
@@ -737,8 +735,8 @@ class TestCostBasisService:
 
     def test_pl_calculation_with_position_value(self, db_session):
         """Test P/L calculation when position value is available."""
-        from app.services import position_value_service
         from app.schemas.position_value import PositionValueCreate
+        from app.services import position_value_service
 
         # Create a buy transaction: 10 units at 100 with 1.50 fee
         transaction_service.create_transaction(
@@ -774,9 +772,9 @@ class TestCostBasisService:
 
         # P/L with fees: 1200 - (1000 + 1.50) = 198.50 (19.82%)
         assert holding.absolute_pl_with_fees == Decimal("198.50")
-        assert abs(holding.percentage_pl_with_fees - Decimal("19.82017982017982017982017982")) < Decimal(
-            "0.01"
-        )
+        assert abs(
+            holding.percentage_pl_with_fees - Decimal("19.82017982017982017982017982")
+        ) < Decimal("0.01")
 
     def test_pl_calculation_without_position_value(self, db_session):
         """Test P/L fields are None when position value is not available."""
@@ -808,8 +806,8 @@ class TestCostBasisService:
 
     def test_pl_calculation_negative_pl(self, db_session):
         """Test P/L calculation with negative P/L (loss)."""
-        from app.services import position_value_service
         from app.schemas.position_value import PositionValueCreate
+        from app.services import position_value_service
 
         # Create a buy transaction: 10 units at 100 with 2.00 fee
         transaction_service.create_transaction(
@@ -841,14 +839,14 @@ class TestCostBasisService:
 
         # P/L with fees: 800 - (1000 + 2.00) = -202 (-20.16%)
         assert holding.absolute_pl_with_fees == Decimal("-202.00")
-        assert abs(holding.percentage_pl_with_fees - Decimal("-20.15968063872255489021956088")) < Decimal(
-            "0.01"
-        )
+        assert abs(
+            holding.percentage_pl_with_fees - Decimal("-20.15968063872255489021956088")
+        ) < Decimal("0.01")
 
     def test_pl_calculation_with_partial_sell(self, db_session):
         """Test P/L calculation after partial sell."""
-        from app.services import position_value_service
         from app.schemas.position_value import PositionValueCreate
+        from app.services import position_value_service
 
         # Buy 20 units at 100 with 2.00 fee
         transaction_service.create_transaction(
@@ -943,8 +941,8 @@ class TestCostBasisService:
 
     def test_multiple_holdings_with_mixed_position_values(self, db_session):
         """Test P/L calculation with multiple holdings, some with position values."""
-        from app.services import position_value_service
         from app.schemas.position_value import PositionValueCreate
+        from app.services import position_value_service
 
         # Holding 1: With position value
         transaction_service.create_transaction(

@@ -29,19 +29,13 @@ class Transaction(Base):
     date: Mapped[datetime] = mapped_column(Date, nullable=False, index=True)
     isin: Mapped[str] = mapped_column(String(12), nullable=False, index=True)
     broker: Mapped[str] = mapped_column(String(100), nullable=False)
-    fee: Mapped[Decimal] = mapped_column(
-        Numeric(10, 2), nullable=False, default=Decimal("0.00")
-    )
+    fee: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False, default=Decimal("0.00"))
     price_per_unit: Mapped[Decimal] = mapped_column(Numeric(10, 4), nullable=False)
     units: Mapped[Decimal] = mapped_column(Numeric(10, 4), nullable=False)
-    transaction_type: Mapped[TransactionType] = mapped_column(
-        Enum(TransactionType), nullable=False
-    )
+    transaction_type: Mapped[TransactionType] = mapped_column(Enum(TransactionType), nullable=False)
 
     # Timestamps
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime, nullable=False, default=datetime.utcnow
-    )
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=datetime.utcnow)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow
     )

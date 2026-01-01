@@ -1,21 +1,20 @@
 from logging.config import fileConfig
 
-from sqlalchemy import engine_from_config
-from sqlalchemy import pool
+from sqlalchemy import engine_from_config, pool
 
 from alembic import context
 
 # Import our database base and settings
 from app.config import settings
 from app.database import Base
+from app.models.asset_snapshot import AssetSnapshot  # noqa: F401
+from app.models.isin_metadata import ISINMetadata  # noqa: F401
+from app.models.other_asset import OtherAsset  # noqa: F401
+from app.models.position_value import PositionValue  # noqa: F401
 
 # Import all models here for autogenerate support
 from app.models.transaction import Transaction  # noqa: F401
-from app.models.position_value import PositionValue  # noqa: F401
-from app.models.isin_metadata import ISINMetadata  # noqa: F401
-from app.models.other_asset import OtherAsset  # noqa: F401
 from app.models.user_setting import UserSetting  # noqa: F401
-from app.models.asset_snapshot import AssetSnapshot  # noqa: F401
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
@@ -77,9 +76,7 @@ def run_migrations_online() -> None:
     )
 
     with connectable.connect() as connection:
-        context.configure(
-            connection=connection, target_metadata=target_metadata
-        )
+        context.configure(connection=connection, target_metadata=target_metadata)
 
         with context.begin_transaction():
             context.run_migrations()

@@ -15,10 +15,7 @@ from app.schemas.isin_metadata import ISINMetadataCreate, ISINMetadataUpdate
 logger = logging.getLogger(__name__)
 
 
-def create_isin_metadata(
-    db: Session,
-    metadata_data: ISINMetadataCreate
-) -> ISINMetadata:
+def create_isin_metadata(db: Session, metadata_data: ISINMetadataCreate) -> ISINMetadata:
     """
     Create new ISIN metadata.
 
@@ -36,18 +33,14 @@ def create_isin_metadata(
     isin_normalized = metadata_data.isin.upper()
 
     # Check if ISIN metadata already exists
-    existing = db.query(ISINMetadata).filter(
-        ISINMetadata.isin == isin_normalized
-    ).first()
+    existing = db.query(ISINMetadata).filter(ISINMetadata.isin == isin_normalized).first()
 
     if existing:
         raise ISINMetadataAlreadyExistsError(isin_normalized)
 
     # Create new record
     isin_metadata = ISINMetadata(
-        isin=isin_normalized,
-        name=metadata_data.name,
-        type=metadata_data.type
+        isin=isin_normalized, name=metadata_data.name, type=metadata_data.type
     )
 
     try:
@@ -99,9 +92,7 @@ def get_isin_metadata(db: Session, isin: str) -> ISINMetadata:
     """
     isin_normalized = isin.upper()
 
-    isin_metadata = db.query(ISINMetadata).filter(
-        ISINMetadata.isin == isin_normalized
-    ).first()
+    isin_metadata = db.query(ISINMetadata).filter(ISINMetadata.isin == isin_normalized).first()
 
     if not isin_metadata:
         raise ISINMetadataNotFoundError(isin_normalized)
@@ -109,10 +100,7 @@ def get_isin_metadata(db: Session, isin: str) -> ISINMetadata:
     return isin_metadata
 
 
-def get_all_isin_metadata(
-    db: Session,
-    asset_type: Optional[ISINType] = None
-) -> list[ISINMetadata]:
+def get_all_isin_metadata(db: Session, asset_type: Optional[ISINType] = None) -> list[ISINMetadata]:
     """
     Get all ISIN metadata with optional filtering by type.
 
@@ -133,9 +121,7 @@ def get_all_isin_metadata(
 
 
 def update_isin_metadata(
-    db: Session,
-    isin: str,
-    metadata_update: ISINMetadataUpdate
+    db: Session, isin: str, metadata_update: ISINMetadataUpdate
 ) -> ISINMetadata:
     """
     Update ISIN metadata.
@@ -219,10 +205,7 @@ def delete_isin_metadata(db: Session, isin: str) -> None:
     )
 
 
-def upsert_isin_metadata(
-    db: Session,
-    metadata_data: ISINMetadataCreate
-) -> ISINMetadata:
+def upsert_isin_metadata(db: Session, metadata_data: ISINMetadataCreate) -> ISINMetadata:
     """
     Create or update ISIN metadata (UPSERT operation).
 
@@ -240,9 +223,7 @@ def upsert_isin_metadata(
     isin_normalized = metadata_data.isin.upper()
 
     # Check if ISIN metadata exists
-    existing = db.query(ISINMetadata).filter(
-        ISINMetadata.isin == isin_normalized
-    ).first()
+    existing = db.query(ISINMetadata).filter(ISINMetadata.isin == isin_normalized).first()
 
     if existing:
         # Update existing record
@@ -276,9 +257,7 @@ def upsert_isin_metadata(
     else:
         # Create new record
         isin_metadata = ISINMetadata(
-            isin=isin_normalized,
-            name=metadata_data.name,
-            type=metadata_data.type
+            isin=isin_normalized, name=metadata_data.name, type=metadata_data.type
         )
         db.add(isin_metadata)
         db.commit()

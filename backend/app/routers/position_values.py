@@ -43,9 +43,7 @@ def list_position_values(
     position_values = position_value_service.get_all_position_values(db)
 
     return PositionValueListResponse(
-        position_values=[
-            PositionValueResponse.model_validate(pv) for pv in position_values
-        ],
+        position_values=[PositionValueResponse.model_validate(pv) for pv in position_values],
         total=len(position_values),
     )
 

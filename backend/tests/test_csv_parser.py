@@ -1,15 +1,16 @@
 """Tests for CSV parsing utilities."""
 
-import pytest
 from datetime import date
 from decimal import Decimal
 
+import pytest
+
 from app.constants import TransactionType
 from app.services.csv_parser import (
-    parse_european_decimal,
+    parse_degiro_csv,
     parse_degiro_date,
     parse_degiro_row,
-    parse_degiro_csv,
+    parse_european_decimal,
 )
 
 

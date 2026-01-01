@@ -31,23 +31,18 @@ class ISINMetadata(Base):
     type: Mapped[ISINType] = mapped_column(Enum(ISINType), nullable=False, index=True)
 
     # Timestamps
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime, nullable=False, default=datetime.utcnow
-    )
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=datetime.utcnow)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow
     )
 
     # Table constraints
     __table_args__ = (
-        UniqueConstraint('isin', name='uq_isin_metadata_isin'),
-        Index('idx_isin_metadata_isin', 'isin'),
-        Index('idx_isin_metadata_type', 'type'),
+        UniqueConstraint("isin", name="uq_isin_metadata_isin"),
+        Index("idx_isin_metadata_isin", "isin"),
+        Index("idx_isin_metadata_type", "type"),
     )
 
     def __repr__(self) -> str:
         """String representation of ISINMetadata."""
-        return (
-            f"<ISINMetadata(id={self.id}, isin={self.isin}, "
-            f"name={self.name}, type={self.type})>"
-        )
+        return f"<ISINMetadata(id={self.id}, isin={self.isin}, name={self.name}, type={self.type})>"

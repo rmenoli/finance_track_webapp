@@ -39,17 +39,15 @@ class OtherAsset(Base):
     value: Mapped[Decimal] = mapped_column(Numeric(15, 2), nullable=False)
 
     # Timestamps
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime, nullable=False, default=datetime.utcnow
-    )
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=datetime.utcnow)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow
     )
 
     # Table constraints
     __table_args__ = (
-        UniqueConstraint('asset_type', 'asset_detail', name='uq_other_asset_type_detail'),
-        Index('idx_other_asset_type', 'asset_type'),
+        UniqueConstraint("asset_type", "asset_detail", name="uq_other_asset_type_detail"),
+        Index("idx_other_asset_type", "asset_type"),
     )
 
     def __repr__(self) -> str:

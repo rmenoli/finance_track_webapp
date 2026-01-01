@@ -4,9 +4,8 @@ import logging
 from datetime import datetime
 from decimal import Decimal
 
-from sqlalchemy.orm import Session
-
 from sqlalchemy import func
+from sqlalchemy.orm import Session
 
 from app.exceptions import SnapshotNotFoundError
 from app.logging_config import log_with_context
@@ -40,7 +39,8 @@ def create_snapshot(
         Tuple of (list of created snapshots, snapshot metadata)
     """
     # Get all assets including synthetic investments row
-    assets, exchange_rate = other_asset_service.get_all_other_assets_with_investments(db)
+    # Ignore monthly returns (not needed for snapshots)
+    assets, exchange_rate, _, _ = other_asset_service.get_all_other_assets_with_investments(db)
 
     snapshot_date = snapshot_datetime or datetime.utcnow()
     snapshots = []
@@ -125,9 +125,7 @@ def get_snapshots(
     if asset_type:
         query = query.filter(AssetSnapshot.asset_type == asset_type)
 
-    return query.order_by(
-        AssetSnapshot.snapshot_date.desc(), AssetSnapshot.asset_type.asc()
-    ).all()
+    return query.order_by(AssetSnapshot.snapshot_date.desc(), AssetSnapshot.asset_type.asc()).all()
 
 
 def get_snapshots_by_date(db: Session, snapshot_date: datetime) -> list[AssetSnapshot]:
@@ -172,11 +170,7 @@ def delete_snapshots_by_date(db: Session, snapshot_date: datetime) -> int:
         SnapshotNotFoundError: If no snapshots exist for that date
     """
     # Get snapshots to check existence and for audit log
-    snapshots = (
-        db.query(AssetSnapshot)
-        .filter(AssetSnapshot.snapshot_date == snapshot_date)
-        .all()
-    )
+    snapshots = db.query(AssetSnapshot).filter(AssetSnapshot.snapshot_date == snapshot_date).all()
 
     if not snapshots:
         raise SnapshotNotFoundError(snapshot_date.isoformat())
@@ -185,9 +179,7 @@ def delete_snapshots_by_date(db: Session, snapshot_date: datetime) -> int:
     deleted_count = len(snapshots)
 
     # Delete all snapshots for this date
-    db.query(AssetSnapshot).filter(
-        AssetSnapshot.snapshot_date == snapshot_date
-    ).delete()
+    db.query(AssetSnapshot).filter(AssetSnapshot.snapshot_date == snapshot_date).delete()
     db.commit()
 
     # AUDIT LOG
@@ -340,7 +332,9 @@ def get_snapshot_summaries(
         else:
             # Formula: ((latest - oldest) / days) * 30
             value_change = latest_value - oldest_value
-            avg_monthly_increment = ((value_change / Decimal(str(days_between))) * Decimal("30")).quantize(Decimal("0.01"))
+            avg_monthly_increment = (
+                (value_change / Decimal(str(days_between))) * Decimal("30")
+            ).quantize(Decimal("0.01"))
 
         for summary in summaries:
             # Calculate absolute change: current - oldest
@@ -348,11 +342,7 @@ def get_snapshot_summaries(
 
             if oldest_value > 0:
                 # Calculate percentage: ((current - oldest) / oldest) × 100
-                percentage_change = (
-                    absolute_change
-                    / oldest_value
-                    * Decimal("100")
-                )
+                percentage_change = absolute_change / oldest_value * Decimal("100")
             else:
                 # Avoid division by zero - set to 0%
                 percentage_change = Decimal("0")
@@ -451,24 +441,30 @@ def import_snapshots_from_csv(db: Session, csv_content: str) -> dict:
 
             # Record success
             results["successful"] += 1
-            results["results"].append({
-                "row": row_data.row_number,
-                "snapshot_id": snapshot.id,
-                "snapshot_date": snapshot.snapshot_date,
-                "asset_type": snapshot.asset_type,
-            })
+            results["results"].append(
+                {
+                    "row": row_data.row_number,
+                    "snapshot_id": snapshot.id,
+                    "snapshot_date": snapshot.snapshot_date,
+                    "asset_type": snapshot.asset_type,
+                }
+            )
 
         except Exception as e:
             # Record failure
             results["failed"] += 1
             error_message = str(e)
-            results["errors"].append({
-                "row": row_data.row_number,
-                "snapshot_date": row_data.snapshot_date.isoformat() if row_data.snapshot_date else None,
-                "asset_type": row_data.asset_type,
-                "errors": [error_message],
-                "raw_data": row_data.raw_row,
-            })
+            results["errors"].append(
+                {
+                    "row": row_data.row_number,
+                    "snapshot_date": row_data.snapshot_date.isoformat()
+                    if row_data.snapshot_date
+                    else None,
+                    "asset_type": row_data.asset_type,
+                    "errors": [error_message],
+                    "raw_data": row_data.raw_row,
+                }
+            )
 
             log_with_context(
                 logger,
@@ -493,7 +489,9 @@ def import_snapshots_from_csv(db: Session, csv_content: str) -> dict:
         total_rows=results["total_rows"],
         successful=results["successful"],
         failed=results["failed"],
-        success_rate=f"{(results['successful'] / results['total_rows'] * 100):.2f}%" if results['total_rows'] > 0 else "0%",
+        success_rate=f"{(results['successful'] / results['total_rows'] * 100):.2f}%"
+        if results["total_rows"] > 0
+        else "0%",
     )
 
     return results

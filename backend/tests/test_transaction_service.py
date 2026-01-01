@@ -1,4 +1,5 @@
 """Tests for transaction service."""
+
 from datetime import date, timedelta
 from decimal import Decimal
 
@@ -22,7 +23,7 @@ class TestTransactionService:
             fee=Decimal("1.50"),
             price_per_unit=Decimal("450.25"),
             units=Decimal("10.0"),
-            transaction_type=TransactionType.BUY
+            transaction_type=TransactionType.BUY,
         )
 
         transaction = transaction_service.create_transaction(db_session, transaction_data)
@@ -47,7 +48,7 @@ class TestTransactionService:
             fee=Decimal("1.00"),
             price_per_unit=Decimal("100.00"),
             units=Decimal("5.0"),
-            transaction_type=TransactionType.BUY
+            transaction_type=TransactionType.BUY,
         )
         created = transaction_service.create_transaction(db_session, transaction_data)
 
@@ -73,7 +74,7 @@ class TestTransactionService:
                 fee=Decimal("1.00"),
                 price_per_unit=Decimal("100.00"),
                 units=Decimal("5.0"),
-                transaction_type=TransactionType.BUY
+                transaction_type=TransactionType.BUY,
             )
             transaction_service.create_transaction(db_session, transaction_data)
 
@@ -94,8 +95,8 @@ class TestTransactionService:
                 fee=Decimal("1.00"),
                 price_per_unit=Decimal("100.00"),
                 units=Decimal("5.0"),
-                transaction_type=TransactionType.BUY
-            )
+                transaction_type=TransactionType.BUY,
+            ),
         )
         transaction_service.create_transaction(
             db_session,
@@ -106,13 +107,11 @@ class TestTransactionService:
                 fee=Decimal("1.00"),
                 price_per_unit=Decimal("200.00"),
                 units=Decimal("10.0"),
-                transaction_type=TransactionType.BUY
-            )
+                transaction_type=TransactionType.BUY,
+            ),
         )
 
-        transactions, total = transaction_service.get_transactions(
-            db_session, isin="IE00B4L5Y983"
-        )
+        transactions, total = transaction_service.get_transactions(db_session, isin="IE00B4L5Y983")
 
         assert total == 1
         assert transactions[0].isin == "IE00B4L5Y983"
@@ -128,8 +127,8 @@ class TestTransactionService:
                 fee=Decimal("1.00"),
                 price_per_unit=Decimal("100.00"),
                 units=Decimal("5.0"),
-                transaction_type=TransactionType.BUY
-            )
+                transaction_type=TransactionType.BUY,
+            ),
         )
         transaction_service.create_transaction(
             db_session,
@@ -140,8 +139,8 @@ class TestTransactionService:
                 fee=Decimal("1.00"),
                 price_per_unit=Decimal("100.00"),
                 units=Decimal("5.0"),
-                transaction_type=TransactionType.BUY
-            )
+                transaction_type=TransactionType.BUY,
+            ),
         )
 
         transactions, total = transaction_service.get_transactions(
@@ -162,8 +161,8 @@ class TestTransactionService:
                 fee=Decimal("1.00"),
                 price_per_unit=Decimal("100.00"),
                 units=Decimal("5.0"),
-                transaction_type=TransactionType.BUY
-            )
+                transaction_type=TransactionType.BUY,
+            ),
         )
         transaction_service.create_transaction(
             db_session,
@@ -174,8 +173,8 @@ class TestTransactionService:
                 fee=Decimal("1.00"),
                 price_per_unit=Decimal("110.00"),
                 units=Decimal("3.0"),
-                transaction_type=TransactionType.SELL
-            )
+                transaction_type=TransactionType.SELL,
+            ),
         )
 
         transactions, total = transaction_service.get_transactions(
@@ -197,8 +196,8 @@ class TestTransactionService:
                 fee=Decimal("1.00"),
                 price_per_unit=Decimal("100.00"),
                 units=Decimal("5.0"),
-                transaction_type=TransactionType.BUY
-            )
+                transaction_type=TransactionType.BUY,
+            ),
         )
         transaction_service.create_transaction(
             db_session,
@@ -209,8 +208,8 @@ class TestTransactionService:
                 fee=Decimal("1.00"),
                 price_per_unit=Decimal("100.00"),
                 units=Decimal("5.0"),
-                transaction_type=TransactionType.BUY
-            )
+                transaction_type=TransactionType.BUY,
+            ),
         )
         transaction_service.create_transaction(
             db_session,
@@ -221,14 +220,12 @@ class TestTransactionService:
                 fee=Decimal("1.00"),
                 price_per_unit=Decimal("100.00"),
                 units=Decimal("5.0"),
-                transaction_type=TransactionType.BUY
-            )
+                transaction_type=TransactionType.BUY,
+            ),
         )
 
         transactions, total = transaction_service.get_transactions(
-            db_session,
-            start_date=today - timedelta(days=7),
-            end_date=today
+            db_session, start_date=today - timedelta(days=7), end_date=today
         )
 
         assert total == 2
@@ -246,21 +243,17 @@ class TestTransactionService:
                     fee=Decimal("1.00"),
                     price_per_unit=Decimal("100.00"),
                     units=Decimal("5.0"),
-                    transaction_type=TransactionType.BUY
-                )
+                    transaction_type=TransactionType.BUY,
+                ),
             )
 
         # Get first 2
-        transactions, total = transaction_service.get_transactions(
-            db_session, skip=0, limit=2
-        )
+        transactions, total = transaction_service.get_transactions(db_session, skip=0, limit=2)
         assert total == 5
         assert len(transactions) == 2
 
         # Get next 2
-        transactions, total = transaction_service.get_transactions(
-            db_session, skip=2, limit=2
-        )
+        transactions, total = transaction_service.get_transactions(db_session, skip=2, limit=2)
         assert total == 5
         assert len(transactions) == 2
 
@@ -277,8 +270,8 @@ class TestTransactionService:
                 fee=Decimal("1.00"),
                 price_per_unit=Decimal("100.00"),
                 units=Decimal("5.0"),
-                transaction_type=TransactionType.BUY
-            )
+                transaction_type=TransactionType.BUY,
+            ),
         )
         transaction_service.create_transaction(
             db_session,
@@ -289,8 +282,8 @@ class TestTransactionService:
                 fee=Decimal("1.00"),
                 price_per_unit=Decimal("100.00"),
                 units=Decimal("5.0"),
-                transaction_type=TransactionType.BUY
-            )
+                transaction_type=TransactionType.BUY,
+            ),
         )
 
         # Sort by date ascending
@@ -315,18 +308,13 @@ class TestTransactionService:
             fee=Decimal("1.00"),
             price_per_unit=Decimal("100.00"),
             units=Decimal("5.0"),
-            transaction_type=TransactionType.BUY
+            transaction_type=TransactionType.BUY,
         )
         created = transaction_service.create_transaction(db_session, transaction_data)
 
         # Update transaction
-        update_data = TransactionUpdate(
-            broker="New Broker",
-            fee=Decimal("2.00")
-        )
-        updated = transaction_service.update_transaction(
-            db_session, created.id, update_data
-        )
+        update_data = TransactionUpdate(broker="New Broker", fee=Decimal("2.00"))
+        updated = transaction_service.update_transaction(db_session, created.id, update_data)
 
         assert updated.id == created.id
         assert updated.broker == "New Broker"
@@ -349,7 +337,7 @@ class TestTransactionService:
             fee=Decimal("1.00"),
             price_per_unit=Decimal("100.00"),
             units=Decimal("5.0"),
-            transaction_type=TransactionType.BUY
+            transaction_type=TransactionType.BUY,
         )
         created = transaction_service.create_transaction(db_session, transaction_data)
 

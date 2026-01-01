@@ -28,17 +28,15 @@ class PositionValue(Base):
     current_value: Mapped[Decimal] = mapped_column(Numeric(10, 4), nullable=False)
 
     # Timestamps
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime, nullable=False, default=datetime.utcnow
-    )
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=datetime.utcnow)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow
     )
 
     # Table constraints
     __table_args__ = (
-        UniqueConstraint('isin', name='uq_position_value_isin'),
-        Index('idx_position_value_isin', 'isin'),
+        UniqueConstraint("isin", name="uq_position_value_isin"),
+        Index("idx_position_value_isin", "isin"),
     )
 
     def __repr__(self) -> str:

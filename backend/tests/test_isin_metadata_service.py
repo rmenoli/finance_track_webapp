@@ -14,9 +14,7 @@ class TestISINMetadataService:
     def test_create_isin_metadata(self, db_session):
         """Test creating new ISIN metadata."""
         metadata_data = ISINMetadataCreate(
-            isin="IE00B4L5Y983",
-            name="iShares Core MSCI Emerging Markets ETF",
-            type=ISINType.STOCK
+            isin="IE00B4L5Y983", name="iShares Core MSCI Emerging Markets ETF", type=ISINType.STOCK
         )
 
         metadata = isin_metadata_service.create_isin_metadata(db_session, metadata_data)
@@ -31,9 +29,7 @@ class TestISINMetadataService:
     def test_create_isin_metadata_duplicate(self, db_session):
         """Test creating duplicate ISIN metadata raises error."""
         metadata_data = ISINMetadataCreate(
-            isin="IE00B4L5Y983",
-            name="First ETF",
-            type=ISINType.STOCK
+            isin="IE00B4L5Y983", name="First ETF", type=ISINType.STOCK
         )
 
         # Create first metadata
@@ -41,9 +37,7 @@ class TestISINMetadataService:
 
         # Try to create duplicate
         duplicate_data = ISINMetadataCreate(
-            isin="IE00B4L5Y983",
-            name="Duplicate ETF",
-            type=ISINType.BOND
+            isin="IE00B4L5Y983", name="Duplicate ETF", type=ISINType.BOND
         )
 
         with pytest.raises(ISINMetadataAlreadyExistsError):
@@ -54,7 +48,7 @@ class TestISINMetadataService:
         metadata_data = ISINMetadataCreate(
             isin="ie00b4l5y983",  # lowercase
             name="Test ETF",
-            type=ISINType.STOCK
+            type=ISINType.STOCK,
         )
 
         metadata = isin_metadata_service.create_isin_metadata(db_session, metadata_data)
@@ -65,9 +59,7 @@ class TestISINMetadataService:
         """Test getting ISIN metadata by ISIN."""
         # Create metadata
         metadata_data = ISINMetadataCreate(
-            isin="IE00B4L5Y983",
-            name="Test ETF",
-            type=ISINType.STOCK
+            isin="IE00B4L5Y983", name="Test ETF", type=ISINType.STOCK
         )
         created = isin_metadata_service.create_isin_metadata(db_session, metadata_data)
 
@@ -116,7 +108,9 @@ class TestISINMetadataService:
         metadata1 = ISINMetadataCreate(isin="IE00B4L5Y983", name="ETF 1", type=ISINType.STOCK)
         metadata2 = ISINMetadataCreate(isin="US0378331005", name="Stock 1", type=ISINType.STOCK)
         metadata3 = ISINMetadataCreate(isin="GB00B24CGK77", name="Bond 1", type=ISINType.BOND)
-        metadata4 = ISINMetadataCreate(isin="DE0005933931", name="Real Asset 1", type=ISINType.REAL_ASSET)
+        metadata4 = ISINMetadataCreate(
+            isin="DE0005933931", name="Real Asset 1", type=ISINType.REAL_ASSET
+        )
 
         isin_metadata_service.create_isin_metadata(db_session, metadata1)
         isin_metadata_service.create_isin_metadata(db_session, metadata2)
@@ -134,7 +128,9 @@ class TestISINMetadataService:
         assert bonds[0].type == ISINType.BOND
 
         # Filter by REAL_ASSET
-        real_assets = isin_metadata_service.get_all_isin_metadata(db_session, asset_type=ISINType.REAL_ASSET)
+        real_assets = isin_metadata_service.get_all_isin_metadata(
+            db_session, asset_type=ISINType.REAL_ASSET
+        )
         assert len(real_assets) == 1
         assert real_assets[0].type == ISINType.REAL_ASSET
 
@@ -142,20 +138,17 @@ class TestISINMetadataService:
         """Test updating ISIN metadata."""
         # Create metadata
         metadata_data = ISINMetadataCreate(
-            isin="IE00B4L5Y983",
-            name="Original Name",
-            type=ISINType.STOCK
+            isin="IE00B4L5Y983", name="Original Name", type=ISINType.STOCK
         )
         created = isin_metadata_service.create_isin_metadata(db_session, metadata_data)
         created_id = created.id
         created_at = created.created_at
 
         # Update both fields
-        update_data = ISINMetadataUpdate(
-            name="Updated Name",
-            type=ISINType.BOND
+        update_data = ISINMetadataUpdate(name="Updated Name", type=ISINType.BOND)
+        updated = isin_metadata_service.update_isin_metadata(
+            db_session, "IE00B4L5Y983", update_data
         )
-        updated = isin_metadata_service.update_isin_metadata(db_session, "IE00B4L5Y983", update_data)
 
         assert updated.id == created_id
         assert updated.isin == "IE00B4L5Y983"
@@ -168,22 +161,24 @@ class TestISINMetadataService:
         """Test updating only some fields of ISIN metadata."""
         # Create metadata
         metadata_data = ISINMetadataCreate(
-            isin="IE00B4L5Y983",
-            name="Original Name",
-            type=ISINType.STOCK
+            isin="IE00B4L5Y983", name="Original Name", type=ISINType.STOCK
         )
         created = isin_metadata_service.create_isin_metadata(db_session, metadata_data)
 
         # Update only name
         update_data = ISINMetadataUpdate(name="New Name")
-        updated = isin_metadata_service.update_isin_metadata(db_session, "IE00B4L5Y983", update_data)
+        updated = isin_metadata_service.update_isin_metadata(
+            db_session, "IE00B4L5Y983", update_data
+        )
 
         assert updated.name == "New Name"
         assert updated.type == ISINType.STOCK  # Should remain unchanged
 
         # Update only type
         update_data2 = ISINMetadataUpdate(type=ISINType.BOND)
-        updated2 = isin_metadata_service.update_isin_metadata(db_session, "IE00B4L5Y983", update_data2)
+        updated2 = isin_metadata_service.update_isin_metadata(
+            db_session, "IE00B4L5Y983", update_data2
+        )
 
         assert updated2.name == "New Name"  # Should remain unchanged
         assert updated2.type == ISINType.BOND
@@ -199,9 +194,7 @@ class TestISINMetadataService:
         """Test deleting ISIN metadata."""
         # Create metadata
         metadata_data = ISINMetadataCreate(
-            isin="IE00B4L5Y983",
-            name="Test ETF",
-            type=ISINType.STOCK
+            isin="IE00B4L5Y983", name="Test ETF", type=ISINType.STOCK
         )
         isin_metadata_service.create_isin_metadata(db_session, metadata_data)
 
@@ -224,9 +217,7 @@ class TestISINMetadataService:
     def test_upsert_isin_metadata_create(self, db_session):
         """Test upserting new ISIN metadata (create)."""
         metadata_data = ISINMetadataCreate(
-            isin="IE00B4L5Y983",
-            name="Test ETF",
-            type=ISINType.STOCK
+            isin="IE00B4L5Y983", name="Test ETF", type=ISINType.STOCK
         )
 
         metadata = isin_metadata_service.upsert_isin_metadata(db_session, metadata_data)
@@ -240,9 +231,7 @@ class TestISINMetadataService:
         """Test upserting existing ISIN metadata (update)."""
         # Create initial metadata
         metadata_data = ISINMetadataCreate(
-            isin="IE00B4L5Y983",
-            name="Original Name",
-            type=ISINType.STOCK
+            isin="IE00B4L5Y983", name="Original Name", type=ISINType.STOCK
         )
         initial = isin_metadata_service.upsert_isin_metadata(db_session, metadata_data)
         initial_id = initial.id
@@ -250,9 +239,7 @@ class TestISINMetadataService:
 
         # Upsert with new data
         update_data = ISINMetadataCreate(
-            isin="IE00B4L5Y983",
-            name="Updated Name",
-            type=ISINType.BOND
+            isin="IE00B4L5Y983", name="Updated Name", type=ISINType.BOND
         )
         updated = isin_metadata_service.upsert_isin_metadata(db_session, update_data)
 

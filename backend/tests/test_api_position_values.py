@@ -8,10 +8,7 @@ class TestPositionValuesAPI:
 
     def test_upsert_position_value_create(self, client):
         """Test creating a new position value via API."""
-        data = {
-            "isin": "IE00B4L5Y983",
-            "current_value": "5000.50"
-        }
+        data = {"isin": "IE00B4L5Y983", "current_value": "5000.50"}
 
         response = client.post("/api/v1/position-values", json=data)
 
@@ -55,8 +52,12 @@ class TestPositionValuesAPI:
     def test_list_position_values(self, client):
         """Test listing all position values."""
         # Create multiple values
-        client.post("/api/v1/position-values", json={"isin": "IE00B4L5Y983", "current_value": "1000.00"})
-        client.post("/api/v1/position-values", json={"isin": "US0378331005", "current_value": "2000.00"})
+        client.post(
+            "/api/v1/position-values", json={"isin": "IE00B4L5Y983", "current_value": "1000.00"}
+        )
+        client.post(
+            "/api/v1/position-values", json={"isin": "US0378331005", "current_value": "2000.00"}
+        )
 
         # List all
         response = client.get("/api/v1/position-values")

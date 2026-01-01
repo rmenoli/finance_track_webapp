@@ -1,7 +1,6 @@
 """Asset snapshots API router."""
 
 from datetime import datetime
-from decimal import Decimal
 
 from fastapi import APIRouter, Depends, File, Path, Query, UploadFile, status
 from sqlalchemy.orm import Session
@@ -60,9 +59,7 @@ def list_snapshots(
     db: Session = Depends(get_db),
 ) -> AssetSnapshotListResponse:
     """List asset snapshots with optional filters."""
-    snapshots = asset_snapshot_service.get_snapshots(
-        db, start_date, end_date, asset_type
-    )
+    snapshots = asset_snapshot_service.get_snapshots(db, start_date, end_date, asset_type)
 
     return AssetSnapshotListResponse(
         snapshots=[AssetSnapshotResponse.model_validate(s) for s in snapshots],
@@ -94,12 +91,12 @@ def get_snapshot_summary(
     - Breakdown by currency
     - Breakdown by asset type
     """
-    summaries, avg_monthly_increment = asset_snapshot_service.get_snapshot_summaries(db, start_date, end_date)
+    summaries, avg_monthly_increment = asset_snapshot_service.get_snapshot_summaries(
+        db, start_date, end_date
+    )
 
     return SnapshotSummaryListResponse(
-        summaries=summaries,
-        total=len(summaries),
-        avg_monthly_increment=avg_monthly_increment
+        summaries=summaries, total=len(summaries), avg_monthly_increment=avg_monthly_increment
     )
 
 

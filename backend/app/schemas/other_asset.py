@@ -6,14 +6,20 @@ from typing import Optional
 
 from pydantic import BaseModel, ConfigDict, Field, computed_field, field_validator, model_validator
 
-from app.constants import AssetType, Currency, VALID_ACCOUNT_NAMES
+from app.constants import VALID_ACCOUNT_NAMES, AssetType, Currency
 
 
 class OtherAssetBase(BaseModel):
     """Base schema for other asset data."""
 
-    asset_type: AssetType = Field(..., description="Asset type (crypto, cash_eur, cash_czk, cd_account, pension_fund)")
-    asset_detail: Optional[str] = Field(None, max_length=100, description="Asset detail (account name for cash assets, None for others)")
+    asset_type: AssetType = Field(
+        ..., description="Asset type (crypto, cash_eur, cash_czk, cd_account, pension_fund)"
+    )
+    asset_detail: Optional[str] = Field(
+        None,
+        max_length=100,
+        description="Asset detail (account name for cash assets, None for others)",
+    )
     currency: Currency = Field(..., description="Currency (EUR or CZK)")
     value: Decimal = Field(..., ge=0, description="Value in the specified currency")
 
@@ -21,8 +27,14 @@ class OtherAssetBase(BaseModel):
 class OtherAssetCreate(BaseModel):
     """Schema for creating/updating an other asset (UPSERT operation)."""
 
-    asset_type: AssetType = Field(..., description="Asset type (crypto, cash_eur, cash_czk, cd_account, pension_fund)")
-    asset_detail: Optional[str] = Field(None, max_length=100, description="Asset detail (account name for cash assets, None for others)")
+    asset_type: AssetType = Field(
+        ..., description="Asset type (crypto, cash_eur, cash_czk, cd_account, pension_fund)"
+    )
+    asset_detail: Optional[str] = Field(
+        None,
+        max_length=100,
+        description="Asset detail (account name for cash assets, None for others)",
+    )
     currency: Currency = Field(..., description="Currency (EUR or CZK)")
     value: Decimal = Field(..., ge=0, description="Value in the specified currency")
 
@@ -31,7 +43,9 @@ class OtherAssetCreate(BaseModel):
     def validate_not_investments(cls, v: AssetType) -> AssetType:
         """Prevent manual creation of investments asset type."""
         if v == AssetType.INVESTMENTS:
-            raise ValueError("Cannot manually create or update 'investments' asset type. This is computed from portfolio.")
+            raise ValueError(
+                "Cannot manually create or update 'investments' asset type. This is computed from portfolio."
+            )
         return v
 
     @model_validator(mode="after")
@@ -44,7 +58,9 @@ class OtherAssetCreate(BaseModel):
         # Cash assets require account name
         if asset_type in (AssetType.CASH_EUR, AssetType.CASH_CZK):
             if not asset_detail:
-                raise ValueError(f"Cash assets (type '{asset_type.value}') require an account name in 'asset_detail'")
+                raise ValueError(
+                    f"Cash assets (type '{asset_type.value}') require an account name in 'asset_detail'"
+                )
 
             if asset_detail not in VALID_ACCOUNT_NAMES:
                 raise ValueError(
@@ -78,7 +94,9 @@ class OtherAssetResponse(OtherAssetBase):
     updated_at: datetime = Field(..., description="Last update timestamp")
 
     # Exchange rate for EUR conversion (attached by service layer, excluded from API response)
-    exchange_rate_: Decimal = Field(default=Decimal("25.00"), exclude=True, description="Exchange rate (CZK per 1 EUR)")
+    exchange_rate_: Decimal = Field(
+        default=Decimal("25.00"), exclude=True, description="Exchange rate (CZK per 1 EUR)"
+    )
 
     @computed_field
     @property
@@ -103,6 +121,18 @@ class OtherAssetListResponse(BaseModel):
 
     other_assets: list[OtherAssetResponse]
     total: int
-    exchange_rate_used: Decimal = Field(..., description="Exchange rate used for EUR conversion (CZK per 1 EUR)")
+    exchange_rate_used: Decimal = Field(
+        ..., description="Exchange rate used for EUR conversion (CZK per 1 EUR)"
+    )
+    monthly_expected_return_investment: Decimal = Field(
+        ...,
+        description="Monthly expected return from investments (EUR/month)",
+        decimal_places=2,
+    )
+    monthly_expected_return_cd: Decimal = Field(
+        ...,
+        description="Monthly expected return from CD accounts (EUR/month)",
+        decimal_places=2,
+    )
 
     model_config = ConfigDict(from_attributes=True)

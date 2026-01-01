@@ -13,10 +13,7 @@ from app.services import cost_basis_service
 logger = logging.getLogger(__name__)
 
 
-def upsert_position_value(
-    db: Session,
-    position_value_data: PositionValueCreate
-) -> PositionValue:
+def upsert_position_value(db: Session, position_value_data: PositionValueCreate) -> PositionValue:
     """
     Create or update a position value (UPSERT operation).
 
@@ -34,9 +31,7 @@ def upsert_position_value(
     isin_normalized = position_value_data.isin.upper()
 
     # Check if position value exists for this ISIN
-    existing = db.query(PositionValue).filter(
-        PositionValue.isin == isin_normalized
-    ).first()
+    existing = db.query(PositionValue).filter(PositionValue.isin == isin_normalized).first()
 
     if existing:
         # Update existing record
@@ -61,8 +56,7 @@ def upsert_position_value(
     else:
         # Create new record
         position_value = PositionValue(
-            isin=isin_normalized,
-            current_value=position_value_data.current_value
+            isin=isin_normalized, current_value=position_value_data.current_value
         )
         db.add(position_value)
         db.commit()
@@ -97,9 +91,7 @@ def get_position_value(db: Session, isin: str) -> PositionValue:
     """
     isin_normalized = isin.upper()
 
-    position_value = db.query(PositionValue).filter(
-        PositionValue.isin == isin_normalized
-    ).first()
+    position_value = db.query(PositionValue).filter(PositionValue.isin == isin_normalized).first()
 
     if not position_value:
         raise PositionValueNotFoundError(isin_normalized)
@@ -161,9 +153,7 @@ def delete_position_value_by_id(db: Session, position_value_id: int) -> None:
     Raises:
         PositionValueNotFoundError: If position value not found
     """
-    position_value = (
-        db.query(PositionValue).filter(PositionValue.id == position_value_id).first()
-    )
+    position_value = db.query(PositionValue).filter(PositionValue.id == position_value_id).first()
 
     if not position_value:
         raise PositionValueNotFoundError(position_value_id)
@@ -209,12 +199,7 @@ def cleanup_orphaned_position_values(db: Session) -> dict:
     """
     position_values = get_all_position_values(db)
 
-    stats = {
-        "checked": len(position_values),
-        "deleted": 0,
-        "deleted_isins": [],
-        "errors": []
-    }
+    stats = {"checked": len(position_values), "deleted": 0, "deleted_isins": [], "errors": []}
 
     log_with_context(
         logger,
@@ -230,8 +215,8 @@ def cleanup_orphaned_position_values(db: Session) -> dict:
 
             # Delete if no transactions or position closed
             should_delete = (
-                cost_basis is None or  # No transactions
-                cost_basis.total_units == 0  # Position closed
+                cost_basis is None  # No transactions
+                or cost_basis.total_units == 0  # Position closed
             )
 
             if should_delete:
@@ -241,10 +226,7 @@ def cleanup_orphaned_position_values(db: Session) -> dict:
 
         except Exception as e:
             # LOG ERROR - previously not logged
-            error_info = {
-                "isin": pv.isin,
-                "error": str(e)
-            }
+            error_info = {"isin": pv.isin, "error": str(e)}
             stats["errors"].append(error_info)
 
             log_with_context(

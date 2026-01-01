@@ -13,6 +13,8 @@ logger = logging.getLogger(__name__)
 
 # Setting key constants
 EXCHANGE_RATE_KEY = "czk_eur_exchange_rate"
+EXPECTED_RETURN_INVESTMENT_KEY = "expected_return_investment"
+EXPECTED_RETURN_CD_KEY = "expected_return_cd"
 
 
 def get_exchange_rate_setting(db: Session) -> Optional[UserSetting]:
@@ -26,9 +28,7 @@ def get_exchange_rate_setting(db: Session) -> Optional[UserSetting]:
         UserSetting object if exists, None otherwise.
         To get the Decimal value: Decimal(result.setting_value)
     """
-    return db.query(UserSetting).filter(
-        UserSetting.setting_key == EXCHANGE_RATE_KEY
-    ).first()
+    return db.query(UserSetting).filter(UserSetting.setting_key == EXCHANGE_RATE_KEY).first()
 
 
 def update_exchange_rate_setting(db: Session, exchange_rate: Decimal) -> UserSetting:
@@ -46,9 +46,7 @@ def update_exchange_rate_setting(db: Session, exchange_rate: Decimal) -> UserSet
         Created or updated user setting
     """
     # Check if setting exists
-    existing = db.query(UserSetting).filter(
-        UserSetting.setting_key == EXCHANGE_RATE_KEY
-    ).first()
+    existing = db.query(UserSetting).filter(UserSetting.setting_key == EXCHANGE_RATE_KEY).first()
 
     if existing:
         # Update existing record
@@ -72,10 +70,7 @@ def update_exchange_rate_setting(db: Session, exchange_rate: Decimal) -> UserSet
         return existing
     else:
         # Create new record
-        setting = UserSetting(
-            setting_key=EXCHANGE_RATE_KEY,
-            setting_value=str(exchange_rate)
-        )
+        setting = UserSetting(setting_key=EXCHANGE_RATE_KEY, setting_value=str(exchange_rate))
         db.add(setting)
         db.commit()
         db.refresh(setting)
@@ -88,6 +83,168 @@ def update_exchange_rate_setting(db: Session, exchange_rate: Decimal) -> UserSet
             operation="CREATE",
             setting_key=EXCHANGE_RATE_KEY,
             setting_value=str(exchange_rate),
+        )
+
+        return setting
+
+
+def get_expected_return_investment_setting(db: Session) -> Optional[UserSetting]:
+    """
+    Get the stored expected return investment setting object.
+
+    Args:
+        db: Database session
+
+    Returns:
+        UserSetting object if exists, None otherwise.
+        To get the Decimal value: Decimal(result.setting_value)
+    """
+    return (
+        db.query(UserSetting)
+        .filter(UserSetting.setting_key == EXPECTED_RETURN_INVESTMENT_KEY)
+        .first()
+    )
+
+
+def update_expected_return_investment_setting(db: Session, expected_return: Decimal) -> UserSetting:
+    """
+    Create or update the expected return investment setting (UPSERT operation).
+
+    If setting exists, updates the value and updated_at.
+    If setting doesn't exist, creates new record.
+
+    Args:
+        db: Database session
+        expected_return: Expected return percentage (e.g., 7.00 for 7%)
+
+    Returns:
+        Created or updated user setting
+    """
+    # Check if setting exists
+    existing = (
+        db.query(UserSetting)
+        .filter(UserSetting.setting_key == EXPECTED_RETURN_INVESTMENT_KEY)
+        .first()
+    )
+
+    # Quantize to ensure 2 decimal places
+    quantized_value = expected_return.quantize(Decimal("0.01"))
+
+    if existing:
+        # Update existing record
+        old_value = existing.setting_value
+        existing.setting_value = str(quantized_value)
+        # updated_at will auto-update via onupdate in model
+        db.commit()
+        db.refresh(existing)
+
+        # AUDIT LOG - UPDATE
+        log_with_context(
+            logger,
+            logging.INFO,
+            "Expected return investment setting updated",
+            operation="UPDATE",
+            setting_key=EXPECTED_RETURN_INVESTMENT_KEY,
+            old_value=old_value,
+            new_value=str(quantized_value),
+        )
+
+        return existing
+    else:
+        # Create new record
+        setting = UserSetting(
+            setting_key=EXPECTED_RETURN_INVESTMENT_KEY, setting_value=str(quantized_value)
+        )
+        db.add(setting)
+        db.commit()
+        db.refresh(setting)
+
+        # AUDIT LOG - CREATE
+        log_with_context(
+            logger,
+            logging.INFO,
+            "Expected return investment setting created",
+            operation="CREATE",
+            setting_key=EXPECTED_RETURN_INVESTMENT_KEY,
+            setting_value=str(quantized_value),
+        )
+
+        return setting
+
+
+def get_expected_return_cd_setting(db: Session) -> Optional[UserSetting]:
+    """
+    Get the stored expected return CD setting object.
+
+    Args:
+        db: Database session
+
+    Returns:
+        UserSetting object if exists, None otherwise.
+        To get the Decimal value: Decimal(result.setting_value)
+    """
+    return db.query(UserSetting).filter(UserSetting.setting_key == EXPECTED_RETURN_CD_KEY).first()
+
+
+def update_expected_return_cd_setting(db: Session, expected_return: Decimal) -> UserSetting:
+    """
+    Create or update the expected return CD setting (UPSERT operation).
+
+    If setting exists, updates the value and updated_at.
+    If setting doesn't exist, creates new record.
+
+    Args:
+        db: Database session
+        expected_return: Expected return percentage (e.g., 4.00 for 4%)
+
+    Returns:
+        Created or updated user setting
+    """
+    # Check if setting exists
+    existing = (
+        db.query(UserSetting).filter(UserSetting.setting_key == EXPECTED_RETURN_CD_KEY).first()
+    )
+
+    # Quantize to ensure 2 decimal places
+    quantized_value = expected_return.quantize(Decimal("0.01"))
+
+    if existing:
+        # Update existing record
+        old_value = existing.setting_value
+        existing.setting_value = str(quantized_value)
+        # updated_at will auto-update via onupdate in model
+        db.commit()
+        db.refresh(existing)
+
+        # AUDIT LOG - UPDATE
+        log_with_context(
+            logger,
+            logging.INFO,
+            "Expected return CD setting updated",
+            operation="UPDATE",
+            setting_key=EXPECTED_RETURN_CD_KEY,
+            old_value=old_value,
+            new_value=str(quantized_value),
+        )
+
+        return existing
+    else:
+        # Create new record
+        setting = UserSetting(
+            setting_key=EXPECTED_RETURN_CD_KEY, setting_value=str(quantized_value)
+        )
+        db.add(setting)
+        db.commit()
+        db.refresh(setting)
+
+        # AUDIT LOG - CREATE
+        log_with_context(
+            logger,
+            logging.INFO,
+            "Expected return CD setting created",
+            operation="CREATE",
+            setting_key=EXPECTED_RETURN_CD_KEY,
+            setting_value=str(quantized_value),
         )
 
         return setting

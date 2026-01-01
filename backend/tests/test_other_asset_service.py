@@ -19,7 +19,7 @@ class TestOtherAssetService:
             asset_type=AssetType.CRYPTO,
             asset_detail=None,
             currency=Currency.EUR,
-            value=Decimal("700.00")
+            value=Decimal("700.00"),
         )
 
         asset = other_asset_service.upsert_other_asset(db_session, asset_data)
@@ -38,7 +38,7 @@ class TestOtherAssetService:
             asset_type=AssetType.CASH_EUR,
             asset_detail="CSOB",
             currency=Currency.EUR,
-            value=Decimal("1500.00")
+            value=Decimal("1500.00"),
         )
 
         asset = other_asset_service.upsert_other_asset(db_session, asset_data)
@@ -55,7 +55,7 @@ class TestOtherAssetService:
             asset_type=AssetType.CASH_CZK,
             asset_detail="Revolut",
             currency=Currency.CZK,
-            value=Decimal("25000.00")
+            value=Decimal("25000.00"),
         )
 
         asset = other_asset_service.upsert_other_asset(db_session, asset_data)
@@ -73,7 +73,7 @@ class TestOtherAssetService:
             asset_type=AssetType.CRYPTO,
             asset_detail=None,
             currency=Currency.EUR,
-            value=Decimal("700.00")
+            value=Decimal("700.00"),
         )
         initial = other_asset_service.upsert_other_asset(db_session, asset_data)
         initial_id = initial.id
@@ -84,7 +84,7 @@ class TestOtherAssetService:
             asset_type=AssetType.CRYPTO,
             asset_detail=None,
             currency=Currency.EUR,
-            value=Decimal("850.00")
+            value=Decimal("850.00"),
         )
         updated = other_asset_service.upsert_other_asset(db_session, asset_update)
 
@@ -102,7 +102,7 @@ class TestOtherAssetService:
             asset_type=AssetType.CASH_EUR,
             asset_detail="CSOB",
             currency=Currency.EUR,
-            value=Decimal("1000.00")
+            value=Decimal("1000.00"),
         )
         initial = other_asset_service.upsert_other_asset(db_session, asset_data)
 
@@ -111,7 +111,7 @@ class TestOtherAssetService:
             asset_type=AssetType.CASH_EUR,
             asset_detail="CSOB",
             currency=Currency.EUR,
-            value=Decimal("1500.00")
+            value=Decimal("1500.00"),
         )
         updated = other_asset_service.upsert_other_asset(db_session, asset_update)
 
@@ -125,7 +125,7 @@ class TestOtherAssetService:
             asset_type=AssetType.CASH_EUR,
             asset_detail="CSOB",
             currency=Currency.EUR,
-            value=Decimal("1000.00")
+            value=Decimal("1000.00"),
         )
         csob = other_asset_service.upsert_other_asset(db_session, csob_data)
 
@@ -134,7 +134,7 @@ class TestOtherAssetService:
             asset_type=AssetType.CASH_EUR,
             asset_detail="Revolut",
             currency=Currency.EUR,
-            value=Decimal("650.00")
+            value=Decimal("650.00"),
         )
         revolut = other_asset_service.upsert_other_asset(db_session, revolut_data)
 
@@ -150,16 +150,12 @@ class TestOtherAssetService:
             asset_type=AssetType.CRYPTO,
             asset_detail=None,
             currency=Currency.EUR,
-            value=Decimal("700.00")
+            value=Decimal("700.00"),
         )
         created = other_asset_service.upsert_other_asset(db_session, asset_data)
 
         # Get by type and detail
-        retrieved = other_asset_service.get_other_asset(
-            db_session,
-            AssetType.CRYPTO.value,
-            None
-        )
+        retrieved = other_asset_service.get_other_asset(db_session, AssetType.CRYPTO.value, None)
 
         assert retrieved.id == created.id
         assert retrieved.asset_type == AssetType.CRYPTO.value
@@ -172,15 +168,13 @@ class TestOtherAssetService:
             asset_type=AssetType.CASH_EUR,
             asset_detail="CSOB",
             currency=Currency.EUR,
-            value=Decimal("1000.00")
+            value=Decimal("1000.00"),
         )
         created = other_asset_service.upsert_other_asset(db_session, asset_data)
 
         # Get by type and account
         retrieved = other_asset_service.get_other_asset(
-            db_session,
-            AssetType.CASH_EUR.value,
-            "CSOB"
+            db_session, AssetType.CASH_EUR.value, "CSOB"
         )
 
         assert retrieved.id == created.id
@@ -199,13 +193,13 @@ class TestOtherAssetService:
             asset_type=AssetType.CRYPTO,
             asset_detail=None,
             currency=Currency.EUR,
-            value=Decimal("700.00")
+            value=Decimal("700.00"),
         )
         cash_data = OtherAssetCreate(
             asset_type=AssetType.CASH_EUR,
             asset_detail="CSOB",
             currency=Currency.EUR,
-            value=Decimal("1000.00")
+            value=Decimal("1000.00"),
         )
 
         other_asset_service.upsert_other_asset(db_session, crypto_data)
@@ -227,12 +221,14 @@ class TestOtherAssetService:
             asset_type=AssetType.CRYPTO,
             asset_detail=None,
             currency=Currency.EUR,
-            value=Decimal("700.00")
+            value=Decimal("700.00"),
         )
         other_asset_service.upsert_other_asset(db_session, crypto_data)
 
-        # Get all with investments (now returns tuple)
-        all_assets, exchange_rate = other_asset_service.get_all_other_assets_with_investments(db_session)
+        # Get all with investments (now returns tuple with 4 values)
+        all_assets, exchange_rate, _, _ = other_asset_service.get_all_other_assets_with_investments(
+            db_session
+        )
 
         # Should have investments row + 1 crypto = 2 total
         assert len(all_assets) >= 1
@@ -248,7 +244,7 @@ class TestOtherAssetService:
         assert investments.id == 0  # Marker for synthetic
 
         # Check that exchange_rate_ is attached
-        assert hasattr(investments, 'exchange_rate_')
+        assert hasattr(investments, "exchange_rate_")
         assert investments.exchange_rate_ == Decimal("25.00")
 
     def test_get_all_other_assets_empty(self, db_session):
@@ -264,16 +260,12 @@ class TestOtherAssetService:
             asset_type=AssetType.CRYPTO,
             asset_detail=None,
             currency=Currency.EUR,
-            value=Decimal("700.00")
+            value=Decimal("700.00"),
         )
         other_asset_service.upsert_other_asset(db_session, asset_data)
 
         # Delete
-        other_asset_service.delete_other_asset(
-            db_session,
-            AssetType.CRYPTO.value,
-            None
-        )
+        other_asset_service.delete_other_asset(db_session, AssetType.CRYPTO.value, None)
 
         # Verify deleted
         with pytest.raises(OtherAssetNotFoundError):

@@ -24,9 +24,7 @@ class TransactionBase(BaseModel):
     def validate_isin(cls, v: str) -> str:
         """Validate ISIN format."""
         if not ISIN_PATTERN.match(v.upper()):
-            raise ValueError(
-                "ISIN must be 12 characters: 2 letters + 9 alphanumeric + 1 digit"
-            )
+            raise ValueError("ISIN must be 12 characters: 2 letters + 9 alphanumeric + 1 digit")
         return v.upper()
 
     @field_validator("date")
@@ -51,27 +49,19 @@ class TransactionUpdate(BaseModel):
     """Schema for updating a transaction (all fields optional)."""
 
     date: Optional[DateType] = Field(None, description="Date of the transaction")
-    isin: Optional[str] = Field(
-        None, min_length=12, max_length=12, description="ISIN code"
-    )
-    broker: Optional[str] = Field(
-        None, min_length=1, max_length=100, description="Broker name"
-    )
+    isin: Optional[str] = Field(None, min_length=12, max_length=12, description="ISIN code")
+    broker: Optional[str] = Field(None, min_length=1, max_length=100, description="Broker name")
     fee: Optional[Decimal] = Field(None, ge=0, description="Transaction fee")
     price_per_unit: Optional[Decimal] = Field(None, gt=0, description="Price per unit")
     units: Optional[Decimal] = Field(None, gt=0, description="Number of units")
-    transaction_type: Optional[TransactionType] = Field(
-        None, description="BUY or SELL"
-    )
+    transaction_type: Optional[TransactionType] = Field(None, description="BUY or SELL")
 
     @field_validator("isin")
     @classmethod
     def validate_isin(cls, v: Optional[str]) -> Optional[str]:
         """Validate ISIN format if provided."""
         if v is not None and not ISIN_PATTERN.match(v.upper()):
-            raise ValueError(
-                "ISIN must be 12 characters: 2 letters + 9 alphanumeric + 1 digit"
-            )
+            raise ValueError("ISIN must be 12 characters: 2 letters + 9 alphanumeric + 1 digit")
         return v.upper() if v else None
 
     @field_validator("date")
@@ -127,9 +117,7 @@ class CSVImportRowError(BaseModel):
     isin: Optional[str] = Field(None, description="ISIN from failed row (if parseable)")
     date: Optional[str] = Field(None, description="Date from failed row (if parseable)")
     errors: list[str] = Field(..., description="List of validation error messages")
-    raw_data: Optional[dict] = Field(
-        None, description="Raw CSV row data for debugging"
-    )
+    raw_data: Optional[dict] = Field(None, description="Raw CSV row data for debugging")
 
 
 class CSVImportResult(BaseModel):
@@ -149,9 +137,7 @@ class CSVImportResponse(BaseModel):
     total_rows: int = Field(..., description="Total rows processed (excluding header)")
     successful: int = Field(..., description="Number of successfully imported transactions")
     failed: int = Field(..., description="Number of failed rows")
-    results: list[CSVImportResult] = Field(
-        default_factory=list, description="Successful imports"
-    )
+    results: list[CSVImportResult] = Field(default_factory=list, description="Successful imports")
     errors: list[CSVImportRowError] = Field(
         default_factory=list, description="Failed imports with details"
     )

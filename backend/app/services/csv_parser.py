@@ -5,10 +5,8 @@ import logging
 from datetime import datetime
 from decimal import Decimal, InvalidOperation
 from io import StringIO
-from typing import Optional
 
 from app.constants import TransactionType
-from app.logging_config import log_with_context
 
 logger = logging.getLogger(__name__)
 
@@ -125,9 +123,7 @@ def parse_degiro_row(row: dict, row_number: int) -> DEGIRORowData:
             raise ValueError(f"Price must be positive: {price}")
 
         # Column 14: Transaction and/or third party fees EUR
-        fee_raw = parse_european_decimal(
-            row.get("Transaction and/or third party fees EUR", "0")
-        )
+        fee_raw = parse_european_decimal(row.get("Transaction and/or third party fees EUR", "0"))
         fee = abs(fee_raw)  # Convert negative to positive
 
         return DEGIRORowData(
@@ -178,9 +174,7 @@ def parse_degiro_csv(csv_content: str) -> list[DEGIRORowData]:
 
         missing_columns = required_columns - set(reader.fieldnames)
         if missing_columns:
-            raise ValueError(
-                f"Missing required columns: {', '.join(missing_columns)}"
-            )
+            raise ValueError(f"Missing required columns: {', '.join(missing_columns)}")
 
         # Parse rows
         parsed_rows = []
