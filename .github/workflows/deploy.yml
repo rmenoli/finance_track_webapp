@@ -109,10 +109,14 @@ jobs:
 
       - name: Run backup script on EC2
         run: |
-          cd /opt/etf-portfolio/backend
+          ssh -i ~/.ssh/deploy_key ${{ secrets.EC2_USERNAME }}@${{ secrets.EC2_HOST }} << 'EOF'
+            set -e  # Exit on any error
 
-          uv run python backup_db.py
+            echo "Navigating to application directory..."
+            cd /opt/etf-portfolio/backend
 
+            echo "Running backup script..."
+            uv run backup_db.py
 
       - name: Deploy backend to EC2
         run: |
