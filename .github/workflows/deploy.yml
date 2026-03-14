@@ -56,19 +56,21 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Setup Node.js 18
-        uses: actions/setup-node@v4
-        with:
-          node-version: '18'
-          cache: 'npm'
-          cache-dependency-path: frontend/package-lock.json
-
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ secrets.AWS_REGION }}
+
+      # ── Frontend ──────────────────────────────────────────────────────────────
+
+      - name: Setup Node.js 18
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
 
       - name: Build frontend
         env:
@@ -98,61 +100,42 @@ jobs:
             --distribution-id ${{ secrets.CLOUDFRONT_DISTRIBUTION_ID }} \
             --paths "/*"
 
-      - name: Setup SSH key for EC2
+      # ── Backend (Lambda) ──────────────────────────────────────────────────────
+
+      - name: Log in to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build and push Docker image to ECR
+        env:
+          IMAGE_URI: ${{ secrets.ECR_REGISTRY }}/${{ secrets.ECR_REPOSITORY }}:${{ github.sha }}
+          IMAGE_LATEST: ${{ secrets.ECR_REGISTRY }}/${{ secrets.ECR_REPOSITORY }}:latest
         run: |
-          mkdir -p ~/.ssh
-          echo "${{ secrets.EC2_SSH_PRIVATE_KEY }}" > ~/.ssh/deploy_key
-          chmod 600 ~/.ssh/deploy_key
+          cd backend
+          docker build -f Dockerfile.lambda -t $IMAGE_URI -t $IMAGE_LATEST .
+          docker push $IMAGE_URI
+          docker push $IMAGE_LATEST
 
-          # Add EC2 host to known_hosts to avoid prompt
-          ssh-keyscan -H ${{ secrets.EC2_HOST }} >> ~/.ssh/known_hosts
-
-      - name: Run backup script on EC2
+      - name: Update Lambda function with new image
+        env:
+          IMAGE_URI: ${{ secrets.ECR_REGISTRY }}/${{ secrets.ECR_REPOSITORY }}:${{ github.sha }}
         run: |
-          ssh -i ~/.ssh/deploy_key ${{ secrets.EC2_USERNAME }}@${{ secrets.EC2_HOST }} << 'EOF'
-            set -e  # Exit on any error
+          aws lambda update-function-code \
+            --function-name ${{ secrets.LAMBDA_FUNCTION_NAME }} \
+            --image-uri $IMAGE_URI
 
-            echo "Navigating to application directory..."
-            cd /opt/etf-portfolio/backend
-
-            echo "Running backup script..."
-            uv run backup_db.py
-
-      - name: Deploy backend to EC2
+      - name: Wait for Lambda update to complete
         run: |
-          ssh -i ~/.ssh/deploy_key ${{ secrets.EC2_USERNAME }}@${{ secrets.EC2_HOST }} << 'EOF'
-            set -e  # Exit on any error
+          aws lambda wait function-updated \
+            --function-name ${{ secrets.LAMBDA_FUNCTION_NAME }}
 
-            echo "Navigating to application directory..."
-            cd /opt/etf-portfolio/backend
-
-            echo "Pulling latest code from main branch..."
-            git pull origin main
-
-            echo "Installing dependencies..."
-            uv sync --all-extras
-
-            echo "Running database migrations..."
-            uv run alembic upgrade head
-
-            echo "Restarting backend service..."
-            sudo systemctl restart etf-portfolio.service
-
-            echo "Waiting for service to start..."
-            sleep 5
-
-            echo "Verifying backend health..."
-            curl -f http://localhost:8000/health || exit 1
-
-            echo "Backend deployment successful!"
-          EOF
-
-      - name: Verify deployment
+      - name: Health check
         run: |
-          echo "Frontend URL: https://${{ secrets.CLOUDFRONT_DOMAIN }}"
-          echo "Backend API: https://${{ secrets.CLOUDFRONT_DOMAIN }}/api/v1/health"
-          echo "Deployment completed successfully!"
-
-      - name: Cleanup SSH key
-        if: always()
-        run: rm -f ~/.ssh/deploy_key
+          sleep 5
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
+            "https://${{ secrets.CLOUDFRONT_DOMAIN }}/api/v1/health")
+          if [ "$STATUS" != "200" ]; then
+            echo "Health check failed with status $STATUS"
+            exit 1
+          fi
+          echo "Health check passed"

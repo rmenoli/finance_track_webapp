@@ -1,0 +1,20 @@
+FROM public.ecr.aws/lambda/python:3.12
+
+# Copy UV binary
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
+
+WORKDIR ${LAMBDA_TASK_ROOT}
+
+# Install dependencies via uv export → pip install
+# This installs packages into the Lambda task root (Lambda's expected location)
+COPY pyproject.toml uv.lock ./
+RUN uv export --frozen --no-dev --no-editable -o requirements.txt && \
+    pip install -r requirements.txt --no-cache-dir
+
+# Copy application code
+COPY alembic.ini ./
+COPY alembic/ ./alembic/
+COPY app/ ./app/
+COPY lambda_handler.py ./
+
+CMD ["lambda_handler.handler"]
