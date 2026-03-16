@@ -56,24 +56,114 @@ After creating both SGs:
 4. Root directory creation permissions: Owner UID `1000`, GID `1000`, Permissions `0755`
 5. **Note the Access Point ARN**
 
+### Step E.5: Push Initial Image to ECR
+
+> Do this before Step F. You need an image in ECR to create the Lambda function.
+
+```bash
+# Authenticate Docker to ECR (via aws-vault)
+aws-vault exec YOUR_PROFILE -- aws ecr get-login-password --region YOUR_REGION | \
+  docker login --username AWS --password-stdin YOUR_ACCOUNT_ID.dkr.ecr.YOUR_REGION.amazonaws.com
+
+# Build the image — linux/amd64 required even on Apple Silicon
+# --provenance=false prevents Docker BuildKit from adding OCI attestation manifests
+# that Lambda does not support
+cd backend
+docker build --platform linux/amd64 --provenance=false -f Dockerfile.lambda -t finance-tracker-backend .
+
+# Tag and push
+docker tag finance-tracker-backend:latest \
+  YOUR_ACCOUNT_ID.dkr.ecr.YOUR_REGION.amazonaws.com/finance-tracker-backend:latest
+
+aws-vault exec YOUR_PROFILE -- docker push \
+  YOUR_ACCOUNT_ID.dkr.ecr.YOUR_REGION.amazonaws.com/finance-tracker-backend:latest
+```
+
+Verify it arrived: AWS Console → ECR → `finance-tracker-backend` → should show one image tagged `latest`.
+
 ### Step F: Create Lambda Function
 1. AWS Console → Lambda → **Create function**
 2. Choose: **Container image**
 3. Function name: `finance-tracker-backend`
-4. Container image URI: use the ECR URI from Step A with tag `:latest`
-   - First push an initial image (done in Task 3 below) before completing this step, OR use a public placeholder image like `public.ecr.aws/lambda/python:3.12` temporarily
+4. Container image URI: the ECR URI from Step E.5 (e.g. `123456789012.dkr.ecr.eu-west-1.amazonaws.com/finance-tracker-backend:latest`)
 5. Architecture: `x86_64`
 6. Click **Create function**
 
-**After creation, configure:**
-- **Configuration → General configuration**: Memory `512 MB`, Timeout `30 sec`
-- **Configuration → Environment variables** → Add:
+**After creation, configure in this exact order:**
+
+**1. IAM Role (must be first — required before VPC can be assigned)**
+- Configuration → Permissions → click the role name → **Add permissions → Attach policies**
+- Attach: `AWSLambdaVPCAccessExecutionRole`
+- Attach: `AmazonElasticFileSystemClientReadWriteAccess`
+- Also add this inline policy for ECR image pull (Actions → Create inline policy):
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [{
+    "Effect": "Allow",
+    "Action": ["ecr:GetDownloadUrlForLayer", "ecr:BatchGetImage", "ecr:BatchCheckLayerAvailability"],
+    "Resource": "arn:aws:ecr:REGION:ACCOUNT_ID:repository/finance-tracker-backend"
+  }, {
+    "Effect": "Allow",
+    "Action": "ecr:GetAuthorizationToken",
+    "Resource": "*"
+  }]
+}
+```
+
+**2. General configuration**
+- Configuration → General configuration: Memory `512 MB`, Timeout `30 sec`
+
+**3. Environment variables**
+- Configuration → Environment variables → Add:
   - `DATABASE_URL` = `sqlite:////mnt/efs/portfolio.db`
   - `CORS_ORIGINS` = `["https://YOUR_CLOUDFRONT_DOMAIN"]` (replace with actual domain)
   - `LOG_LEVEL` = `INFO`
   - `LOG_FORMAT` = `json`
-- **Configuration → VPC**: Edit → select default VPC, select all subnets, security group: `finance-tracker-lambda-sg`
-- **Configuration → File systems**: Add → select your EFS, access point from Step E, local mount path: `/mnt/efs`
+
+**4. VPC (requires IAM role from step 1)**
+- Configuration → VPC → Edit → select default VPC, select all subnets, security group: `finance-tracker-lambda-sg`
+
+**5. File systems (requires VPC from step 4)**
+- Configuration → File systems → Add → select your EFS, access point from Step E, local mount path: `/mnt/efs`
+
+### Step F.5: Smoke Test Lambda via Console
+
+> Do this after completing all Step F configuration (VPC, EFS, env vars). Verifies the container, Mangum, FastAPI, and EFS mount all work before exposing a public URL.
+
+1. Lambda → `finance-tracker-backend` → **Test** tab
+2. Click **Create new event**, name it `health-check`, paste this payload:
+```json
+{
+  "version": "2.0",
+  "routeKey": "GET /api/v1/health",
+  "rawPath": "/api/v1/health",
+  "rawQueryString": "",
+  "headers": {"content-type": "application/json"},
+  "requestContext": {"http": {"method": "GET", "path": "/api/v1/health", "sourceIp": "127.0.0.1"}},
+  "isBase64Encoded": false
+}
+```
+3. Click **Test**
+
+Expected result:
+```json
+{
+  "statusCode": 200,
+  "body": "{\"status\":\"healthy\"}"
+}
+```
+
+Check the **Log output** below the response for Alembic migration lines — confirms EFS is mounted and writable:
+```
+INFO  [alembic.runtime.migration] Running upgrade ...
+```
+
+**If it times out:** EFS or VPC is misconfigured — check Configuration → VPC and Configuration → File systems.
+
+**If it returns 500:** check the log output for the Python traceback.
+
+**Only proceed to Step G once this returns 200.**
 
 ### Step G: Enable Lambda Function URL
 1. Lambda → your function → **Configuration → Function URL** → **Create function URL**
@@ -146,7 +236,18 @@ In your GitHub repository → Settings → Secrets and variables → Actions →
 
 ## Code Implementation Tasks
 
-> **Status as of 2026-03-14:** Tasks 1-4 are **COMPLETE** (code changes already applied on branch `migration_to_lambda`). Tasks 5-7 are manual AWS operations still pending.
+> **Status as of 2026-03-15:** Tasks 1-4 are **COMPLETE** (code changes already applied on branch `migration_to_lambda`). Tasks 5-7 are manual AWS operations still pending.
+
+### Known issues fixed during implementation
+
+| Issue | Root cause | Fix applied |
+|---|---|---|
+| `pip install` fails with hash error | `uv export` includes local package as `file:///var/task` | Added `--no-emit-project` to `uv export` |
+| Mangum raises `KeyError: 'sourceIp'` | Mangum requires `requestContext.http.sourceIp` in every event | Always include `"sourceIp": "127.0.0.1"` in test payloads |
+| All routes return 404 via Mangum | `root_path="/api"` causes Starlette to strip `/api` from paths; routes were registered with prefix `/api/v1` so after stripping became `/v1/...` with no match | Changed `api_v1_prefix` from `/api/v1` to `/v1` in `config.py` |
+| Health route 404 | Same root_path stripping issue | Registered health at `/v1/health` — matches after Starlette strips `/api` from incoming `/api/v1/health` |
+
+---
 
 ### Task 1: Add Mangum Dependency ✅ DONE
 
@@ -241,8 +342,10 @@ WORKDIR ${LAMBDA_TASK_ROOT}
 # Install dependencies via uv export → pip install
 # This installs packages into the Lambda task root (Lambda's expected location)
 COPY pyproject.toml uv.lock ./
-RUN uv export --frozen --no-dev --no-editable -o requirements.txt && \
+RUN uv export --frozen --no-dev --no-editable --no-emit-project -o requirements.txt && \
     pip install -r requirements.txt --no-cache-dir
+# NOTE: --no-emit-project is required. Without it, uv includes the local package
+# as file:///var/task in requirements.txt and pip fails with a hash verification error.
 
 # Copy application code
 COPY alembic.ini ./
@@ -263,9 +366,13 @@ CMD ["lambda_handler.handler"]
 **Step 1: Build the image**
 ```bash
 cd backend
-docker build -f Dockerfile.lambda -t finance-tracker-lambda-test .
+docker build --platform linux/amd64 --provenance=false -f Dockerfile.lambda -t finance-tracker-lambda-test .
 ```
 Expected: build completes with no errors.
+
+> `--platform linux/amd64` is required on Apple Silicon — Lambda only supports x86_64 images.
+> `--provenance=false` is required — Docker BuildKit adds OCI attestation manifests by default that Lambda rejects.
+> Cross-platform builds on Apple Silicon can also produce files without world-read permissions, causing `PermissionError` at Lambda startup. The `RUN chmod -R 755 ${LAMBDA_TASK_ROOT}` in the Dockerfile fixes this.
 
 **Step 2: Run the container with a local SQLite database**
 ```bash
@@ -280,53 +387,61 @@ docker run --rm -p 9000:8080 \
 The container starts the Lambda emulator on port 9000. Leave it running and open a second terminal for the checks below.
 
 **Step 3: Health check**
-```bash
-curl -s -X POST "http://localhost:9000/2015-03-31/functions/function/invocations" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "version": "2.0",
-    "routeKey": "GET /api/v1/health",
-    "rawPath": "/api/v1/health",
-    "rawQueryString": "",
-    "headers": {"content-type": "application/json"},
-    "requestContext": {"http": {"method": "GET", "path": "/api/v1/health"}},
-    "isBase64Encoded": false
-  }' | python3 -m json.tool
+
+Use Postman (recommended — avoids zsh multiline quoting issues):
+- Method: `POST`
+- URL: `http://localhost:9000/2015-03-31/functions/function/invocations`
+- Header: `Content-Type: application/json`
+- Body:
+```json
+{
+  "version": "2.0",
+  "routeKey": "GET /api/v1/health",
+  "rawPath": "/api/v1/health",
+  "rawQueryString": "",
+  "headers": {"content-type": "application/json"},
+  "requestContext": {"http": {"method": "GET", "path": "/api/v1/health", "sourceIp": "127.0.0.1"}},
+  "isBase64Encoded": false
+}
 ```
-Expected: response body contains `{"status":"healthy"}` and `statusCode` is `200`.
+Expected: `statusCode: 200`, body `{"status":"healthy"}`.
+
+> **Routing note:** the app has `root_path="/api"` and `api_v1_prefix="/v1"`. Starlette's `get_route_path()` strips `scope["root_path"]` ("/api") from the incoming path before matching. So all routes must be registered WITHOUT the `/api` prefix — e.g. `/v1/health`, `/v1/transactions`. The health endpoint is registered as `@app.get("/v1/health")` (accessible externally as `/api/v1/health`). All external URLs remain `/api/v1/...` — the frontend is unaffected.
+
+> **`sourceIp` is required** in every Postman/curl event payload. Mangum reads it from `requestContext.http.sourceIp` and raises a `KeyError` if it's missing.
 
 **Step 4: Create a test transaction (verifies DB write)**
-```bash
-curl -s -X POST "http://localhost:9000/2015-03-31/functions/function/invocations" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "version": "2.0",
-    "routeKey": "POST /api/v1/transactions",
-    "rawPath": "/api/v1/transactions",
-    "rawQueryString": "",
-    "headers": {"content-type": "application/json"},
-    "requestContext": {"http": {"method": "POST", "path": "/api/v1/transactions"}},
-    "body": "{\"isin\": \"IE00B4L5Y983\", \"date\": \"2024-01-15\", \"transaction_type\": \"BUY\", \"units\": \"10\", \"price_per_unit\": \"85.50\", \"fee\": \"1.00\"}",
-    "isBase64Encoded": false
-  }' | python3 -m json.tool
+
+```json
+{
+  "version": "2.0",
+  "routeKey": "POST /api/v1/transactions",
+  "rawPath": "/api/v1/transactions",
+  "rawQueryString": "",
+  "headers": {"content-type": "application/json"},
+  "requestContext": {"http": {"method": "POST", "path": "/api/v1/transactions", "sourceIp": "127.0.0.1"}},
+  "body": "{\"isin\": \"IE00B4L5Y983\", \"date\": \"2024-01-15\", \"transaction_type\": \"BUY\", \"units\": \"10\", \"price_per_unit\": \"85.50\", \"fee\": \"1.00\", \"broker\": \"Test\"}",
+  "isBase64Encoded": false
+}
 ```
-Expected: `statusCode` is `201` and the response body contains the created transaction with an `id`.
+Expected: `statusCode: 201`, body contains the created transaction with an `id`.
 
 **Step 5: Read back transactions (verifies DB read)**
-```bash
-curl -s -X POST "http://localhost:9000/2015-03-31/functions/function/invocations" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "version": "2.0",
-    "routeKey": "GET /api/v1/transactions",
-    "rawPath": "/api/v1/transactions",
-    "rawQueryString": "",
-    "headers": {"content-type": "application/json"},
-    "requestContext": {"http": {"method": "GET", "path": "/api/v1/transactions"}},
-    "isBase64Encoded": false
-  }' | python3 -m json.tool
+
+```json
+{
+  "version": "2.0",
+  "routeKey": "GET /api/v1/transactions",
+  "rawPath": "/api/v1/transactions",
+  "rawQueryString": "",
+  "headers": {"content-type": "application/json"},
+  "requestContext": {"http": {"method": "GET", "path": "/api/v1/transactions", "sourceIp": "127.0.0.1"}},
+  "isBase64Encoded": false
+}
 ```
-Expected: `statusCode` is `200` and the array contains the transaction created in Step 4.
+Expected: `statusCode: 200`, array contains the transaction created in Step 4.
+
+> **Testing the frontend against Docker:** the Lambda emulator only accepts Lambda-formatted events, not plain HTTP. To test the frontend against the Docker image, override the CMD: `docker run ... finance-tracker-lambda-test uvicorn app.main:app --host 0.0.0.0 --port 8000`. However, testing the frontend against `uv run uvicorn` directly is equivalent since the application code is identical.
 
 **Step 6: Stop the container**
 ```bash
@@ -364,7 +479,7 @@ The new `deploy` job replaces the EC2 SSH deployment. The `test` job and fronten
 
 **Step 2: Confirm the image is in ECR**
 ```bash
-aws ecr describe-images \
+aws-vault exec YOUR_PROFILE -- aws ecr describe-images \
   --repository-name finance-tracker-backend \
   --query 'sort_by(imageDetails, &imagePushedAt)[-1].{digest:imageDigest,pushed:imagePushedAt,tags:imageTags}' \
   --output table
@@ -373,7 +488,7 @@ Expected: a row with the latest push timestamp and tag matching the most recent 
 
 **Step 3: Confirm Lambda is using the new image**
 ```bash
-aws lambda get-function-configuration \
+aws-vault exec YOUR_PROFILE -- aws lambda get-function-configuration \
   --function-name finance-tracker-backend \
   --query '{ImageUri:Code.ImageUri,LastModified:LastModified,State:State}' \
   --output table
@@ -426,11 +541,15 @@ sudo umount /mnt/efs
 
 > **Do this after Task 5 (data migrated to EFS) and before Task 6 (CloudFront cutover).**
 > At this point the Lambda is live on AWS with EFS mounted and your real data. EC2 is still serving the frontend — this checkpoint lets you verify the Lambda end-to-end without any user-visible impact.
+>
+> These are plain HTTP requests to the Lambda Function URL — no Lambda event wrapping needed. Use Postman with method + URL only (no special body format).
 
-**Step 1: Health check via Function URL**
-```bash
-curl -s https://YOUR_LAMBDA_FUNCTION_URL/api/v1/health | python3 -m json.tool
-```
+**Step 1: Health check**
+
+- Method: `GET`
+- URL: `https://YOUR_LAMBDA_FUNCTION_URL/api/v1/health`
+- No body, no extra headers
+
 Expected: `{"status": "healthy"}`
 
 If you get a timeout, check:
@@ -439,40 +558,50 @@ If you get a timeout, check:
 - CloudWatch → Log groups → `/aws/lambda/finance-tracker-backend` for error details
 
 **Step 2: Verify real data is accessible (reads from EFS)**
-```bash
-# List transactions — should return your actual migrated data
-curl -s https://YOUR_LAMBDA_FUNCTION_URL/api/v1/transactions | python3 -m json.tool
 
-# Portfolio summary — verifies cost basis calculations work
-curl -s https://YOUR_LAMBDA_FUNCTION_URL/api/v1/portfolio-summary | python3 -m json.tool
-```
+Request 1 — list transactions:
+- Method: `GET`
+- URL: `https://YOUR_LAMBDA_FUNCTION_URL/api/v1/transactions`
+
+Request 2 — portfolio summary:
+- Method: `GET`
+- URL: `https://YOUR_LAMBDA_FUNCTION_URL/api/v1/portfolio-summary`
+
 Expected: your actual transactions and holdings, not an empty array or error.
 
 **Step 3: Test a write operation (verify EFS is writable)**
-```bash
-# Create a dummy transaction
-curl -s -X POST https://YOUR_LAMBDA_FUNCTION_URL/api/v1/transactions \
-  -H "Content-Type: application/json" \
-  -d '{"isin": "IE00B4L5Y983", "date": "2024-01-15", "transaction_type": "BUY", "units": "1", "price_per_unit": "1.00", "fee": "0.00"}' \
-  | python3 -m json.tool
-```
-Note the `id` returned.
 
-```bash
-# Delete the dummy transaction immediately
-curl -s -X DELETE https://YOUR_LAMBDA_FUNCTION_URL/api/v1/transactions/YOUR_ID
+Create a dummy transaction:
+- Method: `POST`
+- URL: `https://YOUR_LAMBDA_FUNCTION_URL/api/v1/transactions`
+- Header: `Content-Type: application/json`
+- Body:
+```json
+{
+  "isin": "IE00B4L5Y983",
+  "date": "2024-01-15",
+  "transaction_type": "BUY",
+  "units": "1",
+  "price_per_unit": "1.00",
+  "fee": "0.00",
+  "broker": "Test"
+}
 ```
-Expected: `204 No Content` (no output). This confirms Lambda can write to and delete from EFS.
+Note the `id` in the response.
+
+Delete it immediately:
+- Method: `DELETE`
+- URL: `https://YOUR_LAMBDA_FUNCTION_URL/api/v1/transactions/YOUR_ID`
+
+Expected: `204 No Content`. This confirms Lambda can write to and delete from EFS.
 
 **Step 4: Check cold start time**
-```bash
-# First invocation (cold start — Lambda container is spinning up)
-time curl -s https://YOUR_LAMBDA_FUNCTION_URL/api/v1/health > /dev/null
 
-# Second invocation (warm — reuses existing container)
-time curl -s https://YOUR_LAMBDA_FUNCTION_URL/api/v1/health > /dev/null
-```
-Expected: cold start ~3-8s, warm ~100-500ms. If cold start exceeds 30s, increase Lambda timeout in Configuration → General configuration.
+Send the health check request twice back-to-back in Postman and observe the response time shown at the bottom of the response panel:
+- First request: cold start, expect ~3-8s
+- Second request: warm container, expect ~100-500ms
+
+If cold start exceeds 30s, increase Lambda timeout: Configuration → General configuration → Timeout.
 
 **Step 5: Check CloudWatch logs for errors**
 - AWS Console → CloudWatch → Log groups → `/aws/lambda/finance-tracker-backend`
@@ -488,9 +617,11 @@ Expected: cold start ~3-8s, warm ~100-500ms. If cold start exceeds 30s, increase
 > Cutover step. Do this after Checkpoint B passes — EC2 is still live until Step 2 below.
 
 **Step 1: Verify Lambda works via Function URL**
-```bash
-curl https://YOUR_LAMBDA_FUNCTION_URL/api/v1/health
-```
+
+In Postman:
+- Method: `GET`
+- URL: `https://YOUR_LAMBDA_FUNCTION_URL/api/v1/health`
+
 Expected: `{"status": "healthy"}`
 
 **Step 2: Update CloudFront origin**
@@ -507,16 +638,16 @@ Expected: `{"status": "healthy"}`
 
 **Step 4: Invalidate CloudFront cache**
 ```bash
-aws cloudfront create-invalidation \
+aws-vault exec YOUR_PROFILE -- aws cloudfront create-invalidation \
   --distribution-id YOUR_DISTRIBUTION_ID \
   --paths "/api/*"
 ```
 
 **Step 5: End-to-end verification**
-```bash
-curl https://YOUR_CLOUDFRONT_DOMAIN/api/v1/health
-curl https://YOUR_CLOUDFRONT_DOMAIN/api/v1/transactions
-```
+
+In Postman:
+- `GET https://YOUR_CLOUDFRONT_DOMAIN/api/v1/health` → `{"status": "healthy"}`
+- `GET https://YOUR_CLOUDFRONT_DOMAIN/api/v1/transactions` → JSON array
 
 ---
 
@@ -549,7 +680,7 @@ curl https://YOUR_CLOUDFRONT_DOMAIN/api/v1/transactions
 
 **Step 5: Rollback procedure (if anything is wrong)**
 - CloudFront → Origins → edit the Lambda origin → change domain back to EC2's IP/DNS
-- Invalidate: `aws cloudfront create-invalidation --distribution-id YOUR_ID --paths "/api/*"`
+- Invalidate: `aws-vault exec YOUR_PROFILE -- aws cloudfront create-invalidation --distribution-id YOUR_ID --paths "/api/*"`
 - EC2 is still running so traffic flips back instantly
 
 > **Only stop EC2 (Task 7) after the app works end-to-end in the browser with no console errors.**
@@ -570,18 +701,13 @@ curl https://YOUR_CLOUDFRONT_DOMAIN/api/v1/transactions
 
 Full end-to-end test after deployment:
 
-```bash
-BASE="https://YOUR_CLOUDFRONT_DOMAIN"
+In Postman:
 
-curl "$BASE/api/v1/health"
-# Expected: {"status": "healthy"}
-
-curl "$BASE/api/v1/transactions"
-# Expected: JSON array of your transactions
-
-curl "$BASE/api/v1/portfolio-summary"
-# Expected: JSON with holdings data
-```
+| Method | URL | Expected |
+|---|---|---|
+| GET | `https://YOUR_CLOUDFRONT_DOMAIN/api/v1/health` | `{"status":"healthy"}` |
+| GET | `https://YOUR_CLOUDFRONT_DOMAIN/api/v1/transactions` | JSON array of your transactions |
+| GET | `https://YOUR_CLOUDFRONT_DOMAIN/api/v1/portfolio-summary` | JSON with holdings data |
 
 Check Lambda logs: AWS Console → CloudWatch → Log groups → `/aws/lambda/finance-tracker-backend`
 
