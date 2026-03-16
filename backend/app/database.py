@@ -25,6 +25,7 @@ def set_sqlite_pragma(dbapi_conn, connection_record):
     """
     if "sqlite" in settings.database_url:
         cursor = dbapi_conn.cursor()
+        cursor.execute("PRAGMA journal_mode=DELETE")
         cursor.execute("PRAGMA foreign_keys=ON")
         cursor.execute("PRAGMA busy_timeout=5000")
         cursor.close()
