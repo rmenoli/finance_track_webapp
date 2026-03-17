@@ -15,6 +15,7 @@ class Settings(BaseSettings):
     s3_bucket_backups: str = "etf-portfolio-backups-20251225"
     s3_bucket_db: str = "etf-porfolio-backend-live-20260317"
     s3_db_key: str = "portfolio.db"
+    use_s3: bool = True
 
     # Logging configuration
     log_level: str = "INFO"

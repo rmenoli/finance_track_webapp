@@ -61,8 +61,9 @@ def _run_migrations() -> None:
     logger.info("Alembic migrations applied")
 
 
-# Cold start: restore DB from S3, then ensure schema is up to date
-_download_db_from_s3()
+# Cold start: restore DB from S3 (skipped when USE_S3=false for local dev), then migrate
+if settings.use_s3:
+    _download_db_from_s3()
 _run_migrations()
 
 _mangum_handler = Mangum(app, lifespan="off")
@@ -81,7 +82,7 @@ def handler(event: dict, context: object) -> dict:
         event.get("requestContext", {}).get("http", {}).get("method", "")
         or event.get("httpMethod", "")
     )
-    if http_method.upper() in _WRITE_METHODS:
+    if settings.use_s3 and http_method.upper() in _WRITE_METHODS:
         _upload_db_to_s3()
 
     return result
