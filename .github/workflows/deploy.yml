@@ -163,9 +163,10 @@ jobs:
           UPDATED=$(echo "$CURRENT" | \
             jq --arg url "${{ secrets.NEON_DATABASE_URL }}" \
             '. + {DATABASE_URL: $url}')
+          echo "{\"Variables\": $UPDATED}" > /tmp/lambda-env.json
           aws lambda update-function-configuration \
             --function-name ${{ secrets.LAMBDA_FUNCTION_NAME }} \
-            --environment "Variables=$(echo $UPDATED)"
+            --environment file:///tmp/lambda-env.json
 
       - name: Wait for Lambda configuration update
         run: |
