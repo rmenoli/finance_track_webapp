@@ -20,7 +20,7 @@ FastAPI backend service for tracking ETF transactions with automatic cost basis 
 ## Tech Stack
 
 - **Framework**: FastAPI 0.124.4 (high-performance, modern Python web framework)
-- **Database**: SQLite with SQLAlchemy 2.0.45 (ORM)
+- **Database**: Neon PostgreSQL (production) / SQLite (local dev) with SQLAlchemy 2.0.45 (ORM)
 - **Migrations**: Alembic 1.17.2 (database version control)
 - **Validation**: Pydantic 2.12.5 (data validation and settings)
 - **Package Manager**: UV (fast Python package manager)
@@ -143,7 +143,8 @@ LOG_FORMAT=json
 
 **Important Notes:**
 - In production, set `DEBUG=False`
-- For PostgreSQL deployment (AWS RDS), update `DATABASE_URL` to PostgreSQL connection string
+- Production uses Neon PostgreSQL: `DATABASE_URL=postgresql://user:pass@host/neondb?sslmode=require`
+- Local dev uses SQLite: `DATABASE_URL=sqlite:///./portfolio.db`
 - Add production frontend URL to `CORS_ORIGINS` when deploying
 
 ## Running the Server
@@ -1129,116 +1130,55 @@ uv run pytest
 ### Current Production Setup (AWS)
 
 **Infrastructure**:
-- **Hosting**: EC2 t3.micro instance
-- **Service Management**: SystemD service (`etf-portfolio.service`)
-- **Database**: SQLite at `/opt/etf-portfolio/backend/portfolio.db`
-- **Web Server**: Uvicorn with 4 worker processes on port 8000
-- **Auto-restart**: Enabled via systemd (`RestartSec=10`)
+- **Compute**: AWS Lambda with Mangum (ASGI adapter)
+- **Container**: Docker image built and stored in ECR
+- **Database**: Neon PostgreSQL (free tier, serverless)
+- **Connection Pooling**: SQLAlchemy NullPool (prevents connection exhaustion on Lambda)
+- **Migrations**: Alembic run at CI/CD deploy time (not Lambda cold start)
 - **Deployment**: Automated via GitHub Actions CI/CD
 
-**Production Environment Variables** (`.env`):
+**Production Environment Variables** (set on Lambda):
 ```env
-DATABASE_URL=sqlite:///./portfolio.db
+DATABASE_URL=postgresql://user:pass@host/neondb?sslmode=require
 DEBUG=False
 CORS_ORIGINS=["https://YOUR_CLOUDFRONT_DOMAIN"]
 LOG_LEVEL=INFO
 LOG_FORMAT=json
-API_V1_PREFIX=/api/v1
+API_V1_PREFIX=/v1
 PROJECT_NAME=ETF Portfolio Tracker
 ```
 
 **Key Production Configurations**:
 1. **CORS**: Set `CORS_ORIGINS` to CloudFront domain only (security)
 2. **Debug Mode**: `DEBUG=False` disables SQL query logging and detailed errors
-3. **Auto-restart**: SystemD restarts service automatically on crash
-4. **Daily Backups**: Automated database backups with 7-day retention
-5. **Health Monitoring**: Health check endpoint (`/health`) polled every 5 minutes
+3. **NullPool**: Prevents Lambda from accumulating idle PostgreSQL connections
+4. **Health Monitoring**: Health check endpoint (`/health`) verified after each deploy
 
 **CI/CD Deployment Flow**:
 ```
-PR Merge → Run Tests → Deploy Backend to EC2 →
-Run Migrations → Restart Service → Health Check ✓
+PR Merge → Run Tests → Run Alembic Migrations (Neon) →
+Build Docker Image → Push to ECR → Update Lambda → Health Check ✓
 ```
-
-**Manual Deployment** (if needed):
-```bash
-# SSH to EC2
-ssh -i ~/.ssh/key ubuntu@EC2_IP
-
-# Navigate to backend
-cd /opt/etf-portfolio/backend
-
-# Pull latest code
-git pull origin main
-
-# Install dependencies
-uv sync --all-extras
-
-# Run migrations
-uv run alembic upgrade head
-
-# Restart service
-sudo systemctl restart etf-portfolio.service
-
-# Verify health
-curl http://localhost:8000/health
-```
-
-**📖 Complete deployment guides:**
-- **Automated CI/CD**: [`../CI_CD.md`](../CI_CD.md)
-- **Manual AWS deployment**: [`../DEPLOYMENT.md`](../DEPLOYMENT.md) (CLI-based)
-- **AWS Console deployment**: [`../DEPLOYMENT_MANUAL.md`](../DEPLOYMENT_MANUAL.md) (Web UI)
 
 ### Future Scaling Considerations
 
 **For higher traffic or multi-user scenarios:**
 
-**1. Database Migration to PostgreSQL**:
-```env
-DATABASE_URL=postgresql://user:pass@rds-endpoint:5432/dbname
-```
-- Migrate from SQLite to AWS RDS PostgreSQL
-- Code remains unchanged (SQLAlchemy abstraction)
-- Enable connection pooling for better concurrency
-
-**2. Containerization** (Optional):
-```dockerfile
-FROM python:3.12-slim
-
-WORKDIR /app
-
-# Install UV
-RUN pip install uv
-
-# Copy dependency files
-COPY pyproject.toml uv.lock ./
-
-# Install dependencies
-RUN uv sync --no-dev
-
-# Copy application code
-COPY . .
-
-# Run migrations and start server
-CMD uv run alembic upgrade head && \
-    uv run uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 4
-```
-
-**3. Security Enhancements**:
+**1. Security Enhancements**:
 - Use AWS Secrets Manager for sensitive environment variables
-- Enable HTTPS on EC2 (currently handled by CloudFront)
-- Implement API rate limiting with Redis
+- Implement API rate limiting with API Gateway
 - Add authentication/authorization layer
 
-**4. Performance Optimizations**:
+**2. Performance Optimizations**:
 - Add Redis for caching analytics calculations
 - Migrate to async SQLAlchemy for better concurrency
 - Implement CDN caching for static API responses
+- Upgrade Neon plan for more storage/compute if needed
 
 ## Performance Tips
 
 1. **Database Indexes**: Already optimized with indexes on `date`, `isin`, and `(date, isin)`
-2. **Connection Pooling**: SQLAlchemy pool is configured automatically
+2. **Connection Pooling**: NullPool in production (Lambda); Neon provides built-in pgBouncer pooling
 3. **Query Optimization**: Use `.filter()` before `.all()` to minimize data transfer
 4. **Caching**: Consider Redis for frequently accessed analytics
 5. **Async**: Current implementation is sync (adequate for single-user); can migrate to async SQLAlchemy for higher concurrency

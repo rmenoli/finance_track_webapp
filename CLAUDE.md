@@ -7,7 +7,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ETF Portfolio Tracker - Full-stack web application for tracking ETF transactions with automatic cost basis calculations using the average cost method. Single-user system with no authentication.
 
 **Tech Stack**:
-- **Backend**: FastAPI, SQLAlchemy 2.0, SQLite, Alembic, Pydantic 2.x, UV package manager
+- **Backend**: FastAPI, SQLAlchemy 2.0, Neon PostgreSQL (production) / SQLite (local dev), Alembic, Pydantic 2.x, UV package manager
 - **Frontend**: React 18, Vite, React Router v6, CSS (component-scoped)
 
 **Documentation Structure**:
@@ -376,7 +376,7 @@ All cost basis calculations in `backend/app/services/cost_basis_service.py`:
 ## Important Constraints
 
 1. **No Authentication**: Single-user system, no user model or auth
-2. **SQLite Only**: Not designed for high concurrency (but WAL mode enabled for local dev)
+2. **Dual Database**: Neon PostgreSQL in production (Lambda), SQLite for local dev and tests
 3. **Synchronous**: Using sync SQLAlchemy (adequate for single user)
 4. **Date Validation**: Transaction dates cannot be in the future
 5. **No Soft Deletes**: Transactions are hard-deleted
@@ -444,7 +444,7 @@ In CI/CD, the `VITE_API_URL` environment variable **must be explicitly set** in 
 
 **Production API Routing**:
 - Frontend uses relative paths: `/api/v1/*`
-- CloudFront routes `/api/*` requests to EC2 backend
+- CloudFront routes `/api/*` requests to Lambda backend
 - No CORS issues because all requests appear to come from same origin
 
 ## Testing
@@ -515,24 +515,24 @@ uv run alembic upgrade head   # Apply migrations
 - **Frontend**: S3 + CloudFront (CDN with HTTPS)
   - Static React build files served from S3
   - CloudFront handles HTTPS termination
-  - CloudFront routes `/api/*` to EC2 backend
-- **Backend**: EC2 t3.micro + SystemD service
-  - FastAPI + Uvicorn on port 8000 (HTTP only)
-  - SQLite database at `/opt/etf-portfolio/backend/portfolio.db`
-  - Auto-restart on crash via systemd
-  - Daily automated backups
+  - CloudFront routes `/api/*` to Lambda backend
+- **Backend**: AWS Lambda + Mangum (ASGI adapter)
+  - FastAPI packaged as Docker image (ECR)
+  - Neon PostgreSQL (free tier, serverless) as persistent database
+  - NullPool for SQLAlchemy (prevents connection exhaustion on Lambda)
+  - Alembic migrations run at CI/CD deploy time (not Lambda cold start)
 - **API Routing**:
   - Frontend uses relative paths `/api/v1/*`
-  - CloudFront routes these to EC2 backend
+  - CloudFront routes these to Lambda backend
   - No CORS issues (same-origin from browser perspective)
 
 **Key Production Configuration**:
-- Backend `.env`: `CORS_ORIGINS=["https://YOUR_CLOUDFRONT_DOMAIN"]`
+- Lambda env var: `DATABASE_URL` pointing to Neon PostgreSQL connection string
+- Lambda env var: `CORS_ORIGINS=["https://YOUR_CLOUDFRONT_DOMAIN"]`
 - CI/CD: `VITE_API_URL=/api/v1` set in GitHub Actions workflow
 - Frontend: Fail-fast error checking if `VITE_API_URL` not set
 
 **Future Considerations**:
-- Migrate from SQLite to RDS PostgreSQL for better scalability
 - Add Redis for caching and session management
 - Implement API Gateway for rate limiting and authentication
 
@@ -544,7 +544,7 @@ uv run alembic upgrade head   # Apply migrations
 
 **Pipeline Flow**:
 ```
-PR Merge → Run Tests → Build Frontend → Deploy to S3 → Deploy to EC2 → Complete ✓
+PR Merge → Run Tests → Run Alembic Migrations (Neon) → Build Frontend → Deploy to S3 → Deploy Lambda (ECR) → Complete ✓
 ```
 
 **Duration**: ~5-7 minutes total
