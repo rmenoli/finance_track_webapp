@@ -42,20 +42,29 @@ This document describes the production architecture of the ETF Portfolio Tracker
 ### Key Design Decisions
 
 - **Lambda over EC2**: No idle costs, automatic scaling, no server maintenance
+- **Lambda Function URL over API Gateway**: Simpler, one fewer hop, no API Gateway cost
 - **Neon over S3/SQLite**: Reliable persistent storage, no cold-start download/upload sync, real PostgreSQL features
 - **NullPool in SQLAlchemy**: Lambda invocations are short-lived; connection pooling would leak connections and exhaust Neon's free-tier limit
 - **Alembic at deploy time**: Migrations run in CI/CD (not Lambda cold start) for reliability and speed
 - **SQLite for local dev**: Simple, no external dependencies needed for development
+- **API key middleware**: Simple `X-API-Key` header check blocks bots/scanners; not enterprise auth but sufficient for single-user app
 
 ### Request Flow
 
 1. Browser loads React app from CloudFront (S3 origin)
-2. Frontend makes API calls to `/api/v1/*` (relative paths)
-3. CloudFront routes `/api/*` to API Gateway
-4. API Gateway invokes Lambda function
-5. Lambda runs FastAPI via Mangum (ASGI adapter)
+2. Frontend makes API calls to `/api/v1/*` (relative paths) with `X-API-Key` header
+3. CloudFront routes `/api/*` to Lambda Function URL
+4. Lambda runs FastAPI via Mangum (ASGI adapter)
+5. API key middleware validates the `X-API-Key` header (rejects 401 if invalid)
 6. FastAPI connects to Neon PostgreSQL via `DATABASE_URL`
 7. Response flows back through the same path
+
+### Security
+
+- **API Key Middleware**: All endpoints (except `/health`, `/v1/health`, `/`) require a valid `X-API-Key` header
+- **Frontend**: API key is baked into the React build at CI/CD time via `VITE_API_KEY` env var
+- **Lambda Function URL**: `AuthType: NONE` — the API key middleware handles auth at the application level
+- **Local dev**: `API_KEY=""` (empty) disables auth for convenience
 
 ---
 
@@ -70,6 +79,7 @@ Set these on the Lambda function (AWS Console → Lambda → Configuration → E
 | `DATABASE_URL` | `postgresql://user:pass@host/neondb?sslmode=require` | Neon connection string |
 | `CORS_ORIGINS` | `["https://YOUR_CLOUDFRONT_DOMAIN"]` | CloudFront domain |
 | `API_V1_PREFIX` | `/v1` | API route prefix |
+| `API_KEY` | Random 64-char hex string | Protects all endpoints except health. Generate with `openssl rand -hex 32` |
 | `DEBUG` | `False` | Disable SQL logging in production |
 | `LOG_LEVEL` | `INFO` | Structured JSON logging level |
 | `LOG_FORMAT` | `json` | Log format (json for CloudWatch) |
@@ -88,6 +98,7 @@ Set these on the Lambda function (AWS Console → Lambda → Configuration → E
 | `ECR_REPOSITORY` | e.g. `finance-tracker-backend` |
 | `LAMBDA_FUNCTION_NAME` | e.g. `finance-tracker-backend` |
 | `NEON_DATABASE_URL` | Neon PostgreSQL connection string |
+| `API_KEY` | Same value as Lambda `API_KEY` env var (baked into frontend build) |
 
 ---
 

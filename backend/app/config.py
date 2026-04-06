@@ -12,6 +12,7 @@ class Settings(BaseSettings):
     project_name: str = "ETF Portfolio Tracker"
     debug: bool = False
     cors_origins: str = '["http://localhost:3000", "http://localhost:8000"]'
+    api_key: str = ""  # Empty = no auth (local dev)
 
     # Logging configuration
     log_level: str = "INFO"

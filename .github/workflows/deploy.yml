@@ -100,6 +100,7 @@ jobs:
       - name: Build frontend
         env:
           VITE_API_URL: /api/v1
+          VITE_API_KEY: ${{ secrets.API_KEY }}
         run: |
           cd frontend
           npm ci
