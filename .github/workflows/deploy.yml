@@ -154,25 +154,6 @@ jobs:
           aws lambda wait function-updated \
             --function-name ${{ secrets.LAMBDA_FUNCTION_NAME }}
 
-      - name: Update Lambda DATABASE_URL environment variable
-        run: |
-          CURRENT=$(aws lambda get-function-configuration \
-            --function-name ${{ secrets.LAMBDA_FUNCTION_NAME }} \
-            --query 'Environment.Variables' \
-            --output json)
-          UPDATED=$(echo "$CURRENT" | \
-            jq --arg url "${{ secrets.NEON_DATABASE_URL }}" \
-            '. + {DATABASE_URL: $url}')
-          echo "{\"Variables\": $UPDATED}" > /tmp/lambda-env.json
-          aws lambda update-function-configuration \
-            --function-name ${{ secrets.LAMBDA_FUNCTION_NAME }} \
-            --environment file:///tmp/lambda-env.json
-
-      - name: Wait for Lambda configuration update
-        run: |
-          aws lambda wait function-updated \
-            --function-name ${{ secrets.LAMBDA_FUNCTION_NAME }}
-
       - name: Health check
         run: |
           sleep 5
