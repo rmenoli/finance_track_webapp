@@ -63,6 +63,31 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ secrets.AWS_REGION }}
 
+      # ── Database migrations ───────────────────────────────────────────────────
+
+      - name: Setup Python 3.12 (for Alembic migrations)
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install UV
+        run: curl -LsSf https://astral.sh/uv/install.sh | sh
+
+      - name: Add UV to PATH
+        run: echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+
+      - name: Install backend dependencies
+        run: |
+          cd backend
+          uv sync --all-extras
+
+      - name: Run Alembic migrations against Neon
+        env:
+          DATABASE_URL: ${{ secrets.NEON_DATABASE_URL }}
+        run: |
+          cd backend
+          uv run alembic upgrade head
+
       # ── Frontend ──────────────────────────────────────────────────────────────
 
       - name: Setup Node.js 18
@@ -125,6 +150,24 @@ jobs:
             --image-uri $IMAGE_URI
 
       - name: Wait for Lambda update to complete
+        run: |
+          aws lambda wait function-updated \
+            --function-name ${{ secrets.LAMBDA_FUNCTION_NAME }}
+
+      - name: Update Lambda DATABASE_URL environment variable
+        run: |
+          CURRENT=$(aws lambda get-function-configuration \
+            --function-name ${{ secrets.LAMBDA_FUNCTION_NAME }} \
+            --query 'Environment.Variables' \
+            --output json)
+          UPDATED=$(echo "$CURRENT" | \
+            jq --arg url "${{ secrets.NEON_DATABASE_URL }}" \
+            '. + {DATABASE_URL: $url}')
+          aws lambda update-function-configuration \
+            --function-name ${{ secrets.LAMBDA_FUNCTION_NAME }} \
+            --environment "Variables=$(echo $UPDATED)"
+
+      - name: Wait for Lambda configuration update
         run: |
           aws lambda wait function-updated \
             --function-name ${{ secrets.LAMBDA_FUNCTION_NAME }}
