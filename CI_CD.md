@@ -22,9 +22,10 @@ This document explains the automated deployment pipeline for the ETF Portfolio T
 
 The CI/CD pipeline automatically deploys the application to AWS when code is merged to the main branch. It includes:
 
-- **Automated Testing**: Runs 254 backend tests (95% coverage) before deployment
+- **Automated Testing**: Runs 303 backend tests (95% coverage) before deployment
+- **Database Migrations**: Runs Alembic migrations against Neon PostgreSQL
 - **Frontend Deployment**: Builds React app and uploads to S3 with CloudFront invalidation
-- **Backend Deployment**: SSH to EC2, pull latest code, run migrations, restart service
+- **Backend Deployment**: Builds Docker image, pushes to ECR, updates Lambda function
 - **Health Verification**: Confirms backend is healthy after deployment
 
 **Pipeline Flow:**
@@ -33,24 +34,22 @@ PR Merged to main
     ↓
 Run Backend Tests (pytest)
     ↓ (if tests pass)
+Run Alembic Migrations (Neon PostgreSQL)
+    ↓
 Build Frontend (npm run build)
     ↓
 Deploy Frontend to S3
     ↓
 Invalidate CloudFront Cache
     ↓
-Deploy Backend to EC2 (SSH)
+Build & Push Docker Image to ECR
+    ↓
+Update Lambda Function
     ↓
 Verify Health Check
     ↓
 Deployment Complete ✓
 ```
-
-**Deployment Time:** ~5-7 minutes
-- Tests: ~2 minutes
-- Frontend build/deploy: ~1-2 minutes
-- Backend deploy: ~1 minute
-- CloudFront invalidation: ~1-2 minutes
 
 ---
 
@@ -63,7 +62,9 @@ Deployment Complete ✓
 **AWS Resources:**
 - **S3 Bucket**: Hosts React build files (frontend)
 - **CloudFront**: CDN for global distribution with HTTPS
-- **EC2 Instance**: Runs FastAPI backend on Ubuntu 24.04
+- **Lambda**: Runs FastAPI backend via Mangum (ASGI adapter)
+- **ECR**: Docker image registry for Lambda container images
+- **Neon PostgreSQL**: Serverless database (free tier)
 - **IAM User**: Dedicated CI/CD user with minimal permissions
 
 ---
@@ -72,15 +73,14 @@ Deployment Complete ✓
 
 ### Prerequisites
 
-1. **AWS Infrastructure Deployed**: Follow `DEPLOYMENT.md` to set up:
+1. **AWS Infrastructure Deployed**:
    - S3 bucket for frontend
-   - EC2 instance for backend (with application running)
    - CloudFront distribution
-   - Elastic IP for EC2 (recommended)
-
-2. **Application in GitHub**: Code repository hosted on GitHub
-
-3. **Local Testing**: Ensure tests pass locally:
+   - Lambda function for backend
+   - ECR repository for Docker images
+2. **Neon PostgreSQL**: Project created at neon.tech (free tier)
+3. **Application in GitHub**: Code repository hosted on GitHub
+4. **Local Testing**: Ensure tests pass locally:
    ```bash
    cd backend
    uv run pytest
@@ -92,49 +92,15 @@ Deployment Complete ✓
 
 See [IAM User Setup](#iam-user-setup) section below for detailed instructions.
 
-#### 2. Create SSH Key for EC2 (CI/CD Dedicated)
+#### 2. Set Lambda DATABASE_URL
 
-**On your local machine:**
-
-```bash
-# Generate new SSH key for CI/CD (don't reuse personal key)
-ssh-keygen -t rsa -b 4096 -f ~/.ssh/ci_cd_deploy_key -N ""
-
-# This creates two files:
-# - ci_cd_deploy_key (private key - will be GitHub secret)
-# - ci_cd_deploy_key.pub (public key - add to EC2)
-```
-
-**Add public key to EC2:**
-
-```bash
-# SSH to your EC2 instance
-ssh -i ~/.ssh/etf-portfolio-backend-key.pem ubuntu@YOUR_EC2_IP
-
-# Add CI/CD public key to authorized_keys
-nano ~/.ssh/authorized_keys
-
-# Paste the contents of ci_cd_deploy_key.pub on a new line
-# Save and exit (Ctrl+X, Y, Enter)
-
-# Verify permissions
-chmod 600 ~/.ssh/authorized_keys
-```
-
-**Test CI/CD key works:**
-
-```bash
-# From local machine
-ssh -i ~/.ssh/ci_cd_deploy_key ubuntu@YOUR_EC2_IP
-
-# Should connect successfully
-```
+Set the `DATABASE_URL` environment variable on the Lambda function to point to your Neon PostgreSQL connection string. This is a one-time manual step via the AWS Console (Lambda → Configuration → Environment variables).
 
 #### 3. Configure GitHub Secrets
 
 Go to your GitHub repository → **Settings** → **Secrets and variables** → **Actions** → **New repository secret**
 
-Add the following 9 secrets (see [GitHub Secrets Configuration](#github-secrets-configuration) for details):
+Add the following secrets (see [GitHub Secrets Configuration](#github-secrets-configuration) for details):
 
 | Secret Name | Value |
 |------------|-------|
@@ -144,9 +110,10 @@ Add the following 9 secrets (see [GitHub Secrets Configuration](#github-secrets-
 | `S3_BUCKET_NAME` | S3 bucket name |
 | `CLOUDFRONT_DISTRIBUTION_ID` | CloudFront distribution ID |
 | `CLOUDFRONT_DOMAIN` | CloudFront domain (e.g., `d123abc.cloudfront.net`) |
-| `EC2_HOST` | EC2 Elastic IP or public DNS |
-| `EC2_USERNAME` | EC2 username (usually `ubuntu`) |
-| `EC2_SSH_PRIVATE_KEY` | Contents of `ci_cd_deploy_key` private key file |
+| `ECR_REGISTRY` | ECR registry URL |
+| `ECR_REPOSITORY` | ECR repository name |
+| `LAMBDA_FUNCTION_NAME` | Lambda function name |
+| `NEON_DATABASE_URL` | Neon PostgreSQL connection string |
 | `CODECOV_TOKEN` | (Optional) Codecov token for coverage reports |
 
 #### 4. Enable GitHub Actions
@@ -240,31 +207,30 @@ curl https://YOUR_CLOUDFRONT_DOMAIN/api/v1/health
 - Format: `d1a2b3c4d5e6f7.cloudfront.net`
 - Get from: AWS Console → CloudFront → Distributions → Domain name column
 
-#### EC2 Access
+#### Lambda and ECR
 
-**EC2_HOST**
-- EC2 instance Elastic IP or Public DNS
-- **Recommended**: Use Elastic IP (doesn't change)
-- Examples:
-  - Elastic IP: `54.123.45.67`
-  - Public DNS: `ec2-54-123-45-67.compute-1.amazonaws.com`
-- Get from: AWS Console → EC2 → Instances → Public IPv4 address
+**ECR_REGISTRY**
+- ECR registry URL
+- Format: `123456789012.dkr.ecr.us-east-1.amazonaws.com`
+- Get from: AWS Console → ECR → Repositories → URI (just the registry part, without the repo name)
 
-**EC2_USERNAME**
-- SSH username for EC2 instance
-- For Ubuntu: `ubuntu`
-- For Amazon Linux: `ec2-user`
+**ECR_REPOSITORY**
+- ECR repository name
+- Example: `finance-tracker-backend`
+- Get from: AWS Console → ECR → Repositories → Repository name
 
-**EC2_SSH_PRIVATE_KEY**
-- Contents of private SSH key file (CI/CD dedicated key)
-- **Format**: Include full key including headers
-  ```
-  -----BEGIN RSA PRIVATE KEY-----
-  [key contents]
-  -----END RSA PRIVATE KEY-----
-  ```
-- Get from: `cat ~/.ssh/ci_cd_deploy_key` (after generating in Step 2)
-- **Important**: Use a dedicated key for CI/CD, not your personal key
+**LAMBDA_FUNCTION_NAME**
+- Lambda function name
+- Example: `finance-tracker-backend`
+- Get from: AWS Console → Lambda → Functions → Function name
+
+#### Neon Database
+
+**NEON_DATABASE_URL**
+- Neon PostgreSQL connection string
+- Format: `postgresql://user:pass@ep-xxx.region.aws.neon.tech/neondb?sslmode=require`
+- Get from: Neon Console → Connection Details → Connection string
+- Used by CI/CD to run Alembic migrations at deploy time
 
 #### Optional Secrets
 
@@ -339,6 +305,31 @@ Create a dedicated IAM user with minimal required permissions for CI/CD.
         "cloudfront:GetInvalidation"
       ],
       "Resource": "arn:aws:cloudfront::YOUR_ACCOUNT_ID:distribution/*"
+    },
+    {
+      "Sid": "ECRPushImage",
+      "Effect": "Allow",
+      "Action": [
+        "ecr:GetAuthorizationToken",
+        "ecr:BatchCheckLayerAvailability",
+        "ecr:PutImage",
+        "ecr:InitiateLayerUpload",
+        "ecr:UploadLayerPart",
+        "ecr:CompleteLayerUpload",
+        "ecr:GetDownloadUrlForLayer",
+        "ecr:BatchGetImage"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "LambdaUpdateCode",
+      "Effect": "Allow",
+      "Action": [
+        "lambda:UpdateFunctionCode",
+        "lambda:GetFunction",
+        "lambda:GetFunctionConfiguration"
+      ],
+      "Resource": "arn:aws:lambda:*:YOUR_ACCOUNT_ID:function:YOUR_FUNCTION_NAME"
     }
   ]
 }
@@ -394,6 +385,14 @@ Attach these managed policies:
 **CloudFront Permissions:**
 - `cloudfront:CreateInvalidation` - Clear CDN cache after deployment
 - `cloudfront:GetInvalidation` - Check invalidation status
+
+**ECR Permissions:**
+- `ecr:GetAuthorizationToken` - Authenticate Docker client to ECR
+- `ecr:PutImage`, `ecr:InitiateLayerUpload`, etc. - Push Docker images
+
+**Lambda Permissions:**
+- `lambda:UpdateFunctionCode` - Deploy new Docker image to Lambda
+- `lambda:GetFunction` / `lambda:GetFunctionConfiguration` - Wait for update to complete
 
 ---
 
@@ -613,61 +612,41 @@ npm run build
 
 **Note:** Invalidation takes 1-2 minutes to complete. Workflow doesn't wait for completion, it just initiates it.
 
-### EC2 SSH Connection Failures
+### ECR/Lambda Deployment Failures
 
-**Symptom:** "Deploy backend to EC2" step fails with connection error
-
-**Common errors:**
-
-**Error: "Permission denied (publickey)"**
-- **Cause**: SSH key incorrect or not authorized on EC2
-- **Solution**:
-  1. Verify `EC2_SSH_PRIVATE_KEY` secret contains full key including headers
-  2. Check key is added to EC2 `~/.ssh/authorized_keys`
-  3. Test key locally: `ssh -i ~/.ssh/ci_cd_deploy_key ubuntu@EC2_IP`
-
-**Error: "Connection timed out"**
-- **Cause**: EC2 security group blocks SSH from GitHub Actions IPs
-- **Solution**: GitHub Actions uses dynamic IPs; must allow SSH from `0.0.0.0/0` or use Systems Manager Session Manager
-
-**Error: "Host key verification failed"**
-- **Cause**: EC2 host not in known_hosts
-- **Solution**: Workflow includes `ssh-keyscan` step; verify it runs before SSH
-
-**Security Note:** Opening SSH to `0.0.0.0/0` is risky. Consider:
-- Restricting to GitHub Actions IP ranges (changes frequently)
-- Using AWS Systems Manager Session Manager (no SSH needed)
-- Using a bastion host
-
-### Backend Deployment Failures
-
-**Symptom:** SSH connects but deployment script fails
+**Symptom:** "Build and push Docker image to ECR" or "Update Lambda function" step fails
 
 **Common errors:**
 
-**Error: "git pull failed"**
-- **Cause**: Git conflicts or EC2 can't reach GitHub
-- **Solution**: SSH to EC2 manually and run `git status`, resolve conflicts
+**Error: "AccessDeniedException" on ECR login**
+- **Cause**: IAM user lacks ECR permissions
+- **Solution**: Add `ecr:GetAuthorizationToken` and image push permissions to IAM policy
 
-**Error: "uv sync failed"**
-- **Cause**: Dependency installation error
-- **Solution**: Check `pyproject.toml` syntax, verify internet access on EC2
+**Error: "AccessDeniedException" on Lambda update**
+- **Cause**: IAM user lacks `lambda:UpdateFunctionCode` permission
+- **Solution**: Add Lambda permissions to IAM policy (see IAM Policy section)
 
-**Error: "alembic upgrade failed"**
-- **Cause**: Database migration error
-- **Solution**: SSH to EC2, check database file exists and permissions are correct
-
-**Error: "systemctl restart failed"**
-- **Cause**: Service not found or permission issue
-- **Solution**: Verify systemd service file exists at `/etc/systemd/system/etf-portfolio.service`
-
-**Error: "Health check failed (curl -f returned error)"**
-- **Cause**: Backend didn't start properly or is unhealthy
+**Error: "Health check failed"**
+- **Cause**: Lambda didn't start properly, database connection issue, or CloudFront domain secret misconfigured
 - **Solution**:
-  1. SSH to EC2
-  2. Check service status: `sudo systemctl status etf-portfolio.service`
-  3. Check logs: `sudo journalctl -u etf-portfolio.service -n 50`
-  4. Test health: `curl http://localhost:8000/health`
+  1. Check Lambda logs in CloudWatch
+  2. Verify `DATABASE_URL` env var is set on Lambda (Neon connection string)
+  3. Verify `CLOUDFRONT_DOMAIN` secret is just the bare domain (no `https://` prefix)
+  4. Test health manually: `curl https://YOUR_CLOUDFRONT_DOMAIN/api/v1/health`
+
+### Alembic Migration Failures
+
+**Symptom:** "Run Alembic migrations against Neon" step fails
+
+**Common errors:**
+
+**Error: "Connection refused" or timeout**
+- **Cause**: Neon database URL incorrect or Neon project suspended
+- **Solution**: Verify `NEON_DATABASE_URL` secret, check Neon console for project status
+
+**Error: "Relation already exists"**
+- **Cause**: Migration state mismatch
+- **Solution**: Check `alembic_version` table in Neon, run `alembic current` locally against Neon
 
 ### GitHub Secrets Issues
 
@@ -714,89 +693,47 @@ git push origin main
 **Cons:**
 - Takes 5-7 minutes (full deployment)
 
-#### Method 2: Manual Rollback (Faster)
-
-**Backend rollback (SSH to EC2):**
+#### Method 2: Redeploy Previous Lambda Image (Faster)
 
 ```bash
-# SSH to EC2
-ssh -i ~/.ssh/etf-portfolio-backend-key.pem ubuntu@EC2_IP
+# Find the previous working image tag (commit SHA) from ECR or GitHub Actions history
+# Then update Lambda to use that image
+aws lambda update-function-code \
+  --function-name YOUR_FUNCTION_NAME \
+  --image-uri YOUR_ECR_REGISTRY/YOUR_REPO:PREVIOUS_COMMIT_SHA \
+  --profile YOUR_AWS_PROFILE
 
-# Navigate to backend
-cd /opt/etf-portfolio/backend
-
-# Reset to previous commit
-git log --oneline  # Find good commit
-git reset --hard <good-commit-sha>
-
-# Rollback migration if needed
-uv run alembic downgrade -1
-
-# Restart service
-sudo systemctl restart etf-portfolio.service
+# Wait for update
+aws lambda wait function-updated \
+  --function-name YOUR_FUNCTION_NAME \
+  --profile YOUR_AWS_PROFILE
 
 # Verify health
-curl http://localhost:8000/health
-```
-
-**Frontend rollback:**
-
-```bash
-# On local machine
-cd frontend
-
-# Reset to previous commit
-git reset --hard <good-commit-sha>
-
-# Build frontend
-npm run build
-
-# Deploy to S3
-aws s3 sync dist/ s3://BUCKET_NAME/ \
-  --delete \
-  --cache-control "public, max-age=31536000, immutable" \
-  --exclude "index.html"
-
-aws s3 cp dist/index.html s3://BUCKET_NAME/index.html \
-  --cache-control "public, max-age=300, must-revalidate"
-
-# Invalidate CloudFront
-aws cloudfront create-invalidation \
-  --distribution-id DISTRIBUTION_ID \
-  --paths "/*"
+curl https://YOUR_CLOUDFRONT_DOMAIN/api/v1/health
 ```
 
 **Pros:**
-- Faster (immediate rollback)
-- More control
+- Fast (no rebuild needed, just points Lambda to previous image)
+- Previous images are retained in ECR
 
 **Cons:**
-- Manual steps (error-prone)
+- Manual steps
 - Doesn't update git history
-- Remember to push correct version to main later
 
-#### Method 3: Database Restore (If Migration Failed)
+#### Method 3: Database Rollback (If Migration Failed)
 
-If database migration broke production:
+If an Alembic migration broke the Neon database:
 
 ```bash
-# SSH to EC2
-ssh -i ~/.ssh/etf-portfolio-backend-key.pem ubuntu@EC2_IP
+cd backend
+# Rollback one migration against Neon
+DATABASE_URL="postgresql://..." uv run alembic downgrade -1
 
-# Stop backend service
-sudo systemctl stop etf-portfolio.service
-
-# Restore from backup
-cd /opt/etf-portfolio/backend
-cp portfolio.db portfolio.db.broken
-gunzip -c /opt/etf-portfolio/backups/portfolio_YYYYMMDD_HHMMSS.db.gz > portfolio.db
-
-# Restart service
-sudo systemctl start etf-portfolio.service
-
-# Verify health
-curl http://localhost:8000/health
+# Verify
+DATABASE_URL="postgresql://..." uv run alembic current
 ```
+
+Note: Neon also supports **branching** — you can create a branch before risky migrations and restore from it if needed.
 
 ---
 
@@ -819,22 +756,25 @@ curl http://localhost:8000/health
 - ❌ Don't grant more permissions than needed (avoid `*` policies)
 - ❌ Don't use root AWS account credentials
 
-### 2. SSH Key Security
+### 2. AWS CLI Profile Requirement
 
-**Best practices:**
-- Generate dedicated key for CI/CD (separate from personal)
-- Use strong key: RSA 4096-bit or Ed25519
-- Store private key only in GitHub Secrets
-- Never commit private key to repository
-- Rotate SSH keys every 6-12 months
-- Remove old keys from EC2 `authorized_keys`
+**All local AWS CLI commands MUST use the `--profile` flag.** Never rely on default credentials or environment variables — always explicitly specify which AWS profile to use:
 
-**Alternative: AWS Systems Manager**
+```bash
+# Correct
+aws lambda get-function --function-name my-func --profile etf-portfolio
 
-Instead of SSH, use AWS Systems Manager Session Manager:
-- No open SSH port needed
-- Audit logs for all sessions
-- IAM-based access control
+# Wrong — may use the wrong account
+aws lambda get-function --function-name my-func
+```
+
+Set up a dedicated profile for this project:
+```bash
+aws configure --profile etf-portfolio
+# Enter: Access Key ID, Secret Access Key, Region, Output format
+```
+
+Then use `--profile etf-portfolio` on every command.
 
 ### 3. IAM Permissions
 
@@ -846,16 +786,18 @@ Instead of SSH, use AWS Systems Manager Session Manager:
   "Statement": [
     {
       "Effect": "Allow",
-      "Action": [
-        "s3:PutObject",
-        "s3:DeleteObject"
-      ],
+      "Action": ["s3:PutObject", "s3:DeleteObject"],
       "Resource": "arn:aws:s3:::BUCKET_NAME/*"
     },
     {
       "Effect": "Allow",
       "Action": "cloudfront:CreateInvalidation",
       "Resource": "arn:aws:cloudfront::ACCOUNT_ID:distribution/DISTRIBUTION_ID"
+    },
+    {
+      "Effect": "Allow",
+      "Action": ["lambda:UpdateFunctionCode", "lambda:GetFunction", "lambda:GetFunctionConfiguration"],
+      "Resource": "arn:aws:lambda:*:ACCOUNT_ID:function:FUNCTION_NAME"
     }
   ]
 }

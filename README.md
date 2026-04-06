@@ -55,7 +55,7 @@ A full-stack web application for tracking ETF portfolio transactions with automa
 
 | Layer | Technology |
 |-------|-----------|
-| **Backend** | FastAPI, SQLAlchemy 2.0, SQLite, Alembic, Pydantic |
+| **Backend** | FastAPI, SQLAlchemy 2.0, Neon PostgreSQL (prod) / SQLite (dev), Alembic, Pydantic |
 | **Frontend** | React 18, Vite, React Router v6, CSS, Chart.js |
 | **Testing** | Pytest (245 tests, 95% coverage) |
 | **Tools** | UV (Python), npm (Node.js), Ruff (linting) |
@@ -261,25 +261,21 @@ uv run pytest tests/test_schemas.py                   # Validation tests
 - **Frontend**: S3 + CloudFront (CDN with HTTPS)
   - Static React build files served from S3
   - CloudFront handles HTTPS termination
-  - CloudFront routes `/api/*` to EC2 backend
-- **Backend**: EC2 t3.micro + SystemD service
-  - FastAPI + Uvicorn on port 8000
-  - SQLite database
-  - Auto-restart on crash via systemd
-  - Daily automated backups
+  - CloudFront routes `/api/*` to Lambda backend
+- **Backend**: AWS Lambda + Mangum (ASGI adapter)
+  - FastAPI packaged as Docker image (ECR)
+  - Neon PostgreSQL (free tier, serverless) as persistent database
+  - Alembic migrations run at CI/CD deploy time
+- **Database**: Neon PostgreSQL (free tier)
+  - 0.5 GiB storage, serverless compute (scales to zero)
+  - Connection via `DATABASE_URL` env var on Lambda
 
 **Key Configuration:**
 - Frontend uses relative paths `/api/v1/*`
-- CloudFront routes these to EC2 backend
+- CloudFront routes these to Lambda backend
 - No CORS issues (same-origin from browser perspective)
 - CI/CD sets `VITE_API_URL=/api/v1` during build
-
-**Cost**: ~$10-15/month (EC2 + EBS + CloudFront + S3)
-
-**📖 Detailed deployment guides:**
-- **CI/CD Setup**: [`CI_CD.md`](CI_CD.md) - GitHub Actions automated deployment
-- **Manual AWS deployment**: [`DEPLOYMENT.md`](DEPLOYMENT.md) - CLI-based deployment guide
-- **AWS Console deployment**: [`DEPLOYMENT_MANUAL.md`](DEPLOYMENT_MANUAL.md) - Web UI-based deployment guide
+- CI/CD runs `alembic upgrade head` against Neon before deploying Lambda
 
 ---
 
@@ -291,18 +287,19 @@ The project includes a GitHub Actions workflow that automatically deploys to AWS
 
 **Pipeline Flow:**
 ```
-PR Merged → Run Tests → Build Frontend → Deploy to S3 →
-Deploy to EC2 → Verify Health → Complete ✓
+PR Merged → Run Tests → Run Alembic Migrations (Neon) →
+Build Frontend → Deploy to S3 → Deploy Lambda (ECR) →
+Verify Health → Complete ✓
 ```
 
 **Features:**
 - ✅ Automatic deployment on PR merge to `main`
-- ✅ Backend tests run before deployment (254 tests, 95% coverage)
+- ✅ Backend tests run before deployment (303 tests, 95% coverage)
+- ✅ Alembic migrations run against Neon PostgreSQL
 - ✅ Frontend builds and deploys to S3 with CloudFront invalidation
-- ✅ Backend deploys to EC2 via SSH with automatic service restart
+- ✅ Backend Docker image built and pushed to ECR, Lambda updated
 - ✅ Health check verification after deployment
 - ✅ Manual deployment trigger available
-- ✅ Deployment time: ~5-7 minutes
 
 ### Setup Instructions
 
@@ -320,16 +317,19 @@ Deploy to EC2 → Verify Health → Complete ✓
 | `AWS_REGION` | AWS region (e.g., `us-east-1`) |
 | `S3_BUCKET_NAME` | S3 bucket name for frontend |
 | `CLOUDFRONT_DISTRIBUTION_ID` | CloudFront distribution ID |
-| `EC2_HOST` | EC2 Elastic IP or DNS |
-| `EC2_USERNAME` | EC2 SSH username (`ubuntu`) |
-| `EC2_SSH_PRIVATE_KEY` | Private SSH key for EC2 |
+| `CLOUDFRONT_DOMAIN` | CloudFront domain for health check |
+| `ECR_REGISTRY` | ECR registry URL |
+| `ECR_REPOSITORY` | ECR repository name |
+| `LAMBDA_FUNCTION_NAME` | Lambda function name |
+| `NEON_DATABASE_URL` | Neon PostgreSQL connection string |
 | `CODECOV_TOKEN` | (Optional) Codecov token |
 
 **Setup Steps:**
-1. Create IAM user with S3/CloudFront permissions
-2. Generate dedicated SSH key for CI/CD
+1. Create IAM user with S3/CloudFront/ECR/Lambda permissions
+2. Create Neon PostgreSQL project (free tier) and copy connection string
 3. Add all secrets to GitHub repository (Settings → Secrets and variables → Actions)
-4. Merge a PR to `main` or manually trigger workflow
+4. Set `DATABASE_URL` env var on Lambda (Neon connection string)
+5. Merge a PR to `main` or manually trigger workflow
 
 **Manual Deployment:**
 1. Go to **Actions** tab in GitHub
