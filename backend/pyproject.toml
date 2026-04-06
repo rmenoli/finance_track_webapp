@@ -13,7 +13,6 @@ dependencies = [
     "python-dotenv>=1.0.0",
     "python-json-logger>=2.0.0",
     "python-multipart>=0.0.5",
-    "boto3>=1.35.0",
     "mangum>=0.21.0",
     "psycopg2-binary>=2.9.11",
 ]
