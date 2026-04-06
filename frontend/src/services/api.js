@@ -5,6 +5,16 @@ const API_BASE_URL = import.meta.env.VITE_API_URL;
    throw new Error('VITE_API_URL environment variable is not set. Check your .env file.');
  }
 
+const API_KEY = import.meta.env.VITE_API_KEY || '';
+
+function apiFetch(url, options = {}) {
+  const headers = { ...options.headers };
+  if (API_KEY) {
+    headers['X-API-Key'] = API_KEY;
+  }
+  return fetch(url, { ...options, headers });
+}
+
 // Helper function to handle API responses
 async function handleResponse(response) {
   if (!response.ok) {
@@ -34,19 +44,19 @@ export const transactionsAPI = {
     });
 
     const url = `${API_BASE_URL}/transactions${query.toString() ? '?' + query.toString() : ''}`;
-    const response = await fetch(url);
+    const response = await apiFetch(url);
     return handleResponse(response);
   },
 
   // Get single transaction by ID
   getById: async (id) => {
-    const response = await fetch(`${API_BASE_URL}/transactions/${id}`);
+    const response = await apiFetch(`${API_BASE_URL}/transactions/${id}`);
     return handleResponse(response);
   },
 
   // Create new transaction
   create: async (data) => {
-    const response = await fetch(`${API_BASE_URL}/transactions`, {
+    const response = await apiFetch(`${API_BASE_URL}/transactions`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -58,7 +68,7 @@ export const transactionsAPI = {
 
   // Update existing transaction
   update: async (id, data) => {
-    const response = await fetch(`${API_BASE_URL}/transactions/${id}`, {
+    const response = await apiFetch(`${API_BASE_URL}/transactions/${id}`, {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
@@ -70,7 +80,7 @@ export const transactionsAPI = {
 
   // Delete transaction
   delete: async (id) => {
-    const response = await fetch(`${API_BASE_URL}/transactions/${id}`, {
+    const response = await apiFetch(`${API_BASE_URL}/transactions/${id}`, {
       method: 'DELETE',
     });
     return handleResponse(response);
@@ -81,7 +91,7 @@ export const transactionsAPI = {
     const formData = new FormData();
     formData.append('file', file);
 
-    const response = await fetch(`${API_BASE_URL}/transactions/degiro-import-csv-transactions`, {
+    const response = await apiFetch(`${API_BASE_URL}/transactions/degiro-import-csv-transactions`, {
       method: 'POST',
       body: formData,
     });
@@ -93,7 +103,7 @@ export const transactionsAPI = {
 export const analyticsAPI = {
   // Get portfolio summary (includes holdings, total_invested, total_fees)
   getPortfolioSummary: async () => {
-    const response = await fetch(`${API_BASE_URL}/analytics/portfolio-summary`);
+    const response = await apiFetch(`${API_BASE_URL}/analytics/portfolio-summary`);
     return handleResponse(response);
   },
 };
@@ -102,7 +112,7 @@ export const analyticsAPI = {
 export const positionValuesAPI = {
   // Create or update position value (UPSERT)
   upsert: async (isin, currentValue) => {
-    const response = await fetch(`${API_BASE_URL}/position-values`, {
+    const response = await apiFetch(`${API_BASE_URL}/position-values`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -117,7 +127,7 @@ export const positionValuesAPI = {
 
   // Get all position values
   getAll: async () => {
-    const response = await fetch(`${API_BASE_URL}/position-values`);
+    const response = await apiFetch(`${API_BASE_URL}/position-values`);
     return handleResponse(response);
   },
 };
@@ -134,19 +144,19 @@ export const isinMetadataAPI = {
     });
 
     const url = `${API_BASE_URL}/isin-metadata${query.toString() ? '?' + query.toString() : ''}`;
-    const response = await fetch(url);
+    const response = await apiFetch(url);
     return handleResponse(response);
   },
 
   // Get single ISIN metadata by ISIN
   getByIsin: async (isin) => {
-    const response = await fetch(`${API_BASE_URL}/isin-metadata/${isin}`);
+    const response = await apiFetch(`${API_BASE_URL}/isin-metadata/${isin}`);
     return handleResponse(response);
   },
 
   // Create new ISIN metadata
   create: async (data) => {
-    const response = await fetch(`${API_BASE_URL}/isin-metadata`, {
+    const response = await apiFetch(`${API_BASE_URL}/isin-metadata`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -158,7 +168,7 @@ export const isinMetadataAPI = {
 
   // Update existing ISIN metadata
   update: async (isin, data) => {
-    const response = await fetch(`${API_BASE_URL}/isin-metadata/${isin}`, {
+    const response = await apiFetch(`${API_BASE_URL}/isin-metadata/${isin}`, {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
@@ -170,7 +180,7 @@ export const isinMetadataAPI = {
 
   // Delete ISIN metadata
   delete: async (isin) => {
-    const response = await fetch(`${API_BASE_URL}/isin-metadata/${isin}`, {
+    const response = await apiFetch(`${API_BASE_URL}/isin-metadata/${isin}`, {
       method: 'DELETE',
     });
     return handleResponse(response);
@@ -181,7 +191,7 @@ export const isinMetadataAPI = {
 export const otherAssetsAPI = {
   // Create or update other asset (UPSERT)
   upsert: async (assetType, assetDetail, currency, value) => {
-    const response = await fetch(`${API_BASE_URL}/other-assets`, {
+    const response = await apiFetch(`${API_BASE_URL}/other-assets`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -199,7 +209,7 @@ export const otherAssetsAPI = {
   // Get all other assets with optional investments row
   getAll: async (includeInvestments = true) => {
     const url = `${API_BASE_URL}/other-assets?include_investments=${includeInvestments}`;
-    const response = await fetch(url);
+    const response = await apiFetch(url);
     return handleResponse(response);
   },
 };
@@ -208,13 +218,13 @@ export const otherAssetsAPI = {
 export const settingsAPI = {
   // Get exchange rate setting
   getExchangeRate: async () => {
-    const response = await fetch(`${API_BASE_URL}/settings/exchange-rate`);
+    const response = await apiFetch(`${API_BASE_URL}/settings/exchange-rate`);
     return handleResponse(response);
   },
 
   // Update exchange rate setting
   updateExchangeRate: async (rate) => {
-    const response = await fetch(`${API_BASE_URL}/settings/exchange-rate`, {
+    const response = await apiFetch(`${API_BASE_URL}/settings/exchange-rate`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -226,13 +236,13 @@ export const settingsAPI = {
 
   // Get expected return investment setting
   getExpectedReturnInvestment: async () => {
-    const response = await fetch(`${API_BASE_URL}/settings/expected-return-investment`);
+    const response = await apiFetch(`${API_BASE_URL}/settings/expected-return-investment`);
     return handleResponse(response);
   },
 
   // Update expected return investment setting
   updateExpectedReturnInvestment: async (percentage) => {
-    const response = await fetch(`${API_BASE_URL}/settings/expected-return-investment`, {
+    const response = await apiFetch(`${API_BASE_URL}/settings/expected-return-investment`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -244,13 +254,13 @@ export const settingsAPI = {
 
   // Get expected return CD setting
   getExpectedReturnCD: async () => {
-    const response = await fetch(`${API_BASE_URL}/settings/expected-return-cd`);
+    const response = await apiFetch(`${API_BASE_URL}/settings/expected-return-cd`);
     return handleResponse(response);
   },
 
   // Update expected return CD setting
   updateExpectedReturnCD: async (percentage) => {
-    const response = await fetch(`${API_BASE_URL}/settings/expected-return-cd`, {
+    const response = await apiFetch(`${API_BASE_URL}/settings/expected-return-cd`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -265,7 +275,7 @@ export const settingsAPI = {
 export const snapshotsAPI = {
   // Create snapshot of current asset state
   create: async () => {
-    const response = await fetch(`${API_BASE_URL}/snapshots`, {
+    const response = await apiFetch(`${API_BASE_URL}/snapshots`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -283,13 +293,13 @@ export const snapshotsAPI = {
     if (endDate) params.append('end_date', endDate);
     if (params.toString()) url += `?${params.toString()}`;
 
-    const response = await fetch(url);
+    const response = await apiFetch(url);
     return handleResponse(response);
   },
 
   // Delete snapshots by date
   deleteByDate: async (snapshotDate) => {
-    const response = await fetch(`${API_BASE_URL}/snapshots/${snapshotDate}`, {
+    const response = await apiFetch(`${API_BASE_URL}/snapshots/${snapshotDate}`, {
       method: 'DELETE',
     });
     return handleResponse(response);
@@ -300,7 +310,7 @@ export const snapshotsAPI = {
     const formData = new FormData();
     formData.append('file', file);
 
-    const response = await fetch(`${API_BASE_URL}/snapshots/import-csv`, {
+    const response = await apiFetch(`${API_BASE_URL}/snapshots/import-csv`, {
       method: 'POST',
       body: formData,
     });

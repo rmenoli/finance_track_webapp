@@ -92,9 +92,11 @@ Deployment Complete ✓
 
 See [IAM User Setup](#iam-user-setup) section below for detailed instructions.
 
-#### 2. Set Lambda DATABASE_URL
+#### 2. Set Lambda Environment Variables
 
-Set the `DATABASE_URL` environment variable on the Lambda function to point to your Neon PostgreSQL connection string. This is a one-time manual step via the AWS Console (Lambda → Configuration → Environment variables).
+Set these environment variables on the Lambda function (one-time manual step via AWS Console → Lambda → Configuration → Environment variables):
+- `DATABASE_URL`: Neon PostgreSQL connection string
+- `API_KEY`: Random 64-char hex string (generate with `openssl rand -hex 32`). Must match the GitHub secret `API_KEY`.
 
 #### 3. Configure GitHub Secrets
 
@@ -114,6 +116,7 @@ Add the following secrets (see [GitHub Secrets Configuration](#github-secrets-co
 | `ECR_REPOSITORY` | ECR repository name |
 | `LAMBDA_FUNCTION_NAME` | Lambda function name |
 | `NEON_DATABASE_URL` | Neon PostgreSQL connection string |
+| `API_KEY` | API key for backend auth (same value as Lambda `API_KEY` env var) |
 | `CODECOV_TOKEN` | (Optional) Codecov token for coverage reports |
 
 #### 4. Enable GitHub Actions
@@ -231,6 +234,14 @@ curl https://YOUR_CLOUDFRONT_DOMAIN/api/v1/health
 - Format: `postgresql://user:pass@ep-xxx.region.aws.neon.tech/neondb?sslmode=require`
 - Get from: Neon Console → Connection Details → Connection string
 - Used by CI/CD to run Alembic migrations at deploy time
+
+#### API Key
+
+**API_KEY**
+- API key for backend authentication (protects all endpoints except health)
+- Must match the `API_KEY` Lambda environment variable
+- Generate with: `openssl rand -hex 32`
+- Baked into the frontend build at CI/CD time as `VITE_API_KEY`
 
 #### Optional Secrets
 

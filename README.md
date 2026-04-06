@@ -4,7 +4,7 @@
 
 A full-stack web application for tracking ETF portfolio transactions with automatic cost basis calculations using the average cost method.
 
-**Single-user system** | **No authentication required** | **Local-first with cloud-ready architecture**
+**Single-user system** | **API key protected** | **Local-first with cloud-ready architecture**
 
 ---
 
@@ -270,11 +270,18 @@ uv run pytest tests/test_schemas.py                   # Validation tests
   - 0.5 GiB storage, serverless compute (scales to zero)
   - Connection via `DATABASE_URL` env var on Lambda
 
+**Security:**
+- API key middleware protects all endpoints (except `/health`)
+- `X-API-Key` header required on every API request
+- Key baked into frontend at build time via `VITE_API_KEY`
+- Lambda env var `API_KEY` must match GitHub secret `API_KEY`
+- Empty key = no auth (local dev)
+
 **Key Configuration:**
 - Frontend uses relative paths `/api/v1/*`
-- CloudFront routes these to Lambda backend
+- CloudFront routes these to Lambda backend via Lambda Function URL
 - No CORS issues (same-origin from browser perspective)
-- CI/CD sets `VITE_API_URL=/api/v1` during build
+- CI/CD sets `VITE_API_URL=/api/v1` and `VITE_API_KEY` during build
 - CI/CD runs `alembic upgrade head` against Neon before deploying Lambda
 
 ---
@@ -322,6 +329,7 @@ Verify Health → Complete ✓
 | `ECR_REPOSITORY` | ECR repository name |
 | `LAMBDA_FUNCTION_NAME` | Lambda function name |
 | `NEON_DATABASE_URL` | Neon PostgreSQL connection string |
+| `API_KEY` | API key for backend auth (same value as Lambda `API_KEY` env var) |
 | `CODECOV_TOKEN` | (Optional) Codecov token |
 
 **Setup Steps:**
@@ -574,7 +582,7 @@ realized_gain = (sell_price × units - fee) - cost_removed
 ## Project Status
 
 **Current Version**: Development
-**Test Coverage**: 95% (277 tests)
+**Test Coverage**: 95% (310 tests)
 **Frontend Pages**: 7 pages (Investment Dashboard, Transactions, Add/Edit Transaction, ISIN Metadata Management, Add/Edit ISIN Metadata, Other Assets, Snapshots with Growth Tracking)
 **Backend Endpoints**: 23 endpoints (6 transaction, 1 analytics, 2 position values, 5 ISIN metadata, 3 other assets, 2 settings, 5 snapshots) - includes CSV import for transactions and snapshots
 

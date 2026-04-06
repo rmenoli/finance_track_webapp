@@ -172,6 +172,23 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+@app.middleware("http")
+async def api_key_middleware(request: Request, call_next):
+    """Reject requests without a valid API key (when API_KEY is configured)."""
+    if not settings.api_key:
+        return await call_next(request)
+    if request.url.path in ("/health", "/v1/health", "/"):
+        return await call_next(request)
+    if request.method == "OPTIONS":
+        return await call_next(request)
+    if request.headers.get("X-API-Key") != settings.api_key:
+        return JSONResponse(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            content={"detail": "Invalid or missing API key"},
+        )
+    return await call_next(request)
+
+
 # Include routers
 app.include_router(transactions.router, prefix=settings.api_v1_prefix)
 app.include_router(analytics.router, prefix=settings.api_v1_prefix)

@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-ETF Portfolio Tracker - Full-stack web application for tracking ETF transactions with automatic cost basis calculations using the average cost method. Single-user system with no authentication.
+ETF Portfolio Tracker - Full-stack web application for tracking ETF transactions with automatic cost basis calculations using the average cost method. Single-user system protected by API key middleware.
 
 **Tech Stack**:
 - **Backend**: FastAPI, SQLAlchemy 2.0, Neon PostgreSQL (production) / SQLite (local dev), Alembic, Pydantic 2.x, UV package manager
@@ -375,7 +375,7 @@ All cost basis calculations in `backend/app/services/cost_basis_service.py`:
 
 ## Important Constraints
 
-1. **No Authentication**: Single-user system, no user model or auth
+1. **API Key Auth**: Single-user system, protected by `X-API-Key` header middleware (no user model). Empty key = no auth (local dev). Health endpoints bypass auth.
 2. **Dual Database**: Neon PostgreSQL in production (Lambda), SQLite for local dev and tests
 3. **Synchronous**: Using sync SQLAlchemy (adequate for single user)
 4. **Date Validation**: Transaction dates cannot be in the future
@@ -412,6 +412,7 @@ API_V1_PREFIX=/api/v1
 PROJECT_NAME=ETF Portfolio Tracker
 DEBUG=True
 CORS_ORIGINS=["http://localhost:3000", "http://localhost:8000"]
+API_KEY=             # Empty = no auth (local dev). Set in production Lambda env vars.
 
 # Logging Configuration
 LOG_LEVEL=INFO
@@ -419,8 +420,8 @@ LOG_FORMAT=json
 ```
 
 **Frontend Environment Variables**:
-- `.env.development`: `VITE_API_URL=http://localhost:8000/api/v1`
-- `.env.production`: `VITE_API_URL=/api/v1`
+- `.env.development`: `VITE_API_URL=http://localhost:8000/api/v1`, `VITE_API_KEY=` (empty, no auth in dev)
+- `.env.production`: `VITE_API_URL=/api/v1`, `VITE_API_KEY=` (real value injected via CI/CD from `API_KEY` GitHub secret)
 
 **Important - Production Build Configuration**:
 
@@ -430,6 +431,7 @@ In CI/CD, the `VITE_API_URL` environment variable **must be explicitly set** in 
 - name: Build frontend
   env:
     VITE_API_URL: /api/v1  # Required for production builds
+    VITE_API_KEY: ${{ secrets.API_KEY }}  # API key baked into frontend
   run: |
     cd frontend
     npm ci
@@ -449,7 +451,7 @@ In CI/CD, the `VITE_API_URL` environment variable **must be explicitly set** in 
 
 ## Testing
 
-**Test Suite**: 254 tests, 95% coverage
+**Test Suite**: 310 tests, 95% coverage
 
 **Test Structure**:
 - `tests/conftest.py`: Fixtures for database and test client
@@ -465,6 +467,7 @@ In CI/CD, the `VITE_API_URL` environment variable **must be explicitly set** in 
 - `tests/test_api_isin_metadata.py`: ISIN metadata API (20 tests)
 - `tests/test_position_value_cleanup.py`: Position value cleanup (5 tests)
 - `tests/test_schemas.py`: Pydantic validation (49 tests, includes OtherAssetSchemas)
+- `tests/test_api_key_middleware.py`: API key middleware (7 tests)
 
 **Key Test Patterns**:
 - Database isolation via fixtures
@@ -529,12 +532,15 @@ uv run alembic upgrade head   # Apply migrations
 **Key Production Configuration**:
 - Lambda env var: `DATABASE_URL` pointing to Neon PostgreSQL connection string
 - Lambda env var: `CORS_ORIGINS=["https://YOUR_CLOUDFRONT_DOMAIN"]`
-- CI/CD: `VITE_API_URL=/api/v1` set in GitHub Actions workflow
+- Lambda env var: `API_KEY` (same value as GitHub secret `API_KEY`)
+- CI/CD: `VITE_API_URL=/api/v1` and `VITE_API_KEY` set in GitHub Actions workflow
 - Frontend: Fail-fast error checking if `VITE_API_URL` not set
 
-**Future Considerations**:
-- Add Redis for caching and session management
-- Implement API Gateway for rate limiting and authentication
+**Security**:
+- API key middleware in `backend/app/main.py` — rejects requests without valid `X-API-Key` header
+- Health endpoints (`/health`, `/v1/health`, `/`) and OPTIONS requests bypass auth
+- Frontend sends API key automatically via `apiFetch()` wrapper in `frontend/src/services/api.js`
+- Empty `API_KEY` = no auth (local dev default)
 
 ## CI/CD Pipeline
 
@@ -604,7 +610,7 @@ For detailed information, see:
 ## Project Status Summary
 
 **Current Version**: Development
-**Test Coverage**: 95% (277 tests)
+**Test Coverage**: 95% (310 tests)
 **Backend Endpoints**: 23 total (6 transaction, 1 analytics, 2 position values, 5 ISIN metadata, 3 other assets, 5 snapshots, 2 settings) - includes CSV import for transactions and snapshots
 **Frontend Pages**: 7 (Investment Dashboard, Transactions, Add/Edit Transaction, ISIN Metadata, Add/Edit ISIN Metadata, Other Assets, Snapshots with Growth Tracking)
 **Frontend Components**: 15 main components (Layout, Navigation, TransactionForm, TransactionList, ISINMetadataForm, ISINMetadataList, DashboardHoldingsTable, HoldingsDistributionChart, ClosedPositionsTable, PortfolioSummary, OtherAssetsTable, OtherAssetsDistributionChart, SnapshotValueChart, SnapshotsTable, SnapshotAssetTypeChart)
@@ -615,6 +621,7 @@ For detailed information, see:
 **CSV Import**: Bulk import for transactions (DEGIRO) and snapshots with detailed error reporting, color-coded results, and row-by-row validation. Frontend has import buttons with file validation and auto-refresh after successful imports.
 **Architecture**: Backend-first calculations - all financial math performed on backend using Decimal, frontend is pure presentation layer
 **Logging**: Structured JSON logging with audit trail for all operations, request tracing, and performance monitoring
+**Security**: API key middleware protects all endpoints except health; `X-API-Key` header required in production
 
 ---
 
