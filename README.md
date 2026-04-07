@@ -270,12 +270,15 @@ uv run pytest tests/test_schemas.py                   # Validation tests
   - 0.5 GiB storage, serverless compute (scales to zero)
   - Connection via `DATABASE_URL` env var on Lambda
 
-**Security:**
+**Security & Cost Controls:**
 - API key middleware protects all endpoints (except `/health`)
 - `X-API-Key` header required on every API request
 - Key baked into frontend at build time via `VITE_API_KEY`
 - Lambda env var `API_KEY` must match GitHub secret `API_KEY`
 - Empty key = no auth (local dev)
+- Lambda reserved concurrency = 5 (hard cap on parallel executions)
+- AWS Budget alarm at $5/month with email alerts at 80% ($4) and 100% ($5)
+- Budget killer Lambda: auto-sets main Lambda concurrency to 0 via SNS when budget is exceeded
 
 **Key Configuration:**
 - Frontend uses relative paths `/api/v1/*`

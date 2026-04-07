@@ -536,11 +536,14 @@ uv run alembic upgrade head   # Apply migrations
 - CI/CD: `VITE_API_URL=/api/v1` and `VITE_API_KEY` set in GitHub Actions workflow
 - Frontend: Fail-fast error checking if `VITE_API_URL` not set
 
-**Security**:
+**Security & Cost Controls**:
 - API key middleware in `backend/app/main.py` — rejects requests without valid `X-API-Key` header
 - Health endpoints (`/health`, `/v1/health`, `/`) and OPTIONS requests bypass auth
 - Frontend sends API key automatically via `apiFetch()` wrapper in `frontend/src/services/api.js`
 - Empty `API_KEY` = no auth (local dev default)
+- Lambda reserved concurrency = 5 (hard cap, prevents runaway costs under attack)
+- AWS Budget alarm at $5/month — email alerts at 80% ($4) and 100% ($5) threshold
+- Budget killer Lambda (`budget_killer/handler.py`) — triggered via SNS, sets main Lambda concurrency to 0 when budget exceeded; recover with `aws lambda put-function-concurrency --reserved-concurrent-executions 5`
 
 ## CI/CD Pipeline
 
@@ -621,7 +624,7 @@ For detailed information, see:
 **CSV Import**: Bulk import for transactions (DEGIRO) and snapshots with detailed error reporting, color-coded results, and row-by-row validation. Frontend has import buttons with file validation and auto-refresh after successful imports.
 **Architecture**: Backend-first calculations - all financial math performed on backend using Decimal, frontend is pure presentation layer
 **Logging**: Structured JSON logging with audit trail for all operations, request tracing, and performance monitoring
-**Security**: API key middleware protects all endpoints except health; `X-API-Key` header required in production
+**Security**: API key middleware + Lambda concurrency limit (5) + AWS Budget alarm ($5/month) + budget killer Lambda (auto-disables on budget breach)
 
 ---
 
