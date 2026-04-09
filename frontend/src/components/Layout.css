@@ -17,3 +17,18 @@
     padding: 1rem;
   }
 }
+
+.demo-banner {
+  background-color: #fff3cd;
+  border-bottom: 1px solid #ffc107;
+  color: #856404;
+  text-align: center;
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
+}
+
+.demo-banner-link {
+  color: #856404;
+  font-weight: 600;
+  text-decoration: underline;
+}
