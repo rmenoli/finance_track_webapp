@@ -5,12 +5,11 @@ const API_BASE_URL = import.meta.env.VITE_API_URL;
    throw new Error('VITE_API_URL environment variable is not set. Check your .env file.');
  }
 
-const API_KEY = import.meta.env.VITE_API_KEY || '';
-
 function apiFetch(url, options = {}) {
   const headers = { ...options.headers };
-  if (API_KEY) {
-    headers['X-API-Key'] = API_KEY;
+  const apiKey = localStorage.getItem('api_key');
+  if (apiKey) {
+    headers['X-API-Key'] = apiKey;
   }
   return fetch(url, { ...options, headers });
 }

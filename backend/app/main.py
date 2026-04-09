@@ -172,20 +172,33 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+_api_key_db_map = settings.api_key_db_map_parsed
+
+
 @app.middleware("http")
 async def api_key_middleware(request: Request, call_next):
-    """Reject requests without a valid API key (when API_KEY is configured)."""
-    if not settings.api_key:
-        return await call_next(request)
+    """Validate API key and resolve the corresponding database URL.
+
+    When API_KEY_DB_MAP is configured, each key maps to a different database.
+    When empty (local dev), all requests pass through without auth.
+    Falls back to legacy single API_KEY if API_KEY_DB_MAP is not set.
+    """
     if request.url.path in ("/health", "/v1/health", "/"):
         return await call_next(request)
     if request.method == "OPTIONS":
         return await call_next(request)
-    if request.headers.get("X-API-Key") != settings.api_key:
+
+    if not _api_key_db_map:
+        return await call_next(request)
+
+    api_key = request.headers.get("X-API-Key")
+    db_url = _api_key_db_map.get(api_key) if api_key else None
+    if db_url is None:
         return JSONResponse(
             status_code=status.HTTP_401_UNAUTHORIZED,
             content={"detail": "Invalid or missing API key"},
         )
+    request.state.database_url = db_url
     return await call_next(request)
 
 
