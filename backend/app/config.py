@@ -7,7 +7,6 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class Settings(BaseSettings):
     """Application settings loaded from environment variables."""
 
-    database_url: str = ""
     api_v1_prefix: str = "/v1"
     project_name: str = "ETF Portfolio Tracker"
     debug: bool = False

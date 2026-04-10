@@ -1,10 +1,12 @@
 import { useEffect, useState, useRef } from 'react';
 import { snapshotsAPI } from '../services/api';
+import { useAuth } from '../context/AuthContext';
 import SnapshotsTable from '../components/SnapshotsTable';
 import SnapshotValueChart from '../components/SnapshotValueChart';
 import './Snapshots.css';
 
 function Snapshots() {
+  const { isDemoMode } = useAuth();
   // State management
   const [snapshots, setSnapshots] = useState([]);
   const [avgMonthlyIncrement, setAvgMonthlyIncrement] = useState(null);
@@ -159,9 +161,14 @@ function Snapshots() {
           <button
             className="btn btn-secondary"
             onClick={handleImportClick}
-            disabled={importing}
+            disabled={importing || isDemoMode}
           >
-            {importing ? 'Importing...' : '📁 Import CSV'}
+            {importing ? 'Importing...' : (
+              <>
+                📁 Import CSV
+                {isDemoMode && <small className="demo-disabled-hint">Disabled in DEMO</small>}
+              </>
+            )}
           </button>
         </div>
       </div>

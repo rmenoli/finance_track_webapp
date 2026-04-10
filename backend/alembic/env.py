@@ -1,11 +1,9 @@
+import os
 from logging.config import fileConfig
 
 from sqlalchemy import engine_from_config, pool
 
 from alembic import context
-
-# Import our database base and settings
-from app.config import settings
 from app.database import Base
 from app.models.asset_snapshot import AssetSnapshot  # noqa: F401
 from app.models.isin_metadata import ISINMetadata  # noqa: F401
@@ -20,8 +18,8 @@ from app.models.user_setting import UserSetting  # noqa: F401
 # access to the values within the .ini file in use.
 config = context.config
 
-# Override sqlalchemy.url from our settings
-config.set_main_option("sqlalchemy.url", settings.database_url)
+# Override sqlalchemy.url from DATABASE_URL env var (set in CI/CD or passed on command line)
+config.set_main_option("sqlalchemy.url", os.environ["DATABASE_URL"])
 
 # Interpret the config file for Python logging.
 # This line sets up loggers basically.

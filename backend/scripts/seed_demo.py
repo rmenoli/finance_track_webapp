@@ -29,15 +29,14 @@ from app.models.user_setting import UserSetting  # noqa: F401
 
 
 def get_database_url() -> str:
-    """Get the database URL from env, preferring DEMO_DATABASE_URL."""
+    """Get the database URL from DEMO_DATABASE_URL env var."""
     url = os.environ.get("DEMO_DATABASE_URL")
-    if url:
-        return url
-
-    # Fall back to loading from .env
-    from app.config import settings
-
-    return settings.database_url
+    if not url:
+        raise RuntimeError(
+            "DEMO_DATABASE_URL env var is required. "
+            'Usage: DEMO_DATABASE_URL="postgresql://..." uv run python scripts/seed_demo.py'
+        )
+    return url
 
 
 def seed(database_url: str) -> None:

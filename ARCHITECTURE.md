@@ -20,7 +20,7 @@ This document describes the production architecture of the ETF Portfolio Tracker
                      └──────────────────┘     │    Mangum)        │
                                               └──────┬────────────┘
                                                      │
-                                                     │ DATABASE_URL
+                                                     │ API_KEY_DB_MAP
                                                      ▼
                                               ┌───────────────────┐
                                               │   Neon PostgreSQL │
@@ -47,7 +47,7 @@ This document describes the production architecture of the ETF Portfolio Tracker
 - **NullPool in SQLAlchemy**: Lambda invocations are short-lived; connection pooling would leak connections and exhaust Neon's free-tier limit
 - **Alembic at deploy time**: Migrations run in CI/CD (not Lambda cold start) for reliability and speed
 - **SQLite for local dev**: Simple, no external dependencies needed for development
-- **API key middleware**: Simple `X-API-Key` header check blocks bots/scanners; not enterprise auth but sufficient for single-user app
+- **API key middleware**: `X-API-Key` header maps to database URL via `API_KEY_DB_MAP`; supports multiple users with separate Neon branches
 
 ### Request Flow
 
@@ -55,16 +55,17 @@ This document describes the production architecture of the ETF Portfolio Tracker
 2. Frontend makes API calls to `/api/v1/*` (relative paths) with `X-API-Key` header
 3. CloudFront routes `/api/*` to Lambda Function URL
 4. Lambda runs FastAPI via Mangum (ASGI adapter)
-5. API key middleware validates the `X-API-Key` header (rejects 401 if invalid)
-6. FastAPI connects to Neon PostgreSQL via `DATABASE_URL`
+5. API key middleware looks up `X-API-Key` in `API_KEY_DB_MAP` (rejects 401 if not found)
+6. FastAPI connects to the mapped Neon branch database URL
 7. Response flows back through the same path
 
 ### Security
 
-- **API Key Middleware**: All endpoints (except `/health`, `/v1/health`, `/`) require a valid `X-API-Key` header
-- **Frontend**: API key is baked into the React build at CI/CD time via `VITE_API_KEY` env var
+- **API Key Middleware**: All endpoints (except `/health`, `/v1/health`, `/`) require a valid `X-API-Key` header mapped in `API_KEY_DB_MAP`
+- **Frontend**: Login page with API key input + "Try Demo" button; key stored in localStorage and sent via `X-API-Key` header
+- **Demo Mode**: `VITE_DEMO_API_KEY=demo` identifies demo users; demo data served from a separate Neon branch
 - **Lambda Function URL**: `AuthType: NONE` — the API key middleware handles auth at the application level
-- **Local dev**: `API_KEY=""` (empty) disables auth for convenience
+- **Local dev**: `API_KEY_DB_MAP=""` (empty) disables auth for convenience
 
 ---
 
@@ -76,11 +77,8 @@ Set these on the Lambda function (AWS Console → Lambda → Configuration → E
 
 | Variable | Value | Notes |
 |----------|-------|-------|
-| `DATABASE_URL` | `postgresql://user:pass@host/neondb?sslmode=require` | Neon connection string |
 | `CORS_ORIGINS` | `["https://YOUR_CLOUDFRONT_DOMAIN"]` | CloudFront domain |
-| `API_V1_PREFIX` | `/v1` | API route prefix |
-| `API_KEY` | Random 64-char hex string | Protects all endpoints except health. Generate with `openssl rand -hex 32` |
-| `DEBUG` | `False` | Disable SQL logging in production |
+| `API_KEY_DB_MAP` | `{"key": "postgresql://...main", "demo": "postgresql://...demo"}` | Maps API keys to Neon branch database URLs |
 | `LOG_LEVEL` | `INFO` | Structured JSON logging level |
 | `LOG_FORMAT` | `json` | Log format (json for CloudWatch) |
 
@@ -97,8 +95,8 @@ Set these on the Lambda function (AWS Console → Lambda → Configuration → E
 | `ECR_REGISTRY` | e.g. `123456789012.dkr.ecr.us-east-1.amazonaws.com` |
 | `ECR_REPOSITORY` | e.g. `finance-tracker-backend` |
 | `LAMBDA_FUNCTION_NAME` | e.g. `finance-tracker-backend` |
-| `NEON_DATABASE_URL` | Neon PostgreSQL connection string |
-| `API_KEY` | Same value as Lambda `API_KEY` env var (baked into frontend build) |
+| `NEON_DATABASE_URL` | Neon PostgreSQL connection string (for Alembic migrations) |
+| `CODECOV_TOKEN` | (Optional) Codecov token for coverage reports |
 
 ---
 
@@ -193,10 +191,8 @@ aws lambda create-function \
   --timeout 30 \
   --memory-size 256 \
   --environment "Variables={
-    DATABASE_URL=postgresql://...,
+    API_KEY_DB_MAP={\"key\":\"postgresql://...main\",\"demo\":\"postgresql://...demo\"},
     CORS_ORIGINS=[\"https://YOUR_CLOUDFRONT_DOMAIN\"],
-    API_V1_PREFIX=/v1,
-    DEBUG=False,
     LOG_LEVEL=INFO,
     LOG_FORMAT=json
   }" \
@@ -411,7 +407,7 @@ Local development uses SQLite and does not require AWS or Neon:
 ```bash
 # Backend
 cd backend
-# .env already has DATABASE_URL=sqlite:///./portfolio.db
+# .env has API_KEY_DB_MAP={"your-key": "sqlite:///./portfolio.db", "demo": "sqlite:///./demo.db"}
 uv run uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 
 # Frontend (separate terminal)
@@ -419,7 +415,8 @@ cd frontend
 npm run dev
 ```
 
-To test against Neon locally:
+To test against Neon locally, update `API_KEY_DB_MAP` in `.env` to point at Neon branch URLs:
 ```bash
-DATABASE_URL="postgresql://..." uv run uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+# .env
+API_KEY_DB_MAP={"your-key": "postgresql://...?options=branch%3Dmain", "demo": "postgresql://...?options=branch%3Ddemo"}
 ```

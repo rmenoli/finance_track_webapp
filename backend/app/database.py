@@ -6,8 +6,6 @@ from sqlalchemy.engine import Engine
 from sqlalchemy.orm import declarative_base, sessionmaker
 from sqlalchemy.pool import NullPool
 
-from app.config import settings
-
 
 def _create_engine_for_url(database_url: str) -> Engine:
     """Create a SQLAlchemy engine with appropriate config for the database type."""
@@ -16,7 +14,6 @@ def _create_engine_for_url(database_url: str) -> Engine:
         database_url,
         connect_args={"check_same_thread": False} if "sqlite" in database_url else {},
         poolclass=NullPool if is_postgres else None,
-        echo=settings.debug,
     )
     _register_sqlite_pragmas(engine, database_url)
     return engine
@@ -50,14 +47,6 @@ def _get_engine(database_url: str) -> Engine:
     return _engine_pool[database_url]
 
 
-# Default engine for local dev, Alembic, and tests (only created when DATABASE_URL is set)
-_default_engine = _create_engine_for_url(settings.database_url) if settings.database_url else None
-SessionLocal = (
-    sessionmaker(autocommit=False, autoflush=False, bind=_default_engine)
-    if _default_engine
-    else None
-)
-
 Base = declarative_base()
 
 
@@ -72,14 +61,11 @@ def get_db(db_url: str | None = Depends(_get_db_url_from_request)):
     If the middleware resolved an API key to a database URL,
     uses that URL's engine. Otherwise falls back to the default engine.
     """
-    if db_url:
-        engine = _get_engine(db_url)
-        session_factory = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-        db = session_factory()
-    elif SessionLocal:
-        db = SessionLocal()
-    else:
-        raise RuntimeError("No DATABASE_URL configured and no API key provided")
+    if not db_url:
+        raise RuntimeError("No database URL resolved — check API_KEY_DB_MAP config")
+    engine = _get_engine(db_url)
+    session_factory = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+    db = session_factory()
 
     try:
         yield db

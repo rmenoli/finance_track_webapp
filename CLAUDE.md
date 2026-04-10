@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-ETF Portfolio Tracker - Full-stack web application for tracking ETF transactions with automatic cost basis calculations using the average cost method. Single-user system protected by API key middleware.
+ETF Portfolio Tracker - Full-stack web application for tracking ETF transactions with automatic cost basis calculations using the average cost method. Multi-user system with API key → database mapping (Neon branches).
 
 **Tech Stack**:
 - **Backend**: FastAPI, SQLAlchemy 2.0, Neon PostgreSQL (production) / SQLite (local dev), Alembic, Pydantic 2.x, UV package manager
@@ -190,7 +190,7 @@ finance_track_webapp/
 ├── frontend/                   # React frontend application
 │   ├── src/
 │   │   ├── components/        # Reusable React components (15 components)
-│   │   ├── pages/             # Page-level components (7 pages)
+│   │   ├── pages/             # Page-level components (8 pages)
 │   │   ├── constants/         # Application constants
 │   │   ├── services/          # API client (api.js)
 │   │   └── utils/             # Utility functions
@@ -356,18 +356,19 @@ All cost basis calculations in `backend/app/services/cost_basis_service.py`:
 
 **Pattern**: Functional components with hooks (useState, useEffect). No state management library.
 
-**Pages** (7 total):
-1. Investment Dashboard (`/`) - Portfolio overview
-2. Transactions (`/transactions`) - Transaction list with CRUD
-3. ISIN Metadata (`/isin-metadata`) - Asset metadata management
-4. Other Assets (`/other-assets`) - Multi-currency non-ETF holdings
-5. Snapshots (`/snapshots`) - Historical portfolio states with growth tracking
+**Pages** (8 total):
+1. Login (`/login`) - API key authentication with "Try Demo" button
+2. Investment Dashboard (`/`) - Portfolio overview
+3. Transactions (`/transactions`) - Transaction list with CRUD
+4. ISIN Metadata (`/isin-metadata`) - Asset metadata management
+5. Other Assets (`/other-assets`) - Multi-currency non-ETF holdings
+6. Snapshots (`/snapshots`) - Historical portfolio states with growth tracking
 
 **Key Features**:
 - Interactive Chart.js visualizations (pie charts, time-series)
 - Centralized color system (`frontend/src/constants/chartColors.js`)
 - API client with CRUD + analytics (`frontend/src/services/api.js`)
-- React Router v6 with nested routes
+- React Router v6 with nested routes, AuthContext and RequireAuth guard
 
 **Styling**: Component-scoped CSS + global utilities in `index.css`
 
@@ -375,7 +376,7 @@ All cost basis calculations in `backend/app/services/cost_basis_service.py`:
 
 ## Important Constraints
 
-1. **API Key Auth**: Single-user system, protected by `X-API-Key` header middleware (no user model). Empty key = no auth (local dev). Health endpoints bypass auth.
+1. **API Key Auth**: Multi-user via `API_KEY_DB_MAP` — each API key maps to a Neon branch (database URL). Empty map = no auth (local dev). Health endpoints bypass auth. Frontend login page with "Try Demo" button for demo mode.
 2. **Dual Database**: Neon PostgreSQL in production (Lambda), SQLite for local dev and tests
 3. **Synchronous**: Using sync SQLAlchemy (adequate for single user)
 4. **Date Validation**: Transaction dates cannot be in the future
@@ -407,12 +408,11 @@ ISIN format validation in `backend/app/constants.py`: `ISIN_PATTERN`
 
 **Backend Environment Variables** (`.env` in `backend/`):
 ```env
-DATABASE_URL=sqlite:///./portfolio.db
-API_V1_PREFIX=/api/v1
+API_KEY_DB_MAP={"your-key": "sqlite:///./portfolio.db", "demo": "sqlite:///./demo.db"}
+API_V1_PREFIX=/v1
 PROJECT_NAME=ETF Portfolio Tracker
 DEBUG=True
 CORS_ORIGINS=["http://localhost:3000", "http://localhost:8000"]
-API_KEY=             # Empty = no auth (local dev). Set in production Lambda env vars.
 
 # Logging Configuration
 LOG_LEVEL=INFO
@@ -420,8 +420,8 @@ LOG_FORMAT=json
 ```
 
 **Frontend Environment Variables**:
-- `.env.development`: `VITE_API_URL=http://localhost:8000/api/v1`, `VITE_API_KEY=` (empty, no auth in dev)
-- `.env.production`: `VITE_API_URL=/api/v1`, `VITE_API_KEY=` (real value injected via CI/CD from `API_KEY` GitHub secret)
+- `.env.development`: `VITE_API_URL=http://localhost:8000/api/v1`, `VITE_DEMO_API_KEY=demo`
+- `.env.production`: `VITE_API_URL=/api/v1`, `VITE_DEMO_API_KEY=demo`
 
 **Important - Production Build Configuration**:
 
@@ -431,7 +431,7 @@ In CI/CD, the `VITE_API_URL` environment variable **must be explicitly set** in 
 - name: Build frontend
   env:
     VITE_API_URL: /api/v1  # Required for production builds
-    VITE_API_KEY: ${{ secrets.API_KEY }}  # API key baked into frontend
+    VITE_DEMO_API_KEY: demo  # Identifies demo mode in frontend
   run: |
     cd frontend
     npm ci
@@ -530,17 +530,16 @@ uv run alembic upgrade head   # Apply migrations
   - No CORS issues (same-origin from browser perspective)
 
 **Key Production Configuration**:
-- Lambda env var: `DATABASE_URL` pointing to Neon PostgreSQL connection string
-- Lambda env var: `CORS_ORIGINS=["https://YOUR_CLOUDFRONT_DOMAIN"]`
-- Lambda env var: `API_KEY` (same value as GitHub secret `API_KEY`)
-- CI/CD: `VITE_API_URL=/api/v1` and `VITE_API_KEY` set in GitHub Actions workflow
+- Lambda env vars: `API_KEY_DB_MAP`, `CORS_ORIGINS`, `LOG_LEVEL`, `LOG_FORMAT` (only 4 needed — everything else has safe defaults)
+- CI/CD: `VITE_API_URL=/api/v1` and `VITE_DEMO_API_KEY=demo` set in GitHub Actions workflow
 - Frontend: Fail-fast error checking if `VITE_API_URL` not set
 
 **Security & Cost Controls**:
-- API key middleware in `backend/app/main.py` — rejects requests without valid `X-API-Key` header
+- API key middleware in `backend/app/main.py` — maps `X-API-Key` header to database URL via `API_KEY_DB_MAP`
 - Health endpoints (`/health`, `/v1/health`, `/`) and OPTIONS requests bypass auth
-- Frontend sends API key automatically via `apiFetch()` wrapper in `frontend/src/services/api.js`
-- Empty `API_KEY` = no auth (local dev default)
+- Frontend sends API key from localStorage via `apiFetch()` wrapper in `frontend/src/services/api.js`
+- Empty `API_KEY_DB_MAP` = no auth (local dev default)
+- Login page validates API key against backend before accepting
 - Lambda reserved concurrency = 5 (hard cap, prevents runaway costs under attack)
 - AWS Budget alarm at $5/month — email alerts at 80% ($4) and 100% ($5) threshold
 - Budget killer Lambda (`budget_killer/handler.py`) — triggered via SNS, sets main Lambda concurrency to 0 when budget exceeded; recover with `aws lambda put-function-concurrency --reserved-concurrent-executions 5`
@@ -615,7 +614,7 @@ For detailed information, see:
 **Current Version**: Development
 **Test Coverage**: 95% (310 tests)
 **Backend Endpoints**: 23 total (6 transaction, 1 analytics, 2 position values, 5 ISIN metadata, 3 other assets, 5 snapshots, 2 settings) - includes CSV import for transactions and snapshots
-**Frontend Pages**: 7 (Investment Dashboard, Transactions, Add/Edit Transaction, ISIN Metadata, Add/Edit ISIN Metadata, Other Assets, Snapshots with Growth Tracking)
+**Frontend Pages**: 8 (Login, Investment Dashboard, Transactions, Add/Edit Transaction, ISIN Metadata, Add/Edit ISIN Metadata, Other Assets, Snapshots with Growth Tracking)
 **Frontend Components**: 15 main components (Layout, Navigation, TransactionForm, TransactionList, ISINMetadataForm, ISINMetadataList, DashboardHoldingsTable, HoldingsDistributionChart, ClosedPositionsTable, PortfolioSummary, OtherAssetsTable, OtherAssetsDistributionChart, SnapshotValueChart, SnapshotsTable, SnapshotAssetTypeChart)
 **Visualization**: Portfolio distribution pie charts with Chart.js (centralized color system), time-series area chart with growth tracking, inline asset distribution charts, asset name display in holdings tables
 **Multi-Currency**: EUR/CZK support with backend Decimal precision for other assets
@@ -624,7 +623,7 @@ For detailed information, see:
 **CSV Import**: Bulk import for transactions (DEGIRO) and snapshots with detailed error reporting, color-coded results, and row-by-row validation. Frontend has import buttons with file validation and auto-refresh after successful imports.
 **Architecture**: Backend-first calculations - all financial math performed on backend using Decimal, frontend is pure presentation layer
 **Logging**: Structured JSON logging with audit trail for all operations, request tracing, and performance monitoring
-**Security**: API key middleware + Lambda concurrency limit (5) + AWS Budget alarm ($5/month) + budget killer Lambda (auto-disables on budget breach)
+**Security**: Multi-key auth via API_KEY_DB_MAP + login page + demo mode + Lambda concurrency limit (5) + AWS Budget alarm ($5/month) + budget killer Lambda (auto-disables on budget breach)
 
 ---
 

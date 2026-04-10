@@ -95,8 +95,10 @@ See [IAM User Setup](#iam-user-setup) section below for detailed instructions.
 #### 2. Set Lambda Environment Variables
 
 Set these environment variables on the Lambda function (one-time manual step via AWS Console → Lambda → Configuration → Environment variables):
-- `DATABASE_URL`: Neon PostgreSQL connection string
-- `API_KEY`: Random 64-char hex string (generate with `openssl rand -hex 32`). Must match the GitHub secret `API_KEY`.
+- `API_KEY_DB_MAP`: JSON mapping API keys to Neon branch database URLs (e.g., `{"your-key": "postgresql://...main", "demo": "postgresql://...demo"}`)
+- `CORS_ORIGINS`: `["https://YOUR_CLOUDFRONT_DOMAIN"]`
+- `LOG_LEVEL`: `INFO`
+- `LOG_FORMAT`: `json`
 
 #### 3. Configure GitHub Secrets
 
@@ -115,8 +117,7 @@ Add the following secrets (see [GitHub Secrets Configuration](#github-secrets-co
 | `ECR_REGISTRY` | ECR registry URL |
 | `ECR_REPOSITORY` | ECR repository name |
 | `LAMBDA_FUNCTION_NAME` | Lambda function name |
-| `NEON_DATABASE_URL` | Neon PostgreSQL connection string |
-| `API_KEY` | API key for backend auth (same value as Lambda `API_KEY` env var) |
+| `NEON_DATABASE_URL` | Neon PostgreSQL connection string (for Alembic migrations) |
 | `CODECOV_TOKEN` | (Optional) Codecov token for coverage reports |
 
 #### 4. Enable GitHub Actions
@@ -234,14 +235,6 @@ curl https://YOUR_CLOUDFRONT_DOMAIN/api/v1/health
 - Format: `postgresql://user:pass@ep-xxx.region.aws.neon.tech/neondb?sslmode=require`
 - Get from: Neon Console → Connection Details → Connection string
 - Used by CI/CD to run Alembic migrations at deploy time
-
-#### API Key
-
-**API_KEY**
-- API key for backend authentication (protects all endpoints except health)
-- Must match the `API_KEY` Lambda environment variable
-- Generate with: `openssl rand -hex 32`
-- Baked into the frontend build at CI/CD time as `VITE_API_KEY`
 
 #### Optional Secrets
 
@@ -641,7 +634,7 @@ npm run build
 - **Cause**: Lambda didn't start properly, database connection issue, or CloudFront domain secret misconfigured
 - **Solution**:
   1. Check Lambda logs in CloudWatch
-  2. Verify `DATABASE_URL` env var is set on Lambda (Neon connection string)
+  2. Verify `API_KEY_DB_MAP` env var is set on Lambda (JSON mapping API keys to Neon branch URLs)
   3. Verify `CLOUDFRONT_DOMAIN` secret is just the bare domain (no `https://` prefix)
   4. Test health manually: `curl https://YOUR_CLOUDFRONT_DOMAIN/api/v1/health`
 
