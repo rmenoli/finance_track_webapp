@@ -32,7 +32,6 @@ jobs:
 
       - name: Run backend tests with coverage
         env:
-          DATABASE_URL: sqlite:///./test.db
           API_V1_PREFIX: /v1
         run: |
           cd backend

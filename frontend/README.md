@@ -79,10 +79,13 @@ src/
 │   ├── ISINMetadata.jsx/css          # ISIN metadata management
 │   ├── AddISINMetadata.jsx/css       # Add/edit ISIN metadata page
 │   ├── OtherAssets.jsx/css           # Other assets tracking page
-│   └── Snapshots.jsx/css             # Snapshot history with growth tracking
+│   ├── Snapshots.jsx/css             # Snapshot history with growth tracking
+│   └── LoginPage.jsx/css             # API key login + demo mode
 ├── constants/                         # Application constants
 │   ├── otherAssets.js                # Other asset types and accounts
 │   └── chartColors.js                # Centralized chart color configuration
+├── context/                           # React context providers
+│   └── AuthContext.jsx                # Auth state (API key, demo mode)
 ├── services/                          # API client
 │   └── api.js                        # Backend API client
 ├── utils/                             # Utility functions
@@ -138,6 +141,12 @@ src/
    - Read-only Investimenti row (computed from portfolio)
    - Distribution pie chart showing asset allocation in EUR
    - Persistent exchange rate stored in backend database
+
+8. **Login** (`/login`)
+   - API key input field with backend validation
+   - "Try Demo" button for instant demo access
+   - Error feedback for invalid keys or server issues
+   - Redirects to dashboard when already authenticated
 
 7. **Snapshots** (`/snapshots`)
    - Historical portfolio tracking with point-in-time snapshots
@@ -273,11 +282,13 @@ Client-side validation matches backend rules:
 **`.env.development`** (development mode):
 ```env
 VITE_API_URL=http://localhost:8000/api/v1
+VITE_DEMO_API_KEY=demo
 ```
 
 **`.env.production`** (production build):
 ```env
 VITE_API_URL=/api/v1
+VITE_DEMO_API_KEY=demo
 ```
 
 Access in code with `import.meta.env.VITE_API_URL`
@@ -309,6 +320,7 @@ This avoids CORS issues during development.
 - name: Build frontend
   env:
     VITE_API_URL: /api/v1  # Required for production
+    VITE_DEMO_API_KEY: demo
   run: |
     cd frontend
     npm ci
@@ -331,9 +343,8 @@ if (!API_BASE_URL) {
 
 **Production API Routing**:
 - Frontend uses relative paths: `/api/v1/*`
-- CloudFront routes these requests to EC2 backend
+- CloudFront routes these requests to Lambda backend
 - No CORS issues (same-origin from browser perspective)
-- Backend serves on `http://EC2-IP:8000` (HTTP only)
 - CloudFront handles HTTPS termination
 
 **Test production build locally**:

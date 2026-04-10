@@ -1,10 +1,12 @@
 import { useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { transactionsAPI } from '../services/api';
+import { useAuth } from '../context/AuthContext';
 import TransactionList from '../components/TransactionList';
 import './Transactions.css';
 
 function Transactions() {
+  const { isDemoMode } = useAuth();
   const [transactions, setTransactions] = useState([]);
   const [filters, setFilters] = useState({
     isin: '',
@@ -131,9 +133,14 @@ function Transactions() {
           <button
             className="btn btn-secondary"
             onClick={handleImportClick}
-            disabled={importing}
+            disabled={importing || isDemoMode}
           >
-            {importing ? 'Importing...' : '📁 Import DEGIRO CSV'}
+            {importing ? 'Importing...' : (
+              <>
+                📁 Import DEGIRO CSV
+                {isDemoMode && <small className="demo-disabled-hint">Disabled in DEMO</small>}
+              </>
+            )}
           </button>
         </div>
       </div>

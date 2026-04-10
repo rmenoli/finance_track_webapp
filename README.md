@@ -4,7 +4,7 @@
 
 A full-stack web application for tracking ETF portfolio transactions with automatic cost basis calculations using the average cost method.
 
-**Single-user system** | **API key protected** | **Local-first with cloud-ready architecture**
+**Multi-user** | **API key + Neon branch isolation** | **Demo mode**
 
 ---
 
@@ -268,14 +268,13 @@ uv run pytest tests/test_schemas.py                   # Validation tests
   - Alembic migrations run at CI/CD deploy time
 - **Database**: Neon PostgreSQL (free tier)
   - 0.5 GiB storage, serverless compute (scales to zero)
-  - Connection via `DATABASE_URL` env var on Lambda
+  - Connection via `API_KEY_DB_MAP` env var on Lambda (maps API keys to Neon branch URLs)
 
 **Security & Cost Controls:**
-- API key middleware protects all endpoints (except `/health`)
-- `X-API-Key` header required on every API request
-- Key baked into frontend at build time via `VITE_API_KEY`
-- Lambda env var `API_KEY` must match GitHub secret `API_KEY`
-- Empty key = no auth (local dev)
+- API key middleware maps `X-API-Key` header to Neon branch database URL via `API_KEY_DB_MAP`
+- Frontend login page with API key input and "Try Demo" button
+- Demo mode uses separate Neon branch with pre-seeded data
+- Empty `API_KEY_DB_MAP` = no auth (local dev)
 - Lambda reserved concurrency = 5 (hard cap on parallel executions)
 - AWS Budget alarm at $5/month with email alerts at 80% ($4) and 100% ($5)
 - Budget killer Lambda: auto-sets main Lambda concurrency to 0 via SNS when budget is exceeded
@@ -284,7 +283,7 @@ uv run pytest tests/test_schemas.py                   # Validation tests
 - Frontend uses relative paths `/api/v1/*`
 - CloudFront routes these to Lambda backend via Lambda Function URL
 - No CORS issues (same-origin from browser perspective)
-- CI/CD sets `VITE_API_URL=/api/v1` and `VITE_API_KEY` during build
+- CI/CD sets `VITE_API_URL=/api/v1` and `VITE_DEMO_API_KEY=demo` during build
 - CI/CD runs `alembic upgrade head` against Neon before deploying Lambda
 
 ---
@@ -331,15 +330,14 @@ Verify Health → Complete ✓
 | `ECR_REGISTRY` | ECR registry URL |
 | `ECR_REPOSITORY` | ECR repository name |
 | `LAMBDA_FUNCTION_NAME` | Lambda function name |
-| `NEON_DATABASE_URL` | Neon PostgreSQL connection string |
-| `API_KEY` | API key for backend auth (same value as Lambda `API_KEY` env var) |
+| `NEON_DATABASE_URL` | Neon PostgreSQL connection string (for Alembic migrations) |
 | `CODECOV_TOKEN` | (Optional) Codecov token |
 
 **Setup Steps:**
 1. Create IAM user with S3/CloudFront/ECR/Lambda permissions
 2. Create Neon PostgreSQL project (free tier) and copy connection string
 3. Add all secrets to GitHub repository (Settings → Secrets and variables → Actions)
-4. Set `DATABASE_URL` env var on Lambda (Neon connection string)
+4. Set `API_KEY_DB_MAP` env var on Lambda (JSON mapping keys to Neon branch URLs)
 5. Merge a PR to `main` or manually trigger workflow
 
 **Manual Deployment:**

@@ -118,8 +118,8 @@ cat .env
 
 **Default configuration:**
 ```env
-DATABASE_URL=sqlite:///./portfolio.db
-API_V1_PREFIX=/api/v1
+API_KEY_DB_MAP={"your-key": "sqlite:///./portfolio.db", "demo": "sqlite:///./demo.db"}
+API_V1_PREFIX=/v1
 PROJECT_NAME=ETF Portfolio Tracker
 DEBUG=True
 CORS_ORIGINS=["http://localhost:3000", "http://localhost:8000"]
@@ -133,7 +133,7 @@ LOG_FORMAT=json
 
 | Variable | Description | Default |
 |----------|-------------|---------|
-| `DATABASE_URL` | Database connection string | `sqlite:///./portfolio.db` |
+| `API_KEY_DB_MAP` | JSON mapping API keys to database URLs | `{}` (empty = no auth, SQLite default) |
 | `API_V1_PREFIX` | API route prefix | `/api/v1` |
 | `PROJECT_NAME` | Application name | `ETF Portfolio Tracker` |
 | `DEBUG` | Enable debug mode and SQL logging | `True` |
@@ -143,8 +143,9 @@ LOG_FORMAT=json
 
 **Important Notes:**
 - In production, set `DEBUG=False`
-- Production uses Neon PostgreSQL: `DATABASE_URL=postgresql://user:pass@host/neondb?sslmode=require`
-- Local dev uses SQLite: `DATABASE_URL=sqlite:///./portfolio.db`
+- Production uses Neon PostgreSQL via `API_KEY_DB_MAP` (each API key maps to a Neon branch URL)
+- Local dev uses SQLite via `API_KEY_DB_MAP` (e.g., `{"your-key": "sqlite:///./portfolio.db"}`)
+- `DATABASE_URL` is only used as a CLI env var for Alembic migrations (not a config field)
 - Add production frontend URL to `CORS_ORIGINS` when deploying
 
 ## Running the Server
@@ -1139,7 +1140,7 @@ uv run pytest
 
 **Production Environment Variables** (set on Lambda):
 ```env
-DATABASE_URL=postgresql://user:pass@host/neondb?sslmode=require
+API_KEY_DB_MAP={"your-key": "postgresql://...?options=branch%3Dmain", "demo": "postgresql://...?options=branch%3Ddemo"}
 DEBUG=False
 CORS_ORIGINS=["https://YOUR_CLOUDFRONT_DOMAIN"]
 LOG_LEVEL=INFO
