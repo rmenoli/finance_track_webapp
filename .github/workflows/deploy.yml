@@ -156,11 +156,17 @@ jobs:
 
       - name: Health check
         run: |
-          sleep 5
-          STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
-            "https://${{ secrets.CLOUDFRONT_DOMAIN }}/api/v1/health")
-          if [ "$STATUS" != "200" ]; then
-            echo "Health check failed with status $STATUS"
-            exit 1
-          fi
-          echo "Health check passed"
+          MAX_RETRIES=12
+          SLEEP_SECONDS=10
+          for i in $(seq 1 $MAX_RETRIES); do
+            STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
+              "https://${{ secrets.CLOUDFRONT_DOMAIN }}/api/v1/health" || echo "000")
+            if [ "$STATUS" = "200" ]; then
+              echo "Health check passed"
+              exit 0
+            fi
+            echo "Attempt $i/$MAX_RETRIES: status=$STATUS, retrying in ${SLEEP_SECONDS}s..."
+            sleep $SLEEP_SECONDS
+          done
+          echo "Health check failed after $MAX_RETRIES attempts"
+          exit 1

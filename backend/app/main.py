@@ -183,7 +183,7 @@ async def api_key_middleware(request: Request, call_next):
     When empty (local dev), all requests pass through without auth.
     Falls back to legacy single API_KEY if API_KEY_DB_MAP is not set.
     """
-    if request.url.path in ("/health", "/v1/health", "/"):
+    if request.url.path in ("/", ) or request.url.path.endswith("/health"):
         return await call_next(request)
     if request.method == "OPTIONS":
         return await call_next(request)
@@ -224,7 +224,7 @@ def root() -> Dict[str, str]:
 
 
 @app.get("/health", tags=["health"])
-@app.get("/v1/health", tags=["health"])
+@app.get("/api/v1/health", tags=["health"])
 def health_check() -> Dict[str, str]:
     """Health check endpoint."""
     logger.debug("Health check requested")
