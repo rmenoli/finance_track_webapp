@@ -149,28 +149,34 @@ def seed(database_url: str) -> None:
         db.add_all(transactions)
         db.flush()
 
-        # --- Position Values ---
+        # --- Position Values (matching last snapshot: investments = 23500 EUR) ---
         position_values = [
-            PositionValue(isin="IE00B4L5Y983", current_value=Decimal("1120.0000")),
-            PositionValue(isin="IE00B4WXJJ64", current_value=Decimal("720.0000")),
-            PositionValue(isin="US0378331005", current_value=Decimal("420.0000")),
+            PositionValue(isin="IE00B4L5Y983", current_value=Decimal("14000.0000")),
+            PositionValue(isin="IE00B4WXJJ64", current_value=Decimal("6000.0000")),
+            PositionValue(isin="US0378331005", current_value=Decimal("3500.0000")),
         ]
         db.add_all(position_values)
         db.flush()
 
-        # --- Other Assets ---
+        # --- Other Assets (matching last snapshot: Mar 2025) ---
         other_assets = [
             OtherAsset(
                 asset_type="cash_eur",
                 asset_detail="ING Savings",
                 currency="EUR",
-                value=Decimal("5000.00"),
+                value=Decimal("6000.00"),
             ),
             OtherAsset(
                 asset_type="cd_account",
                 asset_detail=None,
                 currency="CZK",
-                value=Decimal("100000.00"),
+                value=Decimal("380000.00"),
+            ),
+            OtherAsset(
+                asset_type="pension_fund",
+                asset_detail=None,
+                currency="EUR",
+                value=Decimal("2500.00"),
             ),
         ]
         db.add_all(other_assets)
@@ -188,84 +194,71 @@ def seed(database_url: str) -> None:
         # --- Asset Snapshots ---
         # Pattern inspired by real portfolio: savings phase → diversification → full allocation
         snapshot_data: list[tuple[str, str, str | None, str, str, str, str]] = [
-            # 2023: savings-only phase (cash_eur)
-            ("2023-01-17", "cash_eur", "ING Savings", "EUR", "15000", "25.00", "15000"),
-            ("2023-02-17", "cash_eur", "ING Savings", "EUR", "16200", "25.00", "16200"),
-            ("2023-03-17", "cash_eur", "ING Savings", "EUR", "17500", "25.10", "17500"),
-            ("2023-04-17", "cash_eur", "ING Savings", "EUR", "18800", "25.10", "18800"),
-            ("2023-05-17", "cash_eur", "ING Savings", "EUR", "20000", "25.20", "20000"),
-            ("2023-06-17", "cash_eur", "ING Savings", "EUR", "21300", "25.20", "21300"),
-            ("2023-07-17", "cash_eur", "ING Savings", "EUR", "22500", "25.30", "22500"),
-            ("2023-08-17", "cash_eur", "ING Savings", "EUR", "23800", "25.30", "23800"),
-            ("2023-09-17", "cash_eur", "ING Savings", "EUR", "25000", "25.40", "25000"),
-            ("2023-10-17", "cash_eur", "ING Savings", "EUR", "26200", "25.40", "26200"),
-            ("2023-11-17", "cash_eur", "ING Savings", "EUR", "27500", "25.50", "27500"),
-            ("2023-12-17", "cash_eur", "ING Savings", "EUR", "28800", "25.50", "28800"),
-            # 2024: diversification begins (cash_eur + cd_account + investments)
-            # Jan 2024
+            # 2024: diversification begins — overall upward trend, dip in Jun-Jul
+            # Jan 2024 — total ~30,200
             ("2024-01-17", "cash_eur", "ING Savings", "EUR", "13000", "25.00", "13000"),
             ("2024-01-17", "cd_account", None, "CZK", "400000", "25.00", "16000"),
             ("2024-01-17", "investments", None, "EUR", "1200", "25.00", "1200"),
-            # Feb 2024
+            # Feb 2024 — total ~31,500
             ("2024-02-17", "cash_eur", "ING Savings", "EUR", "12000", "25.10", "12000"),
-            ("2024-02-17", "cd_account", None, "CZK", "400000", "25.10", "15936.25"),
-            ("2024-02-17", "investments", None, "EUR", "1350", "25.10", "1350"),
-            # Mar 2024
-            ("2024-03-17", "cash_eur", "ING Savings", "EUR", "11000", "25.20", "11000"),
-            ("2024-03-17", "cd_account", None, "CZK", "400000", "25.20", "15873.02"),
-            ("2024-03-17", "investments", None, "EUR", "1580", "25.20", "1580"),
-            # Apr 2024
-            ("2024-04-17", "cash_eur", "ING Savings", "EUR", "10000", "25.30", "10000"),
-            ("2024-04-17", "cd_account", None, "CZK", "400000", "25.30", "15810.28"),
-            ("2024-04-17", "investments", None, "EUR", "1820", "25.30", "1820"),
-            # May 2024
-            ("2024-05-17", "cash_eur", "ING Savings", "EUR", "9500", "25.40", "9500"),
-            ("2024-05-17", "cd_account", None, "CZK", "400000", "25.40", "15748.03"),
-            ("2024-05-17", "investments", None, "EUR", "1750", "25.40", "1750"),
-            # Jun 2024
-            ("2024-06-17", "cash_eur", "ING Savings", "EUR", "8500", "25.30", "8500"),
-            ("2024-06-17", "cd_account", None, "CZK", "400000", "25.30", "15810.28"),
-            ("2024-06-17", "investments", None, "EUR", "2100", "25.30", "2100"),
-            # Jul 2024
-            ("2024-07-17", "cash_eur", "ING Savings", "EUR", "8000", "25.40", "8000"),
-            ("2024-07-17", "cd_account", None, "CZK", "400000", "25.40", "15748.03"),
-            ("2024-07-17", "investments", None, "EUR", "2350", "25.40", "2350"),
-            # Aug 2024
-            ("2024-08-17", "cash_eur", "ING Savings", "EUR", "7500", "25.50", "7500"),
-            ("2024-08-17", "cd_account", None, "CZK", "400000", "25.50", "15686.27"),
-            ("2024-08-17", "investments", None, "EUR", "2200", "25.50", "2200"),
-            # Sep 2024
-            ("2024-09-17", "cash_eur", "ING Savings", "EUR", "7000", "25.40", "7000"),
-            ("2024-09-17", "cd_account", None, "CZK", "400000", "25.40", "15748.03"),
-            ("2024-09-17", "investments", None, "EUR", "2500", "25.40", "2500"),
-            # Oct 2024
-            ("2024-10-17", "cash_eur", "ING Savings", "EUR", "6500", "25.50", "6500"),
-            ("2024-10-17", "cd_account", None, "CZK", "400000", "25.50", "15686.27"),
-            ("2024-10-17", "investments", None, "EUR", "2700", "25.50", "2700"),
-            # Nov 2024
-            ("2024-11-17", "cash_eur", "ING Savings", "EUR", "6000", "25.40", "6000"),
-            ("2024-11-17", "cd_account", None, "CZK", "400000", "25.40", "15748.03"),
-            ("2024-11-17", "investments", None, "EUR", "2900", "25.40", "2900"),
-            # Dec 2024
-            ("2024-12-17", "cash_eur", "ING Savings", "EUR", "5500", "25.50", "5500"),
-            ("2024-12-17", "cd_account", None, "CZK", "400000", "25.50", "15686.27"),
-            ("2024-12-17", "investments", None, "EUR", "3100", "25.50", "3100"),
+            ("2024-02-17", "cd_account", None, "CZK", "420000", "25.10", "16733.07"),
+            ("2024-02-17", "investments", None, "EUR", "2800", "25.10", "2800"),
+            # Mar 2024 — total ~33,000
+            ("2024-03-17", "cash_eur", "ING Savings", "EUR", "11500", "25.20", "11500"),
+            ("2024-03-17", "cd_account", None, "CZK", "430000", "25.20", "17063.49"),
+            ("2024-03-17", "investments", None, "EUR", "4500", "25.20", "4500"),
+            # Apr 2024 — total ~34,500
+            ("2024-04-17", "cash_eur", "ING Savings", "EUR", "11000", "25.30", "11000"),
+            ("2024-04-17", "cd_account", None, "CZK", "430000", "25.30", "16996.05"),
+            ("2024-04-17", "investments", None, "EUR", "6500", "25.30", "6500"),
+            # May 2024 — total ~35,000
+            ("2024-05-17", "cash_eur", "ING Savings", "EUR", "10500", "25.40", "10500"),
+            ("2024-05-17", "cd_account", None, "CZK", "430000", "25.40", "16929.13"),
+            ("2024-05-17", "investments", None, "EUR", "7600", "25.40", "7600"),
+            # Jun 2024 — dip, total ~33,500
+            ("2024-06-17", "cash_eur", "ING Savings", "EUR", "10000", "25.30", "10000"),
+            ("2024-06-17", "cd_account", None, "CZK", "430000", "25.30", "16996.05"),
+            ("2024-06-17", "investments", None, "EUR", "6500", "25.30", "6500"),
+            # Jul 2024 — further dip, total ~32,000
+            ("2024-07-17", "cash_eur", "ING Savings", "EUR", "9500", "25.20", "9500"),
+            ("2024-07-17", "cd_account", None, "CZK", "430000", "25.20", "17063.49"),
+            ("2024-07-17", "investments", None, "EUR", "5500", "25.20", "5500"),
+            # Aug 2024 — recovery, total ~34,000
+            ("2024-08-17", "cash_eur", "ING Savings", "EUR", "9000", "25.30", "9000"),
+            ("2024-08-17", "cd_account", None, "CZK", "430000", "25.30", "16996.05"),
+            ("2024-08-17", "investments", None, "EUR", "8000", "25.30", "8000"),
+            # Sep 2024 — total ~36,000
+            ("2024-09-17", "cash_eur", "ING Savings", "EUR", "8500", "25.40", "8500"),
+            ("2024-09-17", "cd_account", None, "CZK", "430000", "25.40", "16929.13"),
+            ("2024-09-17", "investments", None, "EUR", "10500", "25.40", "10500"),
+            # Oct 2024 — total ~38,500
+            ("2024-10-17", "cash_eur", "ING Savings", "EUR", "8000", "25.50", "8000"),
+            ("2024-10-17", "cd_account", None, "CZK", "430000", "25.50", "16862.75"),
+            ("2024-10-17", "investments", None, "EUR", "13500", "25.50", "13500"),
+            # Nov 2024 — total ~40,000
+            ("2024-11-17", "cash_eur", "ING Savings", "EUR", "7500", "25.40", "7500"),
+            ("2024-11-17", "cd_account", None, "CZK", "430000", "25.40", "16929.13"),
+            ("2024-11-17", "investments", None, "EUR", "15500", "25.40", "15500"),
+            # Dec 2024 — total ~42,000
+            ("2024-12-17", "cash_eur", "ING Savings", "EUR", "7000", "25.50", "7000"),
+            ("2024-12-17", "cd_account", None, "CZK", "430000", "25.50", "16862.75"),
+            ("2024-12-17", "investments", None, "EUR", "18200", "25.50", "18200"),
             # 2025: full allocation (cash_eur + cd_account + investments + pension_fund)
-            # Jan 2025
-            ("2025-01-17", "cash_eur", "ING Savings", "EUR", "5000", "25.50", "5000"),
-            ("2025-01-17", "cd_account", None, "CZK", "350000", "25.50", "13725.49"),
-            ("2025-01-17", "investments", None, "EUR", "3400", "25.50", "3400"),
-            ("2025-01-17", "pension_fund", None, "EUR", "800", "25.50", "800"),
-            # Feb 2025
-            ("2025-02-17", "cash_eur", "ING Savings", "EUR", "5200", "25.40", "5200"),
-            ("2025-02-17", "cd_account", None, "CZK", "350000", "25.40", "13779.53"),
-            ("2025-02-17", "investments", None, "EUR", "3600", "25.40", "3600"),
-            ("2025-02-17", "pension_fund", None, "EUR", "850", "25.40", "850"),
-            # Mar 2025
-            ("2025-03-17", "cash_eur", "ING Savings", "EUR", "5000", "25.50", "5000"),
-            ("2025-03-17", "cd_account", None, "CZK", "300000", "25.50", "11764.71"),
-            ("2025-03-17", "investments", None, "EUR", "3850", "25.50", "3850"),
-            ("2025-03-17", "pension_fund", None, "EUR", "900", "25.50", "900"),
+            # Jan 2025 — total ~43,500
+            ("2025-01-17", "cash_eur", "ING Savings", "EUR", "6500", "25.50", "6500"),
+            ("2025-01-17", "cd_account", None, "CZK", "400000", "25.50", "15686.27"),
+            ("2025-01-17", "investments", None, "EUR", "19500", "25.50", "19500"),
+            ("2025-01-17", "pension_fund", None, "EUR", "1800", "25.50", "1800"),
+            # Feb 2025 — total ~45,000
+            ("2025-02-17", "cash_eur", "ING Savings", "EUR", "6200", "25.40", "6200"),
+            ("2025-02-17", "cd_account", None, "CZK", "400000", "25.40", "15748.03"),
+            ("2025-02-17", "investments", None, "EUR", "21000", "25.40", "21000"),
+            ("2025-02-17", "pension_fund", None, "EUR", "2000", "25.40", "2000"),
+            # Mar 2025 — total ~47,000
+            ("2025-03-17", "cash_eur", "ING Savings", "EUR", "6000", "25.50", "6000"),
+            ("2025-03-17", "cd_account", None, "CZK", "380000", "25.50", "14901.96"),
+            ("2025-03-17", "investments", None, "EUR", "23500", "25.50", "23500"),
+            ("2025-03-17", "pension_fund", None, "EUR", "2500", "25.50", "2500"),
         ]
 
         snapshots = [
