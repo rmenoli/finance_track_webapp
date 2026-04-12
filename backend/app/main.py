@@ -224,7 +224,7 @@ def root() -> Dict[str, str]:
 
 
 @app.get("/health", tags=["health"])
-@app.get("/api/v1/health", tags=["health"])
+@app.get("/v1/health", tags=["health"])
 def health_check() -> Dict[str, str]:
     """Health check endpoint."""
     logger.debug("Health check requested")
