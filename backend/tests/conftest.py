@@ -1,5 +1,7 @@
 """Test configuration and fixtures."""
 
+from unittest.mock import patch
+
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
@@ -38,6 +40,7 @@ def client(db_session):
             pass
 
     app.dependency_overrides[get_db] = override_get_db
-    with TestClient(app) as test_client:
-        yield test_client
+    with patch("app.main._api_key_db_map", {}):
+        with TestClient(app) as test_client:
+            yield test_client
     app.dependency_overrides.clear()

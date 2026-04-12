@@ -38,7 +38,7 @@ class TestApiKeyDbMap:
     @patch("app.main._api_key_db_map", {"valid-key": "sqlite:///./test.db"})
     def test_health_bypasses_map(self, client):
         """Health endpoints bypass map auth."""
-        for path in ["/health", "/v1/health", "/"]:
+        for path in ["/health", "/api/v1/health", "/"]:
             response = client.get(path)
             assert response.status_code == 200, f"{path} should bypass auth"
 
