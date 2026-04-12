@@ -80,12 +80,29 @@ jobs:
           cd backend
           uv sync --all-extras
 
-      - name: Run Alembic migrations against Neon
+      - name: Run Alembic migrations against all databases
         env:
-          DATABASE_URL: ${{ secrets.NEON_DATABASE_URL }}
+          API_KEY_DB_MAP: ${{ secrets.API_KEY_DB_MAP }}
         run: |
           cd backend
-          uv run alembic upgrade head
+          python3 << 'EOF'
+          import json, os, subprocess, sys
+
+          db_map = json.loads(os.environ['API_KEY_DB_MAP'])
+          unique_urls = list(dict.fromkeys(db_map.values()))
+
+          for i, url in enumerate(unique_urls, 1):
+              print(f"Running migrations for database {i}/{len(unique_urls)}...")
+              result = subprocess.run(
+                  ['uv', 'run', 'alembic', 'upgrade', 'head'],
+                  env={**os.environ, 'DATABASE_URL': url}
+              )
+              if result.returncode != 0:
+                  print(f"Migration failed for database {i}/{len(unique_urls)}")
+                  sys.exit(result.returncode)
+
+          print(f"Successfully migrated {len(unique_urls)} database(s)")
+          EOF
 
       # ── Frontend ──────────────────────────────────────────────────────────────
 
