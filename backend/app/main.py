@@ -13,6 +13,7 @@ from app.logging_config import log_with_context, request_id_context, setup_loggi
 from app.routers import (
     analytics,
     asset_snapshots,
+    etf_breakdown,
     isin_metadata,
     other_assets,
     position_values,
@@ -210,6 +211,7 @@ app.include_router(position_values.router, prefix=settings.api_v1_prefix)
 app.include_router(other_assets.router, prefix=settings.api_v1_prefix)
 app.include_router(asset_snapshots.router, prefix=settings.api_v1_prefix)
 app.include_router(settings_router.router, prefix=settings.api_v1_prefix)
+app.include_router(etf_breakdown.router, prefix=settings.api_v1_prefix)
 
 
 @app.get("/", tags=["root"])

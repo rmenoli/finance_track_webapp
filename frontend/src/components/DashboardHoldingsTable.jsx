@@ -3,8 +3,9 @@ import { positionValuesAPI } from '../services/api';
 import './DashboardHoldingsTable.css';
 import FormattedNumber from './FormattedNumber';
 import HoldingsDistributionChart from './HoldingsDistributionChart';
+import PortfolioExposureChart from './PortfolioExposureChart';
 
-function DashboardHoldingsTable({ holdings, onPositionValueChange, isinNames = {} }) {
+function DashboardHoldingsTable({ holdings, onPositionValueChange, isinNames = {}, breakdowns = {} }) {
   const [editingIsin, setEditingIsin] = useState(null);
   const [editingValue, setEditingValue] = useState(null);
   const [error, setError] = useState(null);
@@ -231,6 +232,14 @@ function DashboardHoldingsTable({ holdings, onPositionValueChange, isinNames = {
         currentValues={currentValues}
         isinNames={isinNames}
       />
+
+      {Object.keys(breakdowns).length > 0 && (
+        <PortfolioExposureChart
+          breakdowns={breakdowns}
+          holdings={holdings}
+          isinNames={isinNames}
+        />
+      )}
     </>
   );
 }

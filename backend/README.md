@@ -127,6 +127,10 @@ CORS_ORIGINS=["http://localhost:3000", "http://localhost:8000"]
 # Logging Configuration
 LOG_LEVEL=INFO
 LOG_FORMAT=json
+
+# ETF Breakdown Data (S3)
+ETF_DATA_S3_BUCKET=your-bucket-name
+ETF_DATA_S3_PREFIX=etf-data/
 ```
 
 ### Configuration Options
@@ -140,6 +144,9 @@ LOG_FORMAT=json
 | `CORS_ORIGINS` | Allowed CORS origins (JSON array) | `["http://localhost:3000", ...]` |
 | `LOG_LEVEL` | Logging level (DEBUG, INFO, WARNING, ERROR) | `INFO` |
 | `LOG_FORMAT` | Log format (json or text) | `json` |
+| `ETF_DATA_S3_BUCKET` | S3 bucket for ETF holding CSV files | `""` (disabled — falls back to local dir) |
+| `ETF_DATA_S3_PREFIX` | S3 key prefix for ETF CSVs | `etf-data/` |
+| `ETF_DATA_DIR` | Local directory for ETF holding CSVs | `<project>/data` |
 
 **Important Notes:**
 - In production, set `DEBUG=False`
@@ -264,6 +271,20 @@ All endpoints are prefixed with `/api/v1`
 - **Account Tracking**: Cash assets support multiple accounts (CSOB, RAIF, Revolut, Wise, Degiro)
 - **UPSERT Logic**: Composite key on (asset_type, asset_detail) ensures one value per asset/account combination
 - **Synthetic Investments Row**: The investments asset type is auto-generated from portfolio current value and cannot be manually created
+
+#### ETF Breakdown Endpoints
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/etf-breakdown/` | List ISINs with available breakdown data |
+| GET | `/etf-breakdown/{isin}` | Get country, sector, currency, and ticker breakdown for one ETF |
+
+**ETF Breakdown** provides constituent-level exposure data for ETFs. Data is loaded from CSV files at startup (lazy-loaded on first request) from either an S3 bucket or a local `data/` directory. Each CSV file is named `<ISIN>.csv` and must contain the columns: `ticker`, `country`, `sector`, `currency`, `weight_pct`. The service aggregates weights by dimension and returns results sorted by weight descending.
+
+**Data loading priority:**
+1. If `ETF_DATA_S3_BUCKET` is set → download CSVs from S3 to `/tmp/etf_data/`
+2. Else if `ETF_DATA_DIR` is set → load from that local directory
+3. Data is cached in-memory after first load; call `load_breakdowns()` manually to reload
 
 #### Asset Snapshot Endpoints
 
@@ -407,6 +428,37 @@ curl "http://localhost:8000/api/v1/snapshots/summary?start_date=2025-01-01&end_d
 ```bash
 # Delete all snapshots for a specific date
 curl -X DELETE http://localhost:8000/api/v1/snapshots/2025-01-15T10:00:00
+```
+
+#### ETF Breakdown
+
+```bash
+# List ISINs with breakdown data
+curl http://localhost:8000/api/v1/etf-breakdown/
+
+# Get breakdown for a specific ETF
+curl http://localhost:8000/api/v1/etf-breakdown/IE00BK5BQT80
+```
+
+**ETF Breakdown response example:**
+```json
+{
+  "isin": "IE00BK5BQT80",
+  "by_country": [
+    {"name": "United States", "weight_pct": 0.63},
+    {"name": "Japan", "weight_pct": 0.06}
+  ],
+  "by_sector": [
+    {"name": "Technology", "weight_pct": 0.22},
+    {"name": "Financials", "weight_pct": 0.15}
+  ],
+  "by_currency": [
+    {"name": "USD", "weight_pct": 0.63}
+  ],
+  "by_ticker": [
+    {"name": "AAPL", "weight_pct": 0.04}
+  ]
+}
 ```
 
 ### Validation Rules
@@ -885,22 +937,25 @@ backend/
 │   │   ├── transaction.py     # Transaction request/response schemas
 │   │   ├── analytics.py       # Analytics response schemas
 │   │   ├── position_value.py  # Position value schemas
-│   │   └── isin_metadata.py   # ISIN metadata schemas
+│   │   ├── isin_metadata.py   # ISIN metadata schemas
+│   │   └── etf_breakdown.py   # ETF breakdown response schemas
 │   ├── routers/               # API route handlers (HTTP layer)
 │   │   ├── transactions.py    # Transaction CRUD endpoints
 │   │   ├── analytics.py       # Analytics endpoints
 │   │   ├── position_values.py # Position value endpoints
-│   │   └── isin_metadata.py   # ISIN metadata endpoints
+│   │   ├── isin_metadata.py   # ISIN metadata endpoints
+│   │   └── etf_breakdown.py   # ETF breakdown endpoints
 │   └── services/              # Business logic (service layer)
-│       ├── transaction_service.py  # Transaction operations
-│       ├── cost_basis_service.py   # Cost basis calculations
-│       ├── position_value_service.py  # Position value operations
-│       └── isin_metadata_service.py   # ISIN metadata operations
+│       ├── transaction_service.py      # Transaction operations
+│       ├── cost_basis_service.py       # Cost basis calculations
+│       ├── position_value_service.py   # Position value operations
+│       ├── isin_metadata_service.py    # ISIN metadata operations
+│       └── etf_breakdown_service.py    # ETF constituent breakdown (CSV/S3 loader)
 ├── alembic/                   # Database migrations
 │   ├── versions/              # Migration files
 │   ├── env.py                 # Alembic environment
 │   └── script.py.mako         # Migration template
-├── tests/                     # Test suite (95% coverage, 254 tests)
+├── tests/                     # Test suite (95% coverage)
 │   ├── conftest.py           # Test fixtures
 │   ├── test_transaction_service.py
 │   ├── test_cost_basis_service.py
@@ -910,8 +965,11 @@ backend/
 │   ├── test_api_analytics.py
 │   ├── test_api_position_values.py
 │   ├── test_api_isin_metadata.py
+│   ├── test_api_etf_breakdown.py
+│   ├── test_etf_breakdown_service.py
 │   ├── test_position_value_cleanup.py
 │   └── test_schemas.py
+├── data/                      # Local ETF breakdown CSVs (gitignored, one file per ISIN)
 ├── .env                       # Environment variables (gitignored)
 ├── .env.example              # Environment template
 ├── alembic.ini               # Alembic configuration
@@ -1147,7 +1205,11 @@ LOG_LEVEL=INFO
 LOG_FORMAT=json
 API_V1_PREFIX=/v1
 PROJECT_NAME=ETF Portfolio Tracker
+ETF_DATA_S3_BUCKET=your-etf-data-bucket
+ETF_DATA_S3_PREFIX=etf-data/
 ```
+
+**Note**: The Lambda execution role needs `s3:ListBucket` and `s3:GetObject` permissions on the ETF data S3 bucket.
 
 **Key Production Configurations**:
 1. **CORS**: Set `CORS_ORIGINS` to CloudFront domain only (security)

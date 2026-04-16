@@ -1,4 +1,5 @@
 import json
+from pathlib import Path
 from typing import List
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -12,6 +13,11 @@ class Settings(BaseSettings):
     debug: bool = False
     cors_origins: str = '["http://localhost:3000", "http://localhost:8000"]'
     api_key_db_map: str = ""  # JSON map of API key → database URL
+
+    # ETF breakdown data
+    etf_data_s3_bucket: str = ""
+    etf_data_s3_prefix: str = "etf-data/"
+    etf_data_dir: str = str(Path(__file__).resolve().parent.parent / "data")
 
     # Logging configuration
     log_level: str = "INFO"
