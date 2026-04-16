@@ -7,7 +7,7 @@ from pathlib import Path
 
 import openpyxl
 
-from .base import HoldingRow, standardize_country, write_csv
+from .base import HoldingRow, standardize_country, standardize_sector, write_csv
 
 ETF_ISIN = "LU1109943388"
 HEADER_ROW = 3  # 0-indexed
@@ -30,7 +30,7 @@ def parse(filepath: Path) -> list[HoldingRow]:
             HoldingRow(
                 ticker=str(row[1]).strip(),
                 country=standardize_country(str(row[3]).strip()),
-                sector="Bond-Corp",
+                sector=standardize_sector(str(row[9]).strip()),
                 currency=str(row[4]).strip(),
                 weight_pct=weight,
             )
