@@ -214,3 +214,7 @@ __marimo__/
 
 .DS_Store
 **/.DS_Store
+
+# Data folders
+**/data/
+data/

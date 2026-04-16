@@ -322,6 +322,11 @@ All routes prefixed with `/api/v1`. Interactive docs: http://localhost:8000/docs
 
 **Asset Snapshots**: `POST`, `GET`, `GET /summary` (growth tracking), `DELETE /{snapshot_date}`, `POST /import-csv`
 
+**ETF Breakdown**: `GET /etf-breakdown/` (list available ISINs), `GET /etf-breakdown/{isin}` (country/sector/currency/ticker breakdown)
+- Data loaded lazily from S3 (`ETF_DATA_S3_BUCKET`) or local `backend/data/` directory (gitignored)
+- Each ISIN has a CSV file named `<ISIN>.csv` with columns: `ticker`, `country`, `sector`, `currency`, `weight_pct`
+- Results are cached in-memory; returns 404 if no data for requested ISIN
+
 **Note**: Transaction and holdings responses include computed fields. See schemas for details.
 
 ## Common Development Scenarios
@@ -417,6 +422,10 @@ CORS_ORIGINS=["http://localhost:3000", "http://localhost:8000"]
 # Logging Configuration
 LOG_LEVEL=INFO
 LOG_FORMAT=json
+
+# ETF Breakdown Data (S3)
+ETF_DATA_S3_BUCKET=your-bucket-name
+ETF_DATA_S3_PREFIX=etf-data/
 ```
 
 **Frontend Environment Variables**:
@@ -530,7 +539,7 @@ uv run alembic upgrade head   # Apply migrations
   - No CORS issues (same-origin from browser perspective)
 
 **Key Production Configuration**:
-- Lambda env vars: `API_KEY_DB_MAP`, `CORS_ORIGINS`, `LOG_LEVEL`, `LOG_FORMAT` (only 4 needed — everything else has safe defaults)
+- Lambda env vars: `API_KEY_DB_MAP`, `CORS_ORIGINS`, `LOG_LEVEL`, `LOG_FORMAT`, `ETF_DATA_S3_BUCKET` (+ optional `ETF_DATA_S3_PREFIX` if CSVs aren't under `etf-data/`)
 - CI/CD: `VITE_API_URL=/api/v1` and `VITE_DEMO_API_KEY=demo` set in GitHub Actions workflow
 - Frontend: Fail-fast error checking if `VITE_API_URL` not set
 
@@ -613,7 +622,7 @@ For detailed information, see:
 
 **Current Version**: Development
 **Test Coverage**: 95% (310 tests)
-**Backend Endpoints**: 23 total (6 transaction, 1 analytics, 2 position values, 5 ISIN metadata, 3 other assets, 5 snapshots, 2 settings) - includes CSV import for transactions and snapshots
+**Backend Endpoints**: 25 total (6 transaction, 1 analytics, 2 position values, 5 ISIN metadata, 3 other assets, 5 snapshots, 2 settings, 2 ETF breakdown) - includes CSV import for transactions and snapshots
 **Frontend Pages**: 8 (Login, Investment Dashboard, Transactions, Add/Edit Transaction, ISIN Metadata, Add/Edit ISIN Metadata, Other Assets, Snapshots with Growth Tracking)
 **Frontend Components**: 15 main components (Layout, Navigation, TransactionForm, TransactionList, ISINMetadataForm, ISINMetadataList, DashboardHoldingsTable, HoldingsDistributionChart, ClosedPositionsTable, PortfolioSummary, OtherAssetsTable, OtherAssetsDistributionChart, SnapshotValueChart, SnapshotsTable, SnapshotAssetTypeChart)
 **Visualization**: Portfolio distribution pie charts with Chart.js (centralized color system), time-series area chart with growth tracking, inline asset distribution charts, asset name display in holdings tables

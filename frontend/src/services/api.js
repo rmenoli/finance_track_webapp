@@ -317,6 +317,19 @@ export const snapshotsAPI = {
   },
 };
 
+// ETF Breakdown API methods
+export const etfBreakdownAPI = {
+  getBreakdown: async (isin) => {
+    const response = await apiFetch(`${API_BASE_URL}/etf-breakdown/${isin}`);
+    return handleResponse(response);
+  },
+
+  getAvailableISINs: async () => {
+    const response = await apiFetch(`${API_BASE_URL}/etf-breakdown`);
+    return handleResponse(response);
+  },
+};
+
 export default {
   transactions: transactionsAPI,
   analytics: analyticsAPI,
@@ -325,4 +338,5 @@ export default {
   otherAssets: otherAssetsAPI,
   settings: settingsAPI,
   snapshots: snapshotsAPI,
+  etfBreakdown: etfBreakdownAPI,
 };

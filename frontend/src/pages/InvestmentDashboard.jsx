@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from 'react';
-import { analyticsAPI, transactionsAPI, isinMetadataAPI } from '../services/api';
+import { analyticsAPI, transactionsAPI, isinMetadataAPI, etfBreakdownAPI } from '../services/api';
 import PortfolioSummary from '../components/PortfolioSummary';
 import FormattedNumber from '../components/FormattedNumber';
 import './InvestmentDashboard.css';
@@ -8,6 +8,7 @@ function InvestmentDashboard() {
   const [summary, setSummary] = useState(null);
   const [recentTransactions, setRecentTransactions] = useState([]);
   const [isinNames, setIsinNames] = useState({});
+  const [breakdowns, setBreakdowns] = useState({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -29,6 +30,21 @@ function InvestmentDashboard() {
         namesMap[metadata.isin] = metadata.name;
       });
       setIsinNames(namesMap);
+
+      // Fetch ETF breakdowns for held ISINs
+      const breakdownResults = {};
+      if (summaryData.holdings && summaryData.holdings.length > 0) {
+        const breakdownPromises = summaryData.holdings.map(async (holding) => {
+          try {
+            const bd = await etfBreakdownAPI.getBreakdown(holding.isin);
+            breakdownResults[holding.isin] = bd;
+          } catch {
+            // No breakdown available for this ISIN — skip silently
+          }
+        });
+        await Promise.all(breakdownPromises);
+      }
+      setBreakdowns(breakdownResults);
 
       setError(null);
     } catch (err) {
@@ -54,7 +70,7 @@ function InvestmentDashboard() {
     <div className="dashboard">
       <h1>Investment Dashboard</h1>
 
-      {summary && <PortfolioSummary data={summary} onDataChange={loadDashboardData} isinNames={isinNames} />}
+      {summary && <PortfolioSummary data={summary} onDataChange={loadDashboardData} isinNames={isinNames} breakdowns={breakdowns} />}
 
       <div className="dashboard-section">
         <h2>Recent Transactions</h2>
