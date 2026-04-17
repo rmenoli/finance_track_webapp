@@ -66,6 +66,11 @@ def load_breakdowns(data_dir: Path) -> None:
     logger.info("Loaded ETF breakdowns for %d ISINs", len(_cache))
 
 
+def get_all_breakdowns() -> dict[str, BreakdownResult]:
+    """Return all available breakdowns keyed by ISIN."""
+    return dict(_cache)
+
+
 def get_breakdown(isin: str) -> BreakdownResult | None:
     """Return the breakdown for a given ISIN, or None if not available."""
     return _cache.get(isin)
