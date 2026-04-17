@@ -215,6 +215,7 @@ __marimo__/
 .DS_Store
 **/.DS_Store
 
-# Data folders
-**/data/
-data/
+# Data folders (exclude CSVs but allow empty dir with .gitkeep)
+**/data/*.csv
+data/*.csv
+.worktrees/

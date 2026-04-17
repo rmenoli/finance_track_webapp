@@ -14,9 +14,7 @@ class Settings(BaseSettings):
     cors_origins: str = '["http://localhost:3000", "http://localhost:8000"]'
     api_key_db_map: str = ""  # JSON map of API key → database URL
 
-    # ETF breakdown data
-    etf_data_s3_bucket: str = ""
-    etf_data_s3_prefix: str = "etf-data/"
+    # ETF breakdown data (CSVs baked into the Docker image at build time)
     etf_data_dir: str = str(Path(__file__).resolve().parent.parent / "data")
 
     # Logging configuration

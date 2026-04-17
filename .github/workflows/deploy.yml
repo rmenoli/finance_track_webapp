@@ -62,6 +62,15 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ secrets.AWS_REGION }}
 
+      # ── ETF data (baked into Docker image) ───────────────────────────────────
+
+      - name: Download ETF data from S3
+        run: |
+          mkdir -p backend/data
+          aws s3 sync "s3://${{ secrets.ETF_DATA_S3_BUCKET }}/${{ secrets.ETF_DATA_S3_PREFIX }}" backend/data/ \
+            --exclude "*" --include "*.csv"
+          echo "ETF files downloaded: $(ls backend/data/*.csv 2>/dev/null | wc -l)"
+
       # ── Database migrations ───────────────────────────────────────────────────
 
       - name: Setup Python 3.12 (for Alembic migrations)
