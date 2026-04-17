@@ -328,6 +328,11 @@ export const etfBreakdownAPI = {
     const response = await apiFetch(`${API_BASE_URL}/etf-breakdown`);
     return handleResponse(response);
   },
+
+  getAllBreakdowns: async () => {
+    const response = await apiFetch(`${API_BASE_URL}/etf-breakdown/all`);
+    return handleResponse(response);
+  },
 };
 
 export default {

@@ -31,18 +31,13 @@ function InvestmentDashboard() {
       });
       setIsinNames(namesMap);
 
-      // Fetch ETF breakdowns for held ISINs
+      // Fetch all ETF breakdowns in a single request
       const breakdownResults = {};
-      if (summaryData.holdings && summaryData.holdings.length > 0) {
-        const breakdownPromises = summaryData.holdings.map(async (holding) => {
-          try {
-            const bd = await etfBreakdownAPI.getBreakdown(holding.isin);
-            breakdownResults[holding.isin] = bd;
-          } catch {
-            // No breakdown available for this ISIN — skip silently
-          }
-        });
-        await Promise.all(breakdownPromises);
+      try {
+        const allBreakdowns = await etfBreakdownAPI.getAllBreakdowns();
+        Object.assign(breakdownResults, allBreakdowns.breakdowns);
+      } catch {
+        // Breakdown data unavailable — charts will be hidden
       }
       setBreakdowns(breakdownResults);
 
