@@ -2,6 +2,7 @@ import logging
 import time
 import uuid
 from contextlib import asynccontextmanager
+from pathlib import Path
 from typing import Dict
 
 from fastapi import FastAPI, Request, status
@@ -10,6 +11,7 @@ from fastapi.responses import JSONResponse
 
 from app.config import settings
 from app.logging_config import log_with_context, request_id_context, setup_logging
+from app.services.etf_breakdown_service import load_breakdowns
 from app.routers import (
     analytics,
     asset_snapshots,
@@ -39,6 +41,11 @@ async def lifespan(app: FastAPI):
             "log_format": settings.log_format,
         },
     )
+    data_dir = Path(settings.etf_data_dir)
+    if data_dir.exists():
+        load_breakdowns(data_dir)
+    else:
+        logger.warning("ETF data directory not found, breakdown endpoints will return 404: %s", data_dir)
     yield
     # Shutdown
     logger.info("Application shutting down")
