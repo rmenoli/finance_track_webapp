@@ -43,8 +43,7 @@ def _aggregate_and_sort(rows: list[dict[str, str]], key: str) -> list[WeightEntr
 def load_breakdowns(data_dir: Path) -> None:
     """Load all ISIN CSV files from data_dir into the in-memory cache."""
     global _cache, _loaded
-    _cache = {}
-    _loaded = True
+    new_cache: dict[str, BreakdownResult] = {}
 
     for csv_path in data_dir.glob("*.csv"):
         isin = csv_path.stem
@@ -57,23 +56,26 @@ def load_breakdowns(data_dir: Path) -> None:
         if not rows:
             continue
 
-        _cache[isin] = {
+        new_cache[isin] = {
             "by_country": _aggregate_and_sort(rows, "country"),
             "by_sector": _aggregate_and_sort(rows, "sector"),
             "by_currency": _aggregate_and_sort(rows, "currency"),
             "by_ticker": _aggregate_and_sort(rows, "ticker"),
         }
 
+    _cache = new_cache
+    _loaded = True
     logger.info("Loaded ETF breakdowns for %d ISINs", len(_cache))
 
 
-def _download_from_s3(bucket: str, prefix: str, dest: Path) -> None:
-    """Download ISIN CSV files from S3 to a local directory."""
+def _download_from_s3(bucket: str, prefix: str, dest: Path) -> int:
+    """Download ISIN CSV files from S3 to a local directory. Returns expected ISIN count."""
     import boto3
 
     s3 = boto3.client("s3")
     dest.mkdir(parents=True, exist_ok=True)
 
+    keys_to_download: list[tuple[str, str]] = []
     paginator = s3.get_paginator("list_objects_v2")
     for page in paginator.paginate(Bucket=bucket, Prefix=prefix):
         for obj in page.get("Contents", []):
@@ -82,27 +84,38 @@ def _download_from_s3(bucket: str, prefix: str, dest: Path) -> None:
             isin = filename.removesuffix(".csv")
             if not filename.endswith(".csv") or not _ISIN_PATTERN.match(isin):
                 continue
-            s3.download_file(bucket, key, str(dest / filename))
+            keys_to_download.append((key, filename))
 
-    logger.info("Downloaded ETF data from s3://%s/%s to %s", bucket, prefix, dest)
+    for key, filename in keys_to_download:
+        s3.download_file(bucket, key, str(dest / filename))
+
+    logger.info("Downloaded %d ETF files from s3://%s/%s to %s", len(keys_to_download), bucket, prefix, dest)
+    return len(keys_to_download)
 
 
 def _ensure_loaded() -> None:
-    """Lazy-load breakdown data on first access."""
+    """Load breakdown data on first access. Retries on failure."""
     global _loaded
     if _loaded:
         return
 
     from app.config import settings
 
-    if settings.etf_data_s3_bucket:
-        dest = Path("/tmp/etf_data")
-        _download_from_s3(settings.etf_data_s3_bucket, settings.etf_data_s3_prefix, dest)
-        load_breakdowns(dest)
-    elif settings.etf_data_dir:
-        load_breakdowns(Path(settings.etf_data_dir))
-    else:
-        logger.warning("No ETF data directory found at %s", settings.etf_data_dir)
+    try:
+        if settings.etf_data_s3_bucket:
+            dest = Path("/tmp/etf_data")
+            expected = _download_from_s3(settings.etf_data_s3_bucket, settings.etf_data_s3_prefix, dest)
+            load_breakdowns(dest)
+            if len(_cache) < expected:
+                _loaded = False
+                raise RuntimeError(f"Only {len(_cache)}/{expected} ISINs loaded — will retry")
+        elif settings.etf_data_dir:
+            load_breakdowns(Path(settings.etf_data_dir))
+        else:
+            logger.warning("No ETF data source configured")
+    except Exception:
+        logger.exception("Failed to load ETF breakdown data — will retry on next request")
+        return
 
     _loaded = True
 
