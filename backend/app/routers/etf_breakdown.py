@@ -3,6 +3,7 @@
 from fastapi import APIRouter, HTTPException
 
 from app.schemas.etf_breakdown import (
+    AllETFBreakdownsResponse,
     AvailableETFsResponse,
     ETFBreakdownResponse,
 )
@@ -19,6 +20,22 @@ router = APIRouter(prefix="/etf-breakdown", tags=["etf-breakdown"])
 def list_available_etfs() -> AvailableETFsResponse:
     """Return ISINs for which holding breakdown data is available."""
     return AvailableETFsResponse(isins=etf_breakdown_service.get_available_isins())
+
+
+@router.get(
+    "/all",
+    response_model=AllETFBreakdownsResponse,
+    summary="Get all ETF holding breakdowns",
+)
+def get_all_etf_breakdowns() -> AllETFBreakdownsResponse:
+    """Return country, sector, currency and ticker breakdown for all available ETFs."""
+    all_data = etf_breakdown_service.get_all_breakdowns()
+    return AllETFBreakdownsResponse(
+        breakdowns={
+            isin: ETFBreakdownResponse(isin=isin, **breakdown)
+            for isin, breakdown in all_data.items()
+        }
+    )
 
 
 @router.get(

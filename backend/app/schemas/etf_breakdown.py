@@ -24,3 +24,9 @@ class AvailableETFsResponse(BaseModel):
     """List of ISINs with available breakdown data."""
 
     isins: list[str]
+
+
+class AllETFBreakdownsResponse(BaseModel):
+    """Breakdown data for all available ETFs, keyed by ISIN."""
+
+    breakdowns: dict[str, ETFBreakdownResponse]

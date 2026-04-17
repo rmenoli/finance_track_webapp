@@ -44,6 +44,32 @@ class TestETFBreakdownAPI:
         response = client.get("/v1/etf-breakdown/UNKNOWN12345")
         assert response.status_code == 404
 
+    def test_get_all_breakdowns(self, client) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            data_dir = Path(tmpdir)
+            _write_csv(
+                data_dir / "IE00BK5BQT80.csv",
+                [{"ticker": "AAPL", "country": "US", "sector": "Tech", "currency": "USD", "weight_pct": "0.04"}],
+            )
+            _write_csv(
+                data_dir / "IE00BFNM3P36.csv",
+                [{"ticker": "NESN", "country": "CH", "sector": "Consumer Staples", "currency": "CHF", "weight_pct": "0.01"}],
+            )
+            etf_breakdown_service.load_breakdowns(data_dir)
+
+            response = client.get("/v1/etf-breakdown/all")
+            assert response.status_code == 200
+            data = response.json()
+            assert set(data["breakdowns"].keys()) == {"IE00BK5BQT80", "IE00BFNM3P36"}
+            assert data["breakdowns"]["IE00BK5BQT80"]["isin"] == "IE00BK5BQT80"
+            assert data["breakdowns"]["IE00BK5BQT80"]["by_country"][0]["name"] == "US"
+
+    def test_get_all_breakdowns_empty(self, client) -> None:
+        etf_breakdown_service._cache.clear()
+        response = client.get("/v1/etf-breakdown/all")
+        assert response.status_code == 200
+        assert response.json()["breakdowns"] == {}
+
     def test_list_available_isins(self, client) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             data_dir = Path(tmpdir)
