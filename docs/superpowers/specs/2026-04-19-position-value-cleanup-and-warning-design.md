@@ -75,20 +75,26 @@ no UI flow can bypass it.
 ```javascript
 // Returns true to proceed, false to abort.
 export async function confirmPositionCloseIfNeeded({
-  isin,
-  transactionType,  // 'BUY' | 'SELL'
-  units,            // Decimal string/number
   operation,        // 'CREATE' | 'UPDATE' | 'DELETE'
-  currentTransactionId,  // only for UPDATE/DELETE
+  incoming,         // { isin, transactionType, units }  (the new/incoming txn state)
+  original,         // { isin, transactionType, units }  (required for UPDATE and DELETE)
 }) {
-  // 1. Fetch portfolio summary + position values (reuse existing endpoints)
-  // 2. Compute projected total_units for this ISIN after the operation
-  // 3. If projected total_units !== 0 → return true (no warning)
-  // 4. If no position_value stored for this ISIN → return true (nothing to lose)
+  // 1. Fetch holdings via GET /portfolio-summary (already returns
+  //    total_units and current_value per holding — sufficient; no
+  //    separate /position-values call needed).
+  // 2. Compute projected total_units for each affected ISIN after the
+  //    operation. For UPDATE with an ISIN change, evaluate the OLD
+  //    ISIN and the NEW ISIN separately — either can close a position.
+  // 3. For each affected ISIN, if projected total_units !== 0 → skip.
+  // 4. If no current_value is stored for that ISIN → skip.
   // 5. Otherwise, window.confirm() with:
   //    "This transaction will close your position for <ISIN>.
-  //     The current value you entered (€X,XXX.XX) will be cleared. Continue?"
-  //    return confirm result
+  //     The current value you entered (<formatted amount>) will be
+  //     cleared. Continue?"
+  //    Use the existing currency-formatting util (FormattedNumber /
+  //    currency helper) — do NOT hardcode €, since the app supports
+  //    EUR/CZK. Return false on first cancel; true only if every
+  //    affected ISIN is confirmed (or silently skipped).
 }
 ```
 
@@ -110,7 +116,7 @@ holdings with `total_units` and `current_value`). No new endpoints.
 | CREATE BUY         | current + units                                      |
 | CREATE SELL        | current - units                                      |
 | UPDATE (same ISIN) | current - old_contribution + new_contribution        |
-| UPDATE (ISIN change) | check old ISIN and new ISIN separately             |
+| UPDATE (ISIN change) | evaluate OLD ISIN (remove original contribution) AND NEW ISIN (add new contribution) separately; warning can fire for either |
 | DELETE BUY         | current - units                                      |
 | DELETE SELL        | current + units                                      |
 
