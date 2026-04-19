@@ -13,7 +13,7 @@ from app.schemas.isin_metadata import (
     ISINMetadataResponse,
     ISINMetadataUpdate,
 )
-from app.services import isin_metadata_service
+from app.services import etf_breakdown_service, isin_metadata_service
 
 router = APIRouter(prefix="/isin-metadata", tags=["isin-metadata"])
 
@@ -46,11 +46,15 @@ def list_isin_metadata(
 ) -> ISINMetadataListResponse:
     """List all ISIN metadata with optional type filter."""
     isin_metadata_list = isin_metadata_service.get_all_isin_metadata(db, asset_type=type)
+    available = set(etf_breakdown_service.get_available_isins())
 
-    return ISINMetadataListResponse(
-        items=[ISINMetadataResponse.model_validate(im) for im in isin_metadata_list],
-        total=len(isin_metadata_list),
-    )
+    items = [
+        ISINMetadataResponse.model_validate(im).model_copy(
+            update={"has_breakdown": im.isin in available}
+        )
+        for im in isin_metadata_list
+    ]
+    return ISINMetadataListResponse(items=items, total=len(items))
 
 
 @router.get(
@@ -65,7 +69,10 @@ def get_isin_metadata(
 ) -> ISINMetadataResponse:
     """Get ISIN metadata by ISIN."""
     isin_metadata = isin_metadata_service.get_isin_metadata(db, isin)
-    return ISINMetadataResponse.model_validate(isin_metadata)
+    available = set(etf_breakdown_service.get_available_isins())
+    return ISINMetadataResponse.model_validate(isin_metadata).model_copy(
+        update={"has_breakdown": isin in available}
+    )
 
 
 @router.put(

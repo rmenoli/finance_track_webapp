@@ -44,6 +44,7 @@ function ISINMetadataList({ metadata, onEdit, onDelete }) {
               <th>ISIN</th>
               <th>Name</th>
               <th>Type</th>
+              <th className="th-narrow">Metadata<br/>information<br/>available</th>
               <th>Actions</th>
             </tr>
           </thead>
@@ -56,6 +57,17 @@ function ISINMetadataList({ metadata, onEdit, onDelete }) {
                   <span className={`badge ${getTypeBadgeClass(item.type)}`}>
                     {getTypeLabel(item.type)}
                   </span>
+                </td>
+                <td>
+                  {item.has_breakdown ? (
+                    <span className="badge badge-breakdown" title="ETF breakdown data available">
+                      {'\u2713'}
+                    </span>
+                  ) : (
+                    <span className="badge badge-no-breakdown" title="No ETF breakdown data">
+                      {'\u2717'}
+                    </span>
+                  )}
                 </td>
                 <td>
                   <div className="action-buttons">

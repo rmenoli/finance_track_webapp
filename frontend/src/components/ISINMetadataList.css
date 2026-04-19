@@ -72,6 +72,20 @@
   color: #616161;
 }
 
+.th-narrow {
+  width: 6rem;
+}
+
+.badge-breakdown {
+  background-color: #d1fae5;
+  color: #065f46;
+}
+
+.badge-no-breakdown {
+  background-color: #fee2e2;
+  color: #991b1b;
+}
+
 .action-buttons {
   display: flex;
   gap: 0.5rem;
