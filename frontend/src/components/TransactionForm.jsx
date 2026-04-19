@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { confirmPositionCloseIfNeeded } from '../utils/positionCloseWarning';
 import './TransactionForm.css';
 
 function TransactionForm({ initialData, onSubmit, onCancel }) {
@@ -93,6 +94,26 @@ function TransactionForm({ initialData, onSubmit, onCancel }) {
     setSubmitting(true);
 
     try {
+      const operation = initialData ? 'UPDATE' : 'CREATE';
+      const incoming = {
+        isin: formData.isin.toUpperCase(),
+        transactionType: formData.transaction_type,
+        units: parseFloat(formData.units),
+      };
+      const original = initialData
+        ? {
+            isin: initialData.isin,
+            transactionType: initialData.transaction_type,
+            units: parseFloat(initialData.units),
+          }
+        : undefined;
+
+      const { proceed } = await confirmPositionCloseIfNeeded({ operation, incoming, original });
+      if (!proceed) {
+        setSubmitting(false);
+        return;
+      }
+
       await onSubmit({
         ...formData,
         isin: formData.isin.toUpperCase(),

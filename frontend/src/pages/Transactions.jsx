@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { transactionsAPI } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import TransactionList from '../components/TransactionList';
+import { confirmPositionCloseIfNeeded } from '../utils/positionCloseWarning';
 import './Transactions.css';
 
 function Transactions() {
@@ -50,8 +51,28 @@ function Transactions() {
   };
 
   const handleDelete = async (id) => {
-    if (!window.confirm('Are you sure you want to delete this transaction?')) {
-      return;
+    const txn = transactions.find((t) => t.id === id);
+
+    if (txn) {
+      const original = {
+        isin: txn.isin,
+        transactionType: txn.transaction_type,
+        units: parseFloat(txn.units),
+      };
+      const { proceed, warningShown } = await confirmPositionCloseIfNeeded({
+        operation: 'DELETE',
+        incoming: original,
+        original,
+      });
+      if (!proceed) return;
+      // If no closure warning was shown, fall back to generic confirm
+      if (!warningShown && !window.confirm('Are you sure you want to delete this transaction?')) {
+        return;
+      }
+    } else {
+      if (!window.confirm('Are you sure you want to delete this transaction?')) {
+        return;
+      }
     }
 
     try {
