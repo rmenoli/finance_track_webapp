@@ -12,6 +12,85 @@ from app.schemas.transaction import TransactionCreate, TransactionUpdate
 from app.services import position_value_service, transaction_service
 
 
+class TestPositionValueCleanupOnCreate:
+    """Test cleanup when creating transactions."""
+
+    def test_create_sell_closing_position_cleans_up_position_value(self, db_session):
+        """Position value is deleted when a create SELL closes the position."""
+        # Setup: Buy 10 units and store a position value
+        transaction_service.create_transaction(
+            db_session,
+            TransactionCreate(
+                date=date.today() - timedelta(days=2),
+                isin="IE00B4L5Y983",
+                broker="Broker",
+                fee=Decimal("1.00"),
+                price_per_unit=Decimal("100.00"),
+                units=Decimal("10.0"),
+                transaction_type=TransactionType.BUY,
+            ),
+        )
+        position_value_service.upsert_position_value(
+            db_session,
+            PositionValueCreate(isin="IE00B4L5Y983", current_value=Decimal("1000.00")),
+        )
+
+        # Create SELL that closes the position
+        transaction_service.create_transaction(
+            db_session,
+            TransactionCreate(
+                date=date.today() - timedelta(days=1),
+                isin="IE00B4L5Y983",
+                broker="Broker",
+                fee=Decimal("1.00"),
+                price_per_unit=Decimal("110.00"),
+                units=Decimal("10.0"),
+                transaction_type=TransactionType.SELL,
+            ),
+        )
+
+        # Verify position value was deleted
+        with pytest.raises(PositionValueNotFoundError):
+            position_value_service.get_position_value(db_session, "IE00B4L5Y983")
+
+    def test_create_buy_does_not_clean_up_position_value(self, db_session):
+        """Position value is kept when creating a BUY leaves the position open."""
+        transaction_service.create_transaction(
+            db_session,
+            TransactionCreate(
+                date=date.today() - timedelta(days=2),
+                isin="IE00B4L5Y983",
+                broker="Broker",
+                fee=Decimal("1.00"),
+                price_per_unit=Decimal("100.00"),
+                units=Decimal("10.0"),
+                transaction_type=TransactionType.BUY,
+            ),
+        )
+        position_value_service.upsert_position_value(
+            db_session,
+            PositionValueCreate(isin="IE00B4L5Y983", current_value=Decimal("1000.00")),
+        )
+
+        # Create another BUY (position stays open)
+        transaction_service.create_transaction(
+            db_session,
+            TransactionCreate(
+                date=date.today() - timedelta(days=1),
+                isin="IE00B4L5Y983",
+                broker="Broker",
+                fee=Decimal("1.00"),
+                price_per_unit=Decimal("105.00"),
+                units=Decimal("5.0"),
+                transaction_type=TransactionType.BUY,
+            ),
+        )
+
+        # Position value should still exist
+        pv = position_value_service.get_position_value(db_session, "IE00B4L5Y983")
+        assert pv.current_value == Decimal("1000.00")
+
+
 class TestPositionValueCleanupOnDelete:
     """Test cleanup when deleting transactions."""
 

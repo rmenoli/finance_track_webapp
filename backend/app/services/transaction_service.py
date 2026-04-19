@@ -51,6 +51,9 @@ def create_transaction(db: Session, transaction_data: TransactionCreate) -> Tran
         date=str(transaction.date),
     )
 
+    # Cleanup if this transaction closed the position
+    _cleanup_position_value_for_closed_position(db, transaction.isin)
+
     return transaction
 
 
@@ -297,8 +300,8 @@ def _cleanup_position_value_for_closed_position(db: Session, isin: str) -> None:
     try:
         cost_basis = cost_basis_service.calculate_cost_basis(db, isin)
 
-        # If position is closed, delete the position value
-        if cost_basis and cost_basis.total_units == 0:
+        # If position is closed or has no transactions, delete the position value
+        if cost_basis is None or cost_basis.total_units == 0:
             try:
                 position_value_service.delete_position_value(db, isin)
             except PositionValueNotFoundError:
