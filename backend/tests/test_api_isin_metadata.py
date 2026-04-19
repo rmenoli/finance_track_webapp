@@ -1,8 +1,70 @@
 """Tests for ISIN metadata API endpoints."""
 
+import pytest
+from unittest.mock import patch
+
 
 class TestISINMetadataAPI:
     """Test ISIN metadata API endpoints."""
+
+    @pytest.fixture(autouse=True)
+    def no_etf_load(self):
+        with patch(
+            "app.services.etf_breakdown_service.get_available_isins",
+            return_value=[],
+        ):
+            yield
+
+    def test_list_isin_metadata_has_breakdown_true(self, client):
+        """has_breakdown is True when breakdown data is available for the ISIN."""
+        data = {"isin": "IE00B4L5Y983", "name": "iShares MSCI EM", "type": "STOCK"}
+        client.post("/api/v1/isin-metadata", json=data)
+
+        with patch(
+            "app.services.etf_breakdown_service.get_available_isins",
+            return_value=["IE00B4L5Y983"],
+        ):
+            response = client.get("/api/v1/isin-metadata")
+
+        assert response.status_code == 200
+        items = response.json()["items"]
+        assert len(items) == 1
+        assert items[0]["has_breakdown"] is True
+
+    def test_list_isin_metadata_has_breakdown_false(self, client):
+        """has_breakdown is False when no breakdown data exists for the ISIN."""
+        data = {"isin": "IE00B4L5Y983", "name": "iShares MSCI EM", "type": "STOCK"}
+        client.post("/api/v1/isin-metadata", json=data)
+
+        response = client.get("/api/v1/isin-metadata")
+
+        assert response.status_code == 200
+        items = response.json()["items"]
+        assert items[0]["has_breakdown"] is False
+
+    def test_get_isin_metadata_has_breakdown_true(self, client):
+        """has_breakdown is True on get-by-ISIN when breakdown data exists."""
+        data = {"isin": "IE00B4L5Y983", "name": "iShares MSCI EM", "type": "STOCK"}
+        client.post("/api/v1/isin-metadata", json=data)
+
+        with patch(
+            "app.services.etf_breakdown_service.get_available_isins",
+            return_value=["IE00B4L5Y983"],
+        ):
+            response = client.get("/api/v1/isin-metadata/IE00B4L5Y983")
+
+        assert response.status_code == 200
+        assert response.json()["has_breakdown"] is True
+
+    def test_get_isin_metadata_has_breakdown_false(self, client):
+        """has_breakdown is False on get-by-ISIN when no breakdown data exists."""
+        data = {"isin": "IE00B4L5Y983", "name": "iShares MSCI EM", "type": "STOCK"}
+        client.post("/api/v1/isin-metadata", json=data)
+
+        response = client.get("/api/v1/isin-metadata/IE00B4L5Y983")
+
+        assert response.status_code == 200
+        assert response.json()["has_breakdown"] is False
 
     def test_create_isin_metadata(self, client):
         """Test creating new ISIN metadata via API."""

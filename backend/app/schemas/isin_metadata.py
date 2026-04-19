@@ -57,6 +57,7 @@ class ISINMetadataResponse(ISINMetadataBase):
     id: int = Field(..., description="ISIN metadata ID")
     created_at: datetime = Field(..., description="Creation timestamp")
     updated_at: datetime = Field(..., description="Last update timestamp")
+    has_breakdown: bool = Field(False, description="Whether ETF breakdown data is available for this ISIN")
 
     model_config = ConfigDict(from_attributes=True, use_enum_values=False)
 
